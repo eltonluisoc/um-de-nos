@@ -197,6 +197,7 @@ async function salvarParticipante() {
     }
     
     try {
+        // Salvar participante
         await addDoc(collection(db, 'participantes'), {
             nome: nome,
             jogoId: jogoAtualId,
@@ -207,7 +208,20 @@ async function salvarParticipante() {
             dataCadastro: new Date()
         });
         
+        // Atualizar contador de participantes no jogo
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+        const querySnapshot = await getDocs(q);
+        const total = querySnapshot.size;
+        
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        await updateDoc(jogoRef, {
+            totalParticipantes: total
+        });
+        
         alert('Participante cadastrado com sucesso!');
+        
+        // Limpar formulário
         document.getElementById('nomeParticipante').value = '';
         numerosSelecionados.forEach(n => {
             const btns = document.querySelectorAll('.numero-btn');
@@ -219,11 +233,14 @@ async function salvarParticipante() {
         });
         numerosSelecionados = [];
         document.getElementById('contadorNumeros').innerHTML = '0/17 números selecionados';
+        
+        // Recarregar listas
         carregarTodosParticipantes();
+        carregarRanking();
         
     } catch (error) {
         console.error('Erro ao salvar:', error);
-        alert('Erro ao salvar participante!');
+        alert('Erro ao salvar participante: ' + error.message);
     }
 }
 
