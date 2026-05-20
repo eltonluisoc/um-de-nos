@@ -1,14 +1,14 @@
 // Service Worker para o Um de Nós - Super Quina 17
 const CACHE_NAME = 'umdenos-cache-v1';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/admin.html',
-  '/style.css',
-  '/firebase-config.js',
-  '/public.js',
-  '/admin.js',
-  '/manifest.json'
+  '/um-de-nos/',
+  '/um-de-nos/index.html',
+  '/um-de-nos/admin.html',
+  '/um-de-nos/style.css',
+  '/um-de-nos/firebase-config.js',
+  '/um-de-nos/public.js',
+  '/um-de-nos/admin.js',
+  '/um-de-nos/manifest.json'
 ];
 
 // Instalação do Service Worker
