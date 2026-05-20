@@ -245,8 +245,139 @@ async function salvarParticipante() {
 }
 
 async function buscarSorteioQuina() {
-    alert('Buscando sorteio da Quina... (API será implementada)');
-    // TODO: Implementar chamada à API
+    const btn = document.getElementById('btnBuscarSorteio');
+    btn.disabled = true;
+    btn.textContent = '⏳ Buscando...';
+    
+    try {
+        // Buscar último sorteio da Quina
+        const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
+        const dados = await response.json();
+        
+        if (!dados || !dados.dezenas) {
+            throw new Error('Não foi possível obter os números da Quina');
+        }
+        
+        const numerosSorteados = dados.dezenas.map(Number);
+        const concurso = dados.concurso;
+        
+        console.log('Sorteio encontrado:', concurso, numerosSorteados);
+        
+        // Verificar se este concurso já foi importado
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        const jogoDoc = await getDoc(jogoRef);
+        const ultimoConcurso = jogoDoc.data().ultimoConcursoImportado;
+        
+        if (ultimoConcurso === concurso) {
+            alert(`Sorteio ${concurso} já foi importado anteriormente!`);
+            btn.disabled = false;
+            btn.textContent = '📢 Buscar Último Sorteio da Quina';
+            return;
+        }
+        
+        // Salvar sorteio no histórico
+        await addDoc(collection(db, 'sorteios_quina'), {
+            concurso: concurso,
+            numeros: numerosSorteados,
+            data: new Date(dados.data),
+            importadoEm: new Date()
+        });
+        
+        // Atualizar últimos números no jogo
+        await updateDoc(jogoRef, {
+            ultimosNumerosSorteados: numerosSorteados,
+            ultimoConcursoImportado: concurso
+        });
+        
+        // ATUALIZAR ACERTOS DE TODOS PARTICIPANTES
+        await atualizarAcertosParticipantes(numerosSorteados);
+        
+        alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
+        
+    } catch (error) {
+        console.error('Erro ao buscar sorteio:', error);
+        alert('Erro ao buscar sorteio da Quina: ' + error.message);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = '📢 Buscar Último Sorteio da Quina';
+    }
+}
+
+// Função para atualizar acertos de todos participantes
+async function atualizarAcertosParticipantes(novosNumeros) {
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+    const querySnapshot = await getDocs(q);
+    
+    let vencedorEncontrado = false;
+    
+    for (const docSnap of querySnapshot.docs) {
+        const participante = docSnap.data();
+        
+        if (participante.acertouTodos) continue; // Já venceu
+        
+        // Calcular quantos números novos ele acertou
+        let novosAcertos = 0;
+        for (const num of novosNumeros) {
+            if (participante.numeros.includes(num)) {
+                novosAcertos++;
+            }
+        }
+        
+        const novoTotal = (participante.acertos || 0) + novosAcertos;
+        
+        // Atualizar acertos
+        await updateDoc(doc(db, 'participantes', docSnap.id), {
+            acertos: novoTotal
+        });
+        
+        // Verificar se venceu
+        if (novoTotal >= 17 && !vencedorEncontrado) {
+            vencedorEncontrado = true;
+            await declararVencedor(docSnap.id, participante.nome);
+        }
+    }
+    
+    if (!vencedorEncontrado) {
+        console.log('Ninguém chegou a 17 acertos ainda');
+    }
+    
+    // Recarregar ranking
+    carregarRanking();
+}
+
+// Função para declarar vencedor
+async function declararVencedor(participanteId, nome) {
+    const jogoRef = doc(db, 'jogos', jogoAtualId);
+    
+    await updateDoc(jogoRef, {
+        status: 'encerrado',
+        vencedorId: participanteId,
+        vencedorNome: nome,
+        encerradoEm: new Date()
+    });
+    
+    await updateDoc(doc(db, 'participantes', participanteId), {
+        acertouTodos: true,
+        ordemVitoria: 1
+    });
+    
+    // Salvar no histórico
+    await addDoc(collection(db, 'historico_vencedores'), {
+        jogoId: jogoAtualId,
+        participanteId: participanteId,
+        participanteNome: nome,
+        dataVitoria: new Date()
+    });
+    
+    alert(`🏆 VENCEDOR! ${nome} acertou 17 números primeiro! 🏆`);
+    
+    // Recarregar página para mostrar vencedor
+    setTimeout(() => {
+        if (confirm('Jogo encerrado! Deseja recarregar a página?')) {
+            window.location.reload();
+        }
+    }, 1000);
 }
 
 async function encerrarJogo() {
