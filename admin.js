@@ -512,6 +512,6 @@ window.excluirParticipante = async function(id) {
         alert('Participante excluído!');
     }
 };
-
+window.buscarSorteioQuina = buscarSorteioQuina; 
 window.verificarSenha = verificarSenha;
 window.logout = logout;
