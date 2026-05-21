@@ -20,10 +20,10 @@ let intervaloBusca = null;
 let ultimoConcursoBuscado = null;
 
 // Aguardar DOM carregar
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('Admin carregado');
-    inicializarEventos();
-    document.getElementById('btnEntrar')?.addEventListener('click', verificarSenha);
+document.getElementById('btnEntrarAdmin')?.addEventListener('click', verificarSenha);
+// Adicionar suporte para tecla Enter
+document.getElementById('senhaInput')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') verificarSenha();
 });
 
 function inicializarEventos() {
@@ -48,13 +48,36 @@ function inicializarEventos() {
 
 function verificarSenha() {
     const senha = document.getElementById('senhaInput').value;
-    if (senha === SENHA_ADMIN) {
-        document.getElementById('loginScreen').style.display = 'none';
-        document.getElementById('adminContent').style.display = 'block';
-        carregarDados();
-    } else {
-        alert('Senha incorreta!');
+    const btn = document.getElementById('btnEntrarAdmin');
+    const loading = document.getElementById('msgLoading');
+    const msgErro = document.getElementById('msgErro');
+    
+    if (!senha) {
+        msgErro.textContent = '⚠️ Digite a senha';
+        return;
     }
+    
+    msgErro.textContent = '';
+    loading.style.display = 'block';
+    btn.disabled = true;
+    btn.textContent = '⏳ VERIFICANDO...';
+    
+    // Simular delay para feedback
+    setTimeout(() => {
+        if (senha === SENHA_ADMIN) {
+            loading.style.display = 'none';
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminContent').style.display = 'block';
+            carregarDados();
+        } else {
+            loading.style.display = 'none';
+            msgErro.textContent = '❌ Senha incorreta! Tente novamente.';
+            btn.disabled = false;
+            btn.textContent = '🔐 ENTRAR';
+            document.getElementById('senhaInput').value = '';
+            document.getElementById('senhaInput').focus();
+        }
+    }, 500);
 }
 
 function logout() {

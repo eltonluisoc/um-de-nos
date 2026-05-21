@@ -1,17 +1,10 @@
 {
   "name": "Um de Nós - Super Quina 17",
   "short_name": "Um de Nós",
-  "description": "Bingo com sorteios oficiais da Quina - Quem acertar 17 números primeiro vence!",
-  "start_url": "/",
+  "description": "Bingo com sorteios oficiais da Quina",
+  "start_url": "/um-de-nos/",
   "display": "standalone",
   "theme_color": "#2E7D32",
   "background_color": "#0d2818",
-  "orientation": "portrait",
-  "icons": [
-    {
-        "src": "https://fonts.gstatic.com/s/e/notoemoji/15.0/1f3af/72.png",
-        "sizes": "72x72",
-        "type": "image/png"
-    }
-]
+  "orientation": "portrait"
 }
