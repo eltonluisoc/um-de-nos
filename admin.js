@@ -307,11 +307,20 @@ async function salvarParticipante() {
 async function buscarSorteioQuina() {
     console.log('🔍 Função buscarSorteioQuina iniciada');
     
-    if (!jogoAtualId) {
-        console.log('❌ Sem jogo ativo');
-        alert('Nenhum jogo ativo encontrado!');
+    // Buscar o jogo ativo novamente para garantir
+    const jogosRef = collection(db, 'jogos');
+    const q = query(jogosRef, where('status', '==', 'aberto'));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        console.log('❌ Nenhum jogo ativo encontrado');
+        alert('Nenhum jogo ativo! Crie um novo jogo primeiro.');
         return;
     }
+    
+    const jogoDoc = querySnapshot.docs[0];
+    const jogoAtualId = jogoDoc.id;
+    console.log('✅ Jogo ativo ID:', jogoAtualId);
     
     const btn = document.getElementById('btnBuscarSorteio');
     if (btn) {
@@ -322,7 +331,10 @@ async function buscarSorteioQuina() {
     try {
         console.log('📡 Buscando API da Quina...');
         const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
-        console.log('📡 Resposta recebida:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
         
         const dados = await response.json();
         console.log('📡 Dados recebidos:', dados);
@@ -337,44 +349,38 @@ async function buscarSorteioQuina() {
         console.log(`🎲 Sorteio ${concurso}:`, numerosSorteados);
         
         const jogoRef = doc(db, 'jogos', jogoAtualId);
-        const jogoDoc = await getDoc(jogoRef);
-        const jogoData = jogoDoc.data();
+        const jogoData = (await getDoc(jogoRef)).data();
         
-        if (jogoData.status !== 'aberto') {
-            console.log('⚠️ Jogo já encerrado');
-            alert('Jogo já encerrado!');
-            return;
-        }
-        
-        if (ultimoConcursoBuscado === concurso) {
+        // Verificar se já importou este concurso
+        if (jogoData.ultimoConcursoImportado === concurso) {
             console.log(`⚠️ Sorteio ${concurso} já foi importado`);
             alert(`Sorteio ${concurso} já foi importado anteriormente!`);
             return;
         }
         
-        let dataSorteio = null;
-        if (dados.data) {
-            dataSorteio = new Date(dados.data);
-            if (isNaN(dataSorteio.getTime())) dataSorteio = null;
-        }
-        
+        // Salvar sorteio no histórico
+        console.log('💾 Salvando sorteio no Firestore...');
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numerosSorteados,
-            data: dataSorteio || new Date(),
+            data: dados.data ? new Date(dados.data) : new Date(),
             importadoEm: new Date()
         });
+        console.log('✅ Sorteio salvo no histórico');
         
+        // Atualizar o jogo
+        console.log('📝 Atualizando jogo...');
         await updateDoc(jogoRef, {
             ultimosNumerosSorteados: numerosSorteados,
             ultimoConcursoImportado: concurso
         });
+        console.log('✅ Jogo atualizado');
         
-        ultimoConcursoBuscado = concurso;
+        // Atualizar acertos dos participantes
+        console.log('🔄 Atualizando acertos...');
         await atualizarAcertosParticipantes(numerosSorteados);
         
         alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
-        await carregarRanking();
         
     } catch (error) {
         console.error('❌ Erro:', error);
@@ -512,6 +518,8 @@ window.excluirParticipante = async function(id) {
         alert('Participante excluído!');
     }
 };
+window.jogoAtualId = jogoAtualId;
+window.db = db;
 window.buscarSorteioQuina = buscarSorteioQuina; 
 window.verificarSenha = verificarSenha;
 window.logout = logout;
