@@ -305,7 +305,13 @@ async function salvarParticipante() {
 }
 
 async function buscarSorteioQuina() {
-    if (!jogoAtualId) return;
+    console.log('🔍 Função buscarSorteioQuina iniciada');
+    
+    if (!jogoAtualId) {
+        console.log('❌ Sem jogo ativo');
+        alert('Nenhum jogo ativo encontrado!');
+        return;
+    }
     
     const btn = document.getElementById('btnBuscarSorteio');
     if (btn) {
@@ -314,25 +320,49 @@ async function buscarSorteioQuina() {
     }
     
     try {
+        console.log('📡 Buscando API da Quina...');
         const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
-        const dados = await response.json();
+        console.log('📡 Resposta recebida:', response.status);
         
-        if (!dados || !dados.dezenas) throw new Error('Não foi possível obter os números');
+        const dados = await response.json();
+        console.log('📡 Dados recebidos:', dados);
+        
+        if (!dados || !dados.dezenas) {
+            throw new Error('Não foi possível obter os números da Quina');
+        }
         
         const numerosSorteados = dados.dezenas.map(Number);
         const concurso = dados.concurso;
         
+        console.log(`🎲 Sorteio ${concurso}:`, numerosSorteados);
+        
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         const jogoDoc = await getDoc(jogoRef);
+        const jogoData = jogoDoc.data();
         
-        if (jogoDoc.data().status !== 'aberto') return;
-        if (ultimoConcursoBuscado === concurso) return;
+        console.log('📊 Status do jogo:', jogoData.status);
+        console.log('📊 Último concurso importado:', ultimoConcursoBuscado);
         
+        if (jogoData.status !== 'aberto') {
+            console.log('⚠️ Jogo já encerrado');
+            alert('Jogo já encerrado!');
+            return;
+        }
+        
+        if (ultimoConcursoBuscado === concurso) {
+            console.log(`⚠️ Sorteio ${concurso} já foi importado`);
+            alert(`Sorteio ${concurso} já foi importado anteriormente!`);
+            return;
+        }
+        
+        // Tratar a data
         let dataSorteio = null;
         if (dados.data) {
             dataSorteio = new Date(dados.data);
             if (isNaN(dataSorteio.getTime())) dataSorteio = null;
         }
+        
+        console.log('💾 Salvando sorteio no Firestore...');
         
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
@@ -347,14 +377,19 @@ async function buscarSorteioQuina() {
         });
         
         ultimoConcursoBuscado = concurso;
+        
+        console.log('🔄 Atualizando acertos dos participantes...');
         await atualizarAcertosParticipantes(numerosSorteados);
         
-        console.log(`✅ Sorteio ${concurso} importado!`);
-        if (btn) alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
+        console.log(`✅ Sorteio ${concurso} importado com sucesso!`);
+        alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
+        
+        // Atualizar a interface
+        await carregarRanking();
         
     } catch (error) {
-        console.error('Erro:', error);
-        if (btn) alert('Erro ao buscar sorteio: ' + error.message);
+        console.error('❌ Erro detalhado:', error);
+        alert('Erro ao buscar sorteio: ' + error.message);
     } finally {
         if (btn) {
             btn.disabled = false;
