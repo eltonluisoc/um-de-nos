@@ -10,7 +10,6 @@ import {
     query, 
     where, 
     orderBy, 
-    onSnapshot,
     writeBatch
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -24,10 +23,10 @@ let ultimoConcursoBuscado = null;
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Admin carregado');
     inicializarEventos();
+    document.getElementById('btnEntrar')?.addEventListener('click', verificarSenha);
 });
 
 function inicializarEventos() {
-    // Tabs
     document.querySelectorAll('.tab').forEach(tab => {
         tab.addEventListener('click', () => {
             const tabId = tab.dataset.tab;
@@ -38,14 +37,12 @@ function inicializarEventos() {
         });
     });
     
-    // Botões
     document.getElementById('btnSalvarParticipante')?.addEventListener('click', salvarParticipante);
     document.getElementById('btnBuscarSorteio')?.addEventListener('click', buscarSorteioQuina);
     document.getElementById('btnEncerrarJogo')?.addEventListener('click', encerrarJogo);
     document.getElementById('btnNovoJogo')?.addEventListener('click', iniciarNovoJogo);
     document.getElementById('btnResetarTudo')?.addEventListener('click', resetarTudo);
     
-    // Criar grid de números
     criarGridNumeros();
 }
 
@@ -61,16 +58,18 @@ function verificarSenha() {
 }
 
 function logout() {
-    pararBuscaAutomatica();
+    if (intervaloBusca) clearInterval(intervaloBusca);
     document.getElementById('loginScreen').style.display = 'flex';
     document.getElementById('adminContent').style.display = 'none';
     document.getElementById('senhaInput').value = '';
 }
 
-function carregarDados() {
-    carregarJogoAtivo();
-    carregarRanking();
-    carregarTodosParticipantes();
+async function carregarDados() {
+    await carregarJogoAtivo();
+    if (jogoAtualId) {
+        await carregarRanking();
+        await carregarTodosParticipantes();
+    }
     iniciarBuscaAutomatica();
 }
 
@@ -85,127 +84,91 @@ async function carregarJogoAtivo() {
         ultimoConcursoBuscado = jogoDoc.data().ultimoConcursoImportado;
         
         const statusDiv = document.getElementById('statusAdmin');
-        statusDiv.innerHTML = `
-            <p>✅ Jogo ativo: ${jogoDoc.data().nome || 'Edição atual'}</p>
-            <p>📅 Criado em: ${new Date(jogoDoc.data().createdAt?.toDate()).toLocaleString('pt-BR')}</p>
-            <p>🎲 Último sorteio: ${jogoDoc.data().ultimoConcursoImportado || 'Nenhum ainda'}</p>
-            <p>🕐 Busca automática: ${getHorarioStatus()}</p>
-        `;
+        if (statusDiv) {
+            statusDiv.innerHTML = `
+                <p>✅ Jogo ativo: ${jogoDoc.data().nome || 'Edição atual'}</p>
+                <p>📅 Criado em: ${jogoDoc.data().createdAt?.toDate()?.toLocaleString('pt-BR') || 'Nova'}</p>
+                <p>🎲 Último sorteio: ${jogoDoc.data().ultimoConcursoImportado || 'Nenhum ainda'}</p>
+            `;
+        }
     } else {
         await iniciarNovoJogo();
-    }
-}
-
-function getHorarioStatus() {
-    const agora = new Date();
-    const hora = agora.getHours();
-    if (hora >= 20 && hora <= 23) {
-        return 'ATIVA (20h-23h59)';
-    } else {
-        return 'AGUARDANDO (apenas das 20h às 23h59)';
     }
 }
 
 function isHorarioSorteios() {
     const agora = new Date();
     const hora = agora.getHours();
-    // Sorteios da Quina geralmente entre 20h e 22h
     return (hora >= 20 && hora <= 23);
 }
 
 function iniciarBuscaAutomatica() {
     if (intervaloBusca) clearInterval(intervaloBusca);
     
-    console.log('🔄 Busca automática configurada (verifica a cada 5 minutos, apenas entre 20h-23h59)');
+    console.log('🔄 Busca automática configurada');
     
-    // Buscar imediatamente ao abrir (se for horário)
     setTimeout(() => {
         if (isHorarioSorteios() && jogoAtualId) {
-            console.log('📢 Busca inicial automática...');
             buscarSorteioQuina();
         }
     }, 3000);
     
-    // Configurar busca periódica a cada 5 minutos
     intervaloBusca = setInterval(() => {
-        if (!jogoAtualId) return;
-        
-        const statusDiv = document.getElementById('statusAdmin');
-        if (statusDiv) {
-            statusDiv.innerHTML = statusDiv.innerHTML.replace(
-                /🕐 Busca automática:.*/,
-                `🕐 Busca automática: ${getHorarioStatus()}`
-            );
-        }
-        
-        if (isHorarioSorteios()) {
-            console.log('⏰ Busca automática executando...');
+        if (jogoAtualId && isHorarioSorteios()) {
+            console.log('⏰ Busca automática...');
             buscarSorteioQuina();
-        } else {
-            console.log('⏸️ Fora do horário de sorteios (20h-23h59)');
         }
-    }, 300000); // 5 minutos
-}
-
-function pararBuscaAutomatica() {
-    if (intervaloBusca) {
-        clearInterval(intervaloBusca);
-        intervaloBusca = null;
-        console.log('🛑 Busca automática parada');
-    }
+    }, 300000);
 }
 
 async function carregarRanking() {
     if (!jogoAtualId) {
-        console.log('Aguardando jogo ativo...');
+        console.log('Sem jogoAtualId');
         return;
     }
     
-    console.log('Carregando ranking para jogo:', jogoAtualId);
+    const container = document.getElementById('listaRankingAdmin');
+    if (!container) return;
     
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoAtualId), orderBy('acertos', 'desc'));
+    container.innerHTML = '<div>Carregando ranking...</div>';
     
     try {
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
         const querySnapshot = await getDocs(q);
-        const container = document.getElementById('listaRankingAdmin');
-        
-        if (!container) {
-            console.error('Elemento listaRankingAdmin não encontrado');
-            return;
-        }
         
         if (querySnapshot.empty) {
             container.innerHTML = '<div>Nenhum participante cadastrado.</div>';
             return;
         }
         
+        const participantes = [];
+        querySnapshot.forEach(doc => {
+            participantes.push({ id: doc.id, ...doc.data() });
+        });
+        participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
+        
         let html = '';
         let pos = 1;
-        querySnapshot.forEach((doc) => {
-            const p = doc.data();
-            const progresso = (p.acertos / 17) * 100;
+        for (const p of participantes) {
+            const progresso = ((p.acertos || 0) / 17) * 100;
             const medalha = pos === 1 ? '🥇 ' : (pos === 2 ? '🥈 ' : (pos === 3 ? '🥉 ' : ''));
             html += `
                 <div class="linha-participante">
                     <span>${medalha}${pos++}º</span>
                     <span><strong>${p.nome}</strong></span>
-                    <span>${p.acertos}/17</span>
+                    <span>${p.acertos || 0}/17</span>
                     <div class="barra-progresso">
                         <div class="barra-progresso-fill" style="width: ${progresso}%"></div>
                     </div>
                 </div>
             `;
-        });
+        }
         container.innerHTML = html;
-        console.log('Ranking atualizado com', querySnapshot.size, 'participantes');
         
     } catch (error) {
-        console.error('Erro no carregarRanking:', error);
-        const container = document.getElementById('listaRankingAdmin');
-        if (container) {
-            container.innerHTML = '<div>Erro ao carregar ranking. Verifique o console.</div>';
-        }
+        console.error('Erro ranking:', error);
+        container.innerHTML = '<div>Erro ao carregar ranking</div>';
     }
 }
 
@@ -214,19 +177,19 @@ async function carregarTodosParticipantes() {
     
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    
     const querySnapshot = await getDocs(q);
     const tbody = document.getElementById('corpoTabela');
-    tbody.innerHTML = '';
+    if (!tbody) return;
     
+    tbody.innerHTML = '';
     for (const docSnap of querySnapshot.docs) {
         const p = docSnap.data();
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${p.nome}</td>
             <td>${p.numeros.join(', ')}</td>
-            <td>${p.acertos}/17</td>
-            <td><button class="btn-danger" onclick="excluirParticipante('${docSnap.id}')">Excluir</button></td>
+            <td>${p.acertos || 0}/17</td>
+            <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
         `;
         tbody.appendChild(tr);
     }
@@ -260,7 +223,8 @@ function toggleNumero(element) {
         element.classList.remove('selecionado');
     }
     
-    document.getElementById('contadorNumeros').innerHTML = `${numerosSelecionados.length}/17 números selecionados`;
+    const contador = document.getElementById('contadorNumeros');
+    if (contador) contador.innerHTML = `${numerosSelecionados.length}/17 números selecionados`;
 }
 
 async function salvarParticipante() {
@@ -292,31 +256,24 @@ async function salvarParticipante() {
             dataCadastro: new Date()
         });
         
-        // Atualizar contador
         const participantesRef = collection(db, 'participantes');
         const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
         const querySnapshot = await getDocs(q);
-        const total = querySnapshot.size;
         
         const jogoRef = doc(db, 'jogos', jogoAtualId);
-        await updateDoc(jogoRef, { totalParticipantes: total });
+        await updateDoc(jogoRef, { totalParticipantes: querySnapshot.size });
         
         alert('Participante cadastrado com sucesso!');
         
         document.getElementById('nomeParticipante').value = '';
-        numerosSelecionados.forEach(n => {
-            const btns = document.querySelectorAll('.numero-btn');
-            btns.forEach(btn => {
-                if (parseInt(btn.dataset.numero) === n) {
-                    btn.classList.remove('selecionado');
-                }
-            });
+        document.querySelectorAll('.numero-btn.selecionado').forEach(btn => {
+            btn.classList.remove('selecionado');
         });
         numerosSelecionados = [];
         document.getElementById('contadorNumeros').innerHTML = '0/17 números selecionados';
         
-        carregarTodosParticipantes();
-        carregarRanking();
+        await carregarTodosParticipantes();
+        await carregarRanking();
         
     } catch (error) {
         console.error('Erro ao salvar:', error);
@@ -325,10 +282,7 @@ async function salvarParticipante() {
 }
 
 async function buscarSorteioQuina() {
-    if (!jogoAtualId) {
-        console.log('Sem jogo ativo');
-        return;
-    }
+    if (!jogoAtualId) return;
     
     const btn = document.getElementById('btnBuscarSorteio');
     if (btn) {
@@ -340,83 +294,21 @@ async function buscarSorteioQuina() {
         const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
         const dados = await response.json();
         
-        if (!dados || !dados.dezenas) {
-            throw new Error('Não foi possível obter os números da Quina');
-        }
+        if (!dados || !dados.dezenas) throw new Error('Não foi possível obter os números');
         
         const numerosSorteados = dados.dezenas.map(Number);
         const concurso = dados.concurso;
         
-        console.log('Sorteio encontrado:', concurso, numerosSorteados);
-        
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         const jogoDoc = await getDoc(jogoRef);
-        const jogoData = jogoDoc.data();
         
-        if (jogoData.status !== 'aberto') {
-            console.log('Jogo já encerrado, ignorando busca');
-            return;
-        }
+        if (jogoDoc.data().status !== 'aberto') return;
+        if (ultimoConcursoBuscado === concurso) return;
         
-        if (ultimoConcursoBuscado === concurso) {
-            console.log(`Sorteio ${concurso} já foi importado`);
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = '📢 Buscar Último Sorteio da Quina';
-            }
-            return;
-        }
-        
-        async function buscarSorteioQuina() {
-    if (!jogoAtualId) {
-        console.log('Sem jogo ativo');
-        return;
-    }
-    
-    const btn = document.getElementById('btnBuscarSorteio');
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ Buscando...';
-    }
-    
-    try {
-        const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
-        const dados = await response.json();
-        
-        if (!dados || !dados.dezenas) {
-            throw new Error('Não foi possível obter os números da Quina');
-        }
-        
-        const numerosSorteados = dados.dezenas.map(Number);
-        const concurso = dados.concurso;
-        
-        console.log('Sorteio encontrado:', concurso, numerosSorteados);
-        
-        const jogoRef = doc(db, 'jogos', jogoAtualId);
-        const jogoDoc = await getDoc(jogoRef);
-        const jogoData = jogoDoc.data();
-        
-        if (jogoData.status !== 'aberto') {
-            console.log('Jogo já encerrado, ignorando busca');
-            return;
-        }
-        
-        if (ultimoConcursoBuscado === concurso) {
-            console.log(`Sorteio ${concurso} já foi importado`);
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = '📢 Buscar Último Sorteio da Quina';
-            }
-            return;
-        }
-        
-        // Tratar a data corretamente
         let dataSorteio = null;
         if (dados.data) {
             dataSorteio = new Date(dados.data);
-            if (isNaN(dataSorteio.getTime())) {
-                dataSorteio = null;
-            }
+            if (isNaN(dataSorteio.getTime())) dataSorteio = null;
         }
         
         await addDoc(collection(db, 'sorteios_quina'), {
@@ -432,20 +324,14 @@ async function buscarSorteioQuina() {
         });
         
         ultimoConcursoBuscado = concurso;
-        
         await atualizarAcertosParticipantes(numerosSorteados);
         
-        console.log(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
-        
-        if (btn) {
-            alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
-        }
+        console.log(`✅ Sorteio ${concurso} importado!`);
+        if (btn) alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
         
     } catch (error) {
-        console.error('Erro ao buscar sorteio:', error);
-        if (btn) {
-            alert('Erro ao buscar sorteio da Quina: ' + error.message);
-        }
+        console.error('Erro:', error);
+        if (btn) alert('Erro ao buscar sorteio: ' + error.message);
     } finally {
         if (btn) {
             btn.disabled = false;
@@ -461,39 +347,30 @@ async function atualizarAcertosParticipantes(novosNumeros) {
     
     for (const docSnap of querySnapshot.docs) {
         const participante = docSnap.data();
-        
         if (participante.acertouTodos) continue;
         
         let novosAcertos = 0;
         for (const num of novosNumeros) {
-            if (participante.numeros.includes(num)) {
-                novosAcertos++;
-            }
+            if (participante.numeros.includes(num)) novosAcertos++;
         }
         
         const novoTotal = (participante.acertos || 0) + novosAcertos;
         
-        await updateDoc(doc(db, 'participantes', docSnap.id), {
-            acertos: novoTotal
-        });
+        await updateDoc(doc(db, 'participantes', docSnap.id), { acertos: novoTotal });
         
         if (novoTotal >= 17) {
             await declararVencedor(docSnap.id, participante.nome);
             return;
         }
     }
-    
-    carregarRanking();
+    await carregarRanking();
 }
 
 async function declararVencedor(participanteId, nome) {
     const jogoRef = doc(db, 'jogos', jogoAtualId);
     const jogoDoc = await getDoc(jogoRef);
     
-    if (jogoDoc.data().status !== 'aberto') {
-        console.log('Jogo já encerrado por outro vencedor');
-        return;
-    }
+    if (jogoDoc.data().status !== 'aberto') return;
     
     await updateDoc(jogoRef, {
         status: 'encerrado',
@@ -514,24 +391,19 @@ async function declararVencedor(participanteId, nome) {
         dataVitoria: new Date()
     });
     
-    pararBuscaAutomatica();
+    if (intervaloBusca) clearInterval(intervaloBusca);
     
     alert(`🏆 VENCEDOR! ${nome} acertou 17 números primeiro! 🏆`);
-    
-    setTimeout(() => {
-        if (confirm('Jogo encerrado! Deseja recarregar a página?')) {
-            window.location.reload();
-        }
-    }, 2000);
+    setTimeout(() => window.location.reload(), 2000);
 }
 
 async function encerrarJogo() {
-    if (confirm('Tem certeza que deseja encerrar o jogo atual?')) {
-        pararBuscaAutomatica();
+    if (confirm('Encerrar jogo atual?')) {
+        if (intervaloBusca) clearInterval(intervaloBusca);
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         await updateDoc(jogoRef, { status: 'encerrado' });
         alert('Jogo encerrado!');
-        carregarJogoAtivo();
+        await carregarJogoAtivo();
         iniciarBuscaAutomatica();
     }
 }
@@ -539,7 +411,7 @@ async function encerrarJogo() {
 async function iniciarNovoJogo() {
     const nomeJogo = prompt('Nome da edição:', `Um de Nós - ${new Date().toLocaleDateString('pt-BR')}`);
     if (nomeJogo) {
-        pararBuscaAutomatica();
+        if (intervaloBusca) clearInterval(intervaloBusca);
         
         const docRef = await addDoc(collection(db, 'jogos'), {
             nome: nomeJogo,
@@ -554,9 +426,9 @@ async function iniciarNovoJogo() {
         ultimoConcursoBuscado = null;
         
         alert('Novo jogo criado!');
-        carregarJogoAtivo();
-        carregarRanking();
-        carregarTodosParticipantes();
+        await carregarJogoAtivo();
+        await carregarRanking();
+        await carregarTodosParticipantes();
         iniciarBuscaAutomatica();
     }
 }
@@ -565,7 +437,7 @@ async function resetarTudo() {
     if (confirm('⚠️ ATENÇÃO! Isso vai apagar TODOS os dados. Tem certeza?')) {
         const confirmacao = prompt('Digite "SIM" para confirmar');
         if (confirmacao === 'SIM') {
-            pararBuscaAutomatica();
+            if (intervaloBusca) clearInterval(intervaloBusca);
             
             const participantes = await getDocs(collection(db, 'participantes'));
             const jogos = await getDocs(collection(db, 'jogos'));
@@ -579,7 +451,6 @@ async function resetarTudo() {
             historico.forEach(doc => batch.delete(doc.ref));
             
             await batch.commit();
-            
             alert('Todos os dados foram apagados!');
             window.location.reload();
         }
@@ -589,8 +460,8 @@ async function resetarTudo() {
 window.excluirParticipante = async function(id) {
     if (confirm('Excluir este participante?')) {
         await deleteDoc(doc(db, 'participantes', id));
-        carregarTodosParticipantes();
-        carregarRanking();
+        await carregarTodosParticipantes();
+        await carregarRanking();
         alert('Participante excluído!');
     }
 };
