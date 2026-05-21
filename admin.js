@@ -367,10 +367,62 @@ async function buscarSorteioQuina() {
             return;
         }
         
+        async function buscarSorteioQuina() {
+    if (!jogoAtualId) {
+        console.log('Sem jogo ativo');
+        return;
+    }
+    
+    const btn = document.getElementById('btnBuscarSorteio');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Buscando...';
+    }
+    
+    try {
+        const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
+        const dados = await response.json();
+        
+        if (!dados || !dados.dezenas) {
+            throw new Error('Não foi possível obter os números da Quina');
+        }
+        
+        const numerosSorteados = dados.dezenas.map(Number);
+        const concurso = dados.concurso;
+        
+        console.log('Sorteio encontrado:', concurso, numerosSorteados);
+        
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        const jogoDoc = await getDoc(jogoRef);
+        const jogoData = jogoDoc.data();
+        
+        if (jogoData.status !== 'aberto') {
+            console.log('Jogo já encerrado, ignorando busca');
+            return;
+        }
+        
+        if (ultimoConcursoBuscado === concurso) {
+            console.log(`Sorteio ${concurso} já foi importado`);
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📢 Buscar Último Sorteio da Quina';
+            }
+            return;
+        }
+        
+        // Tratar a data corretamente
+        let dataSorteio = null;
+        if (dados.data) {
+            dataSorteio = new Date(dados.data);
+            if (isNaN(dataSorteio.getTime())) {
+                dataSorteio = null;
+            }
+        }
+        
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numerosSorteados,
-            data: new Date(dados.data),
+            data: dataSorteio || new Date(),
             importadoEm: new Date()
         });
         
