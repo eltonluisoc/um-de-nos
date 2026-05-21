@@ -340,9 +340,6 @@ async function buscarSorteioQuina() {
         const jogoDoc = await getDoc(jogoRef);
         const jogoData = jogoDoc.data();
         
-        console.log('📊 Status do jogo:', jogoData.status);
-        console.log('📊 Último concurso importado:', ultimoConcursoBuscado);
-        
         if (jogoData.status !== 'aberto') {
             console.log('⚠️ Jogo já encerrado');
             alert('Jogo já encerrado!');
@@ -355,14 +352,11 @@ async function buscarSorteioQuina() {
             return;
         }
         
-        // Tratar a data
         let dataSorteio = null;
         if (dados.data) {
             dataSorteio = new Date(dados.data);
             if (isNaN(dataSorteio.getTime())) dataSorteio = null;
         }
-        
-        console.log('💾 Salvando sorteio no Firestore...');
         
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
@@ -377,18 +371,13 @@ async function buscarSorteioQuina() {
         });
         
         ultimoConcursoBuscado = concurso;
-        
-        console.log('🔄 Atualizando acertos dos participantes...');
         await atualizarAcertosParticipantes(numerosSorteados);
         
-        console.log(`✅ Sorteio ${concurso} importado com sucesso!`);
         alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
-        
-        // Atualizar a interface
         await carregarRanking();
         
     } catch (error) {
-        console.error('❌ Erro detalhado:', error);
+        console.error('❌ Erro:', error);
         alert('Erro ao buscar sorteio: ' + error.message);
     } finally {
         if (btn) {
