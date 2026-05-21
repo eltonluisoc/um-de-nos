@@ -156,21 +156,33 @@ function pararBuscaAutomatica() {
 }
 
 async function carregarRanking() {
-    if (!jogoAtualId) return;
+    if (!jogoAtualId) {
+        console.log('Aguardando jogo ativo...');
+        return;
+    }
+    
+    console.log('Carregando ranking para jogo:', jogoAtualId);
     
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId), orderBy('acertos', 'desc'));
     
-    onSnapshot(q, (snapshot) => {
+    try {
+        const querySnapshot = await getDocs(q);
         const container = document.getElementById('listaRankingAdmin');
-        if (snapshot.empty) {
+        
+        if (!container) {
+            console.error('Elemento listaRankingAdmin não encontrado');
+            return;
+        }
+        
+        if (querySnapshot.empty) {
             container.innerHTML = '<div>Nenhum participante cadastrado.</div>';
             return;
         }
         
         let html = '';
         let pos = 1;
-        snapshot.forEach((doc) => {
+        querySnapshot.forEach((doc) => {
             const p = doc.data();
             const progresso = (p.acertos / 17) * 100;
             const medalha = pos === 1 ? '🥇 ' : (pos === 2 ? '🥈 ' : (pos === 3 ? '🥉 ' : ''));
@@ -186,7 +198,15 @@ async function carregarRanking() {
             `;
         });
         container.innerHTML = html;
-    });
+        console.log('Ranking atualizado com', querySnapshot.size, 'participantes');
+        
+    } catch (error) {
+        console.error('Erro no carregarRanking:', error);
+        const container = document.getElementById('listaRankingAdmin');
+        if (container) {
+            container.innerHTML = '<div>Erro ao carregar ranking. Verifique o console.</div>';
+        }
+    }
 }
 
 async function carregarTodosParticipantes() {

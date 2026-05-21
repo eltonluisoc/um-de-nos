@@ -59,17 +59,17 @@
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>
     <script>
-        // Registrar Service Worker para PWA
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('Service Worker registrado com sucesso:', registration);
-                })
-                .catch(error => {
-                    console.log('Falha ao registrar Service Worker:', error);
-                });
-        }
-    </script>
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/um-de-nos/sw.js')
+            .then(registration => {
+                console.log('Service Worker registrado com sucesso:', registration);
+            })
+            .catch(error => {
+                console.log('Falha ao registrar Service Worker:', error);
+            });
+    }
+</script>
     <script>
         // Registrar Service Worker para PWA
         if ('serviceWorker' in navigator) {
