@@ -537,11 +537,32 @@ async function buscarSorteioQuina() {
         // Salvar sorteio - TRATAMENTO DE DATA CORRIGIDO
         let dataValida = new Date();
         if (dados.data) {
-            const partes = dados.data.split('/');
-            if (partes.length === 3) {
-                dataValida = new Date(partes[2], partes[1] - 1, partes[0]);
+            // Tenta diferentes formatos de data
+            if (dados.data.includes('/')) {
+                const partes = dados.data.split('/');
+                if (partes.length === 3) {
+                    // Formato DD/MM/YYYY
+                    dataValida = new Date(partes[2], partes[1] - 1, partes[0]);
+                }
+            } else if (dados.data.includes('-')) {
+                // Formato YYYY-MM-DD
+                dataValida = new Date(dados.data);
+            }
+            
+            // Verificar se a data é válida
+            if (isNaN(dataValida.getTime())) {
+                console.warn('Data inválida, usando data atual');
+                dataValida = new Date();
             }
         }
+        console.log('📅 Data do sorteio:', dataValida.toLocaleDateString('pt-BR'));
+        
+        await addDoc(collection(db, 'sorteios_quina'), {
+            concurso: concurso,
+            numeros: numerosSorteados,
+            data: dataValida,
+            importadoEm: new Date()
+        });
         
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
