@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Admin</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAZdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjAuMTM0A1t6AAAAHUlEQVRYCe3UsQkAIAwFQbv/cUcwsCAzg2SSd3fgvzcCCxGGA0C1nL4AAAAASUVORK5CYII=">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2E7D32">
     <style>
@@ -90,6 +88,11 @@
             background: #218838;
         }
         
+        .btn-warning {
+            background: #ffc107;
+            color: #1a472a;
+        }
+        
         .card {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
@@ -119,6 +122,13 @@
             border-radius: 8px;
             border: none;
             font-size: 16px;
+        }
+        
+        .form-group small {
+            display: block;
+            color: rgba(255,255,255,0.7);
+            font-size: 12px;
+            margin-top: 5px;
         }
         
         .numeros-input {
@@ -209,7 +219,6 @@
             background: rgba(255,255,255,0.05);
         }
         
-        /* TELA DE LOGIN MELHORADA */
         .senha-login {
             position: fixed;
             top: 0;
@@ -366,15 +375,43 @@
             border-radius: 10px;
         }
         
+        .info-box {
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 14px;
+        }
+        
+        .info-box.warning {
+            background: rgba(220,53,69,0.3);
+            border-left: 4px solid #dc3545;
+        }
+        
+        .info-box.success {
+            background: rgba(40,167,69,0.3);
+            border-left: 4px solid #28a745;
+        }
+        
+        .premiacao-preview {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .premio-card {
+            background: rgba(255,215,0,0.1);
+            border-radius: 10px;
+            padding: 10px;
+            text-align: center;
+        }
+        
         @media (max-width: 768px) {
             .senha-box {
                 min-width: 320px;
                 padding: 35px 25px;
                 margin: 20px;
-            }
-            
-            .senha-box .logo h1 {
-                font-size: 26px;
             }
             
             .numeros-input {
@@ -389,23 +426,27 @@
                 font-size: 12px;
                 padding: 8px 12px;
             }
+            
+            .premiacao-preview {
+                grid-template-columns: repeat(2, 1fr);
+            }
         }
     </style>
 </head>
 <body>
     <div id="loginScreen" class="senha-login">
-    <div class="senha-box">
-        <div class="logo">
-            <h1>🎯 UM DE NÓS</h1>
-            <h2>Super Quina 17</h2>
+        <div class="senha-box">
+            <div class="logo">
+                <h1>🎯 UM DE NÓS</h1>
+                <h2>Super Quina 17</h2>
+            </div>
+            <p class="subtitulo">Painel Administrativo</p>
+            <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input">
+            <button class="btn-login" id="btnEntrarAdmin">🔐 ENTRAR</button>
+            <div id="msgErro" class="msg-erro"></div>
+            <div id="msgLoading" class="msg-loading" style="display: none;">Verificando acesso...</div>
         </div>
-        <p class="subtitulo">Painel Administrativo</p>
-        <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input">
-        <button class="btn-login" id="btnEntrarAdmin">🔐 ENTRAR</button>
-        <div id="msgErro" class="msg-erro"></div>
-        <div id="msgLoading" class="msg-loading" style="display: none;">Verificando acesso...</div>
     </div>
-</div>
 
     <div id="adminContent" style="display: none;">
         <div class="admin-container">
@@ -416,12 +457,13 @@
                 </div>
                 <div>
                     <button class="btn" onclick="window.location.reload()">🔄 Atualizar</button>
-                    <button class="btn btn-danger" onclick="logout()">🚪 Sair</button>
+                    <button class="btn btn-danger" id="btnLogout">🚪 Sair</button>
                 </div>
             </div>
 
             <div class="tabs">
                 <div class="tab ativo" data-tab="dashboard">📊 Dashboard</div>
+                <div class="tab" data-tab="parametros">💰 Parâmetros</div>
                 <div class="tab" data-tab="cadastro">➕ Cadastrar Participante</div>
                 <div class="tab" data-tab="lista">📋 Lista de Participantes</div>
                 <div class="tab" data-tab="sorteios">🎲 Sorteios Quina</div>
@@ -433,7 +475,7 @@
                 <div class="card">
                     <h3>🏆 Ranking Atual</h3>
                     <div id="rankingAdmin" class="ranking-admin">
-                        <div class="cabecalho">
+                        <div class="cabecalho" style="display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: #ffd700; color: #1a472a; border-radius: 10px;">
                             <span>Pos</span>
                             <span>Participante</span>
                             <span>Acertos</span>
@@ -445,8 +487,49 @@
                 <div class="card">
                     <h3>🎯 Status do Jogo</h3>
                     <div id="statusAdmin"></div>
+                    <div id="infoBloqueio" class="info-box warning" style="display: none;">
+                        ⚠️ JOGO BLOQUEADO - Primeira conferência já realizada. Não é possível adicionar novos participantes.
+                    </div>
                     <button class="btn btn-success" id="btnBuscarSorteio">📢 Buscar Último Sorteio da Quina</button>
                     <button class="btn btn-danger" id="btnEncerrarJogo" style="margin-left: 10px;">⛔ Encerrar Jogo</button>
+                </div>
+            </div>
+
+            <!-- Parâmetros -->
+            <div id="parametros" class="tab-content">
+                <div class="card">
+                    <h3>💰 Configuração da Competição</h3>
+                    <div class="form-group">
+                        <label>Valor da Inscrição (R$):</label>
+                        <input type="number" id="valorInscricao" step="1" min="0">
+                        <small>Valor que cada participante pagará para entrar na competição</small>
+                    </div>
+                    <div class="premiacao-preview" id="premiacaoPreview">
+                        <div class="premio-card">
+                            <h4>🥇 1º Lugar</h4>
+                            <span id="preview1">63%</span>
+                        </div>
+                        <div class="premio-card">
+                            <h4>🥈 2º Lugar</h4>
+                            <span id="preview2">20%</span>
+                        </div>
+                        <div class="premio-card">
+                            <h4>🥉 3º Lugar</h4>
+                            <span id="preview3">5%</span>
+                        </div>
+                        <div class="premio-card">
+                            <h4>🏠 Admin</h4>
+                            <span id="previewAdmin">12%</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-success" id="btnSalvarParametros">💾 Salvar Parâmetros</button>
+                    <div class="info-box" style="margin-top: 15px;">
+                        📊 Distribuição dos prêmios:<br>
+                        • 1º lugar: 63% do total arrecadado<br>
+                        • 2º lugar: 20% do total arrecadado<br>
+                        • 3º lugar: 5% do total arrecadado<br>
+                        • Admin: 12% do total arrecadado
+                    </div>
                 </div>
             </div>
 
@@ -454,6 +537,9 @@
             <div id="cadastro" class="tab-content">
                 <div class="card">
                     <h3>➕ Novo Participante</h3>
+                    <div id="bloqueioCadastro" class="info-box warning" style="display: none; margin-bottom: 15px;">
+                        ⚠️ COMPETIÇÃO INICIADA! Não é possível adicionar novos participantes após a primeira conferência.
+                    </div>
                     <div class="form-group">
                         <label>Nome do Participante:</label>
                         <input type="text" id="nomeParticipante" placeholder="Ex: João Silva">
@@ -473,7 +559,7 @@
                     <h3>📋 Todos os Participantes</h3>
                     <table id="tabelaParticipantes">
                         <thead>
-                            <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Ações</th></tr>
+                            <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
                         </thead>
                         <tbody id="corpoTabela"></tbody>
                     </table>
@@ -486,32 +572,31 @@
                     <h3>📜 Histórico de Sorteios Importados</h3>
                     <div id="historicoSorteios"></div>
                 </div>
+                <div class="card">
+                    <h3>📊 Números que já saíram</h3>
+                    <div id="gridNumerosSorteadosAdmin" style="display: grid; grid-template-columns: repeat(20, 1fr); gap: 5px;"></div>
+                </div>
             </div>
 
             <!-- Configurações -->
             <div id="config" class="tab-content">
                 <div class="card">
                     <h3>⚙️ Configurações do Jogo</h3>
-                    <button class="btn" id="btnNovoJogo">🆕 Iniciar Novo Jogo</button>
-                    <button class="btn" id="btnResetarTudo">⚠️ Resetar Tudo (CUIDADO!)</button>
+                    <button class="btn" id="btnNovoJogo">🆕 Iniciar Nova Competição</button>
+                    <button class="btn btn-danger" id="btnResetarTudo">⚠️ Resetar Tudo (CUIDADO!)</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="admin.js"></script>
-     <script>
-        // Registrar Service Worker para PWA
+    <script>
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/um-de-nos/sw.js')
-                .then(registration => {
-                    console.log('Service Worker registrado com sucesso:', registration);
-                })
-                .catch(error => {
-                    console.log('Falha ao registrar Service Worker:', error);
-                });
+                .then(registration => console.log('Service Worker registrado:', registration))
+                .catch(error => console.log('Falha no Service Worker:', error));
         }
     </script>
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="admin.js"></script>
 </body>
 </html>

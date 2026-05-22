@@ -10,17 +10,27 @@ import {
     getDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Variáveis globais
 let jogoAtual = null;
 let jogoId = null;
+let participantes = [];
+let numerosSorteadosAcumulados = [];
+let sorteiosRealizados = [];
 
-// Inicializar
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Um de Nós - Página Pública iniciada');
-    carregarJogoAtivo();
+    carregarDados();
 });
 
-// Buscar jogo ativo
+async function carregarDados() {
+    await carregarJogoAtivo();
+    if (jogoId) {
+        await carregarPremiacao();
+        await carregarSorteios();
+        await carregarNumerosSorteados();
+        escutarParticipantes();
+    }
+}
+
 async function carregarJogoAtivo() {
     const jogosRef = collection(db, 'jogos');
     const q = query(jogosRef, where('status', '==', 'aberto'));
@@ -29,57 +39,110 @@ async function carregarJogoAtivo() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            // Nenhum jogo ativo, tentar pegar o último encerrado
-            console.log('Nenhum jogo ativo');
             document.getElementById('listaParticipantes').innerHTML = `
                 <div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>
             `;
             document.getElementById('statusJogo').innerHTML = `
-                <span class="status-badge" style="background:#888;">⏸️ JOGO ENCERRADO</span>
+                <span class="status-badge" style="background:#888;">⏸️ AGUARDANDO PRÓXIMO JOGO</span>
             `;
-            carregarUltimoVencedor();
+            await carregarUltimoVencedor();
             return;
         }
         
-        // Pega o primeiro jogo ativo
         const jogoDoc = querySnapshot.docs[0];
         jogoAtual = jogoDoc.data();
         jogoId = jogoDoc.id;
         
         console.log('Jogo ativo:', jogoId, jogoAtual);
         
-        // Atualizar status
         document.getElementById('statusJogo').innerHTML = `
             <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
         `;
         
-        // Mostrar últimos números sorteados se existir
         if (jogoAtual.ultimosNumerosSorteados) {
             mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
         }
         
-        // Iniciar escuta em tempo real dos participantes
-        escutarParticipantes();
-        
     } catch (error) {
         console.error('Erro ao carregar jogo:', error);
-        document.getElementById('listaParticipantes').innerHTML = `
-            <div class="loading">❌ Erro ao carregar dados. Tente novamente.</div>
-        `;
     }
 }
 
-// Escutar participantes em tempo real (atualiza automático)
+async function carregarPremiacao() {
+    if (!jogoAtual) return;
+    
+    const valorInscricao = jogoAtual.valorInscricao || 50;
+    const totalParticipantes = jogoAtual.totalParticipantes || 0;
+    const premioTotal = valorInscricao * totalParticipantes;
+    
+    const premio1 = premioTotal * 0.63;
+    const premio2 = premioTotal * 0.20;
+    const premio3 = premioTotal * 0.05;
+    const premioAdmin = premioTotal * 0.12;
+    
+    document.getElementById('premio1').innerHTML = `R$ ${premio1.toFixed(2)}`;
+    document.getElementById('premio2').innerHTML = `R$ ${premio2.toFixed(2)}`;
+    document.getElementById('premio3').innerHTML = `R$ ${premio3.toFixed(2)}`;
+    document.getElementById('premioAdmin').innerHTML = `R$ ${premioAdmin.toFixed(2)}`;
+    document.getElementById('premiacao').style.display = 'grid';
+}
+
+async function carregarSorteios() {
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const q = query(sorteiosRef, orderBy('concurso', 'desc'));
+    
+    const querySnapshot = await getDocs(q);
+    sorteiosRealizados = [];
+    
+    const container = document.getElementById('listaSorteios');
+    if (querySnapshot.empty) {
+        container.innerHTML = '<div>Nenhum sorteio importado ainda.</div>';
+        return;
+    }
+    
+    let html = '';
+    querySnapshot.forEach(doc => {
+        const s = doc.data();
+        sorteiosRealizados.push(s);
+        html += `
+            <div class="sorteio-item">
+                <span>#${s.concurso}</span> ${s.numeros.join(', ')}
+            </div>
+        `;
+    });
+    container.innerHTML = html;
+}
+
+async function carregarNumerosSorteados() {
+    const grid = document.getElementById('gridNumerosSorteados');
+    numerosSorteadosAcumulados = [];
+    
+    for (const sorteio of sorteiosRealizados) {
+        for (const num of sorteio.numeros) {
+            if (!numerosSorteadosAcumulados.includes(num)) {
+                numerosSorteadosAcumulados.push(num);
+            }
+        }
+    }
+    
+    let html = '';
+    for (let i = 1; i <= 80; i++) {
+        const foiSorteado = numerosSorteadosAcumulados.includes(i);
+        html += `
+            <div class="grid-numero ${foiSorteado ? 'sorteados' : ''}">
+                ${i}
+            </div>
+        `;
+    }
+    grid.innerHTML = html;
+}
+
 function escutarParticipantes() {
     const participantesRef = collection(db, 'participantes');
-    const q = query(
-        participantesRef, 
-        where('jogoId', '==', jogoId),
-        orderBy('acertos', 'desc')
-    );
+    const q = query(participantesRef, where('jogoId', '==', jogoId), orderBy('acertos', 'desc'));
     
     onSnapshot(q, (snapshot) => {
-        const participantes = [];
+        participantes = [];
         snapshot.forEach((doc) => {
             participantes.push({
                 id: doc.id,
@@ -88,6 +151,13 @@ function escutarParticipantes() {
         });
         
         atualizarRanking(participantes);
+        
+        // Verificar se há um participante específico (para mostrar números)
+        // Por enquanto, mostra o primeiro da lista como exemplo
+        if (participantes.length > 0 && !document.getElementById('infoParticipante').style.display === 'block') {
+            mostrarNumerosParticipante(participantes[0]);
+        }
+        
         verificarVencedor(participantes);
         
     }, (error) => {
@@ -95,7 +165,31 @@ function escutarParticipantes() {
     });
 }
 
-// Atualizar ranking na tela
+function mostrarNumerosParticipante(participante) {
+    const container = document.getElementById('numerosDoParticipante');
+    const totalAcertos = document.getElementById('totalAcertos');
+    
+    if (!participante.numeros) return;
+    
+    let html = '';
+    let acertos = 0;
+    
+    for (const num of participante.numeros) {
+        const acertou = numerosSorteadosAcumulados.includes(num);
+        if (acertou) acertos++;
+        html += `
+            <div class="${acertou ? 'numero-acertado' : 'numero-nao-acertado'}">
+                ${num}
+            </div>
+        `;
+    }
+    
+    container.innerHTML = html;
+    totalAcertos.innerHTML = `Acertos: ${acertos}/17 | Progresso: ${Math.round((acertos/17)*100)}%`;
+    document.getElementById('infoParticipante').style.display = 'block';
+    document.getElementById('totalAcertos').innerHTML = `✅ Acertos: ${acertos}/17 | ${Math.round((acertos/17)*100)}% completado`;
+}
+
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
     
@@ -117,7 +211,7 @@ function atualizarRanking(participantes) {
         else medalha = `${posicao}º `;
         
         html += `
-            <div class="linha-participante ${destaque}">
+            <div class="linha-participante ${destaque}" onclick="window.mostrarNumeros('${p.id}')" style="cursor:pointer;">
                 <span>${medalha}</span>
                 <span><strong>${p.nome}</strong></span>
                 <span>${p.acertos}/17</span>
@@ -131,7 +225,13 @@ function atualizarRanking(participantes) {
     container.innerHTML = html;
 }
 
-// Verificar se alguém venceu
+window.mostrarNumeros = async function(participanteId) {
+    const participante = participantes.find(p => p.id === participanteId);
+    if (participante) {
+        mostrarNumerosParticipante(participante);
+    }
+};
+
 function verificarVencedor(participantes) {
     const vencedor = participantes.find(p => p.acertouTodos === true);
     
@@ -146,7 +246,6 @@ function verificarVencedor(participantes) {
     }
 }
 
-// Mostrar últimos números sorteados
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
     if (!numeros || numeros.length === 0) {
@@ -161,7 +260,6 @@ function mostrarNumerosSorteados(numeros) {
     container.innerHTML = html;
 }
 
-// Carregar último vencedor do histórico
 async function carregarUltimoVencedor() {
     const historicoRef = collection(db, 'historico_vencedores');
     const q = query(historicoRef, orderBy('dataVitoria', 'desc'));

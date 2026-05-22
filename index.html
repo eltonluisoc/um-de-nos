@@ -5,9 +5,282 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Super Quina 17</title>
     <link rel="stylesheet" href="style.css">
-    <link rel="icon" type="image/png" sizes="32x32" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAYAAABzenr0AAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAAAZdEVYdFNvZnR3YXJlAHBhaW50Lm5ldCA0LjAuMTM0A1t6AAAAHUlEQVRYCe3UsQkAIAwFQbv/cUcwsCAzg2SSd3fgvzcCCxGGA0C1nL4AAAAASUVORK5CYII=">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#2E7D32">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            text-align: center;
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 20px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        header h1 {
+            font-size: 2.5em;
+            letter-spacing: 2px;
+        }
+        
+        header h2 {
+            color: #ffd700;
+            margin-top: 5px;
+        }
+        
+        .status-jogo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .status-badge {
+            background: #ffd700;
+            color: #1a472a;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .premiacao {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a472a;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 20px;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            text-align: center;
+            gap: 10px;
+        }
+        
+        .premio-item {
+            background: rgba(255,255,255,0.3);
+            border-radius: 10px;
+            padding: 10px;
+        }
+        
+        .premio-item h4 {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+        
+        .premio-item .valor {
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+        
+        .premio-item .percentual {
+            font-size: 0.8em;
+        }
+        
+        .ultimo-sorteio {
+            background: rgba(255,215,0,0.1);
+            border: 1px solid #ffd700;
+            border-radius: 15px;
+            padding: 15px;
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .numeros-sorteio {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .numeros-sorteio span {
+            background: #ffd700;
+            color: #1a472a;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .info-participante {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .numeros-participante {
+            display: grid;
+            grid-template-columns: repeat(17, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .numero-acertado {
+            background: #28a745;
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .numero-nao-acertado {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        
+        .placar {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        
+        .tabela-placar {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        .cabecalho {
+            display: grid;
+            grid-template-columns: 60px 1fr 80px 100px;
+            background: #ffd700;
+            color: #1a472a;
+            padding: 12px;
+            font-weight: bold;
+            text-align: center;
+        }
+        
+        .linha-participante {
+            display: grid;
+            grid-template-columns: 60px 1fr 80px 100px;
+            padding: 10px 12px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            text-align: center;
+            align-items: center;
+        }
+        
+        .barra-progresso {
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            height: 8px;
+            overflow: hidden;
+            width: 100px;
+        }
+        
+        .barra-progresso-fill {
+            background: #ffd700;
+            height: 100%;
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .numeros-sorteados {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .grid-numeros {
+            display: grid;
+            grid-template-columns: repeat(20, 1fr);
+            gap: 8px;
+            margin-top: 15px;
+        }
+        
+        .grid-numero {
+            background: rgba(255,255,255,0.2);
+            padding: 8px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+        
+        .grid-numero.sorteados {
+            background: #ffd700;
+            color: #1a472a;
+        }
+        
+        .lista-sorteios {
+            background: rgba(0,0,0,0.4);
+            border-radius: 20px;
+            padding: 20px;
+        }
+        
+        .sorteios-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .sorteio-item {
+            background: rgba(255,215,0,0.2);
+            border: 1px solid #ffd700;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 0.9em;
+        }
+        
+        .sorteio-item span {
+            font-weight: bold;
+            color: #ffd700;
+        }
+        
+        .vencedor-card {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a472a;
+            text-align: center;
+            padding: 25px;
+            border-radius: 20px;
+            margin-top: 20px;
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.8em;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .grid-numeros {
+                grid-template-columns: repeat(10, 1fr);
+            }
+            .numeros-participante {
+                grid-template-columns: repeat(9, 1fr);
+            }
+            .premiacao {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -18,12 +291,41 @@
         </header>
 
         <div class="status-jogo" id="statusJogo">
-            <span class="status-badge">🟢 JOGO EM ANDAMENTO</span>
+            <span class="status-badge">🟢 CARREGANDO...</span>
+        </div>
+
+        <div class="premiacao" id="premiacao" style="display: none;">
+            <div class="premio-item">
+                <h4>🥇 1º LUGAR</h4>
+                <div class="valor" id="premio1">R$ 0</div>
+                <div class="percentual">(63%)</div>
+            </div>
+            <div class="premio-item">
+                <h4>🥈 2º LUGAR</h4>
+                <div class="valor" id="premio2">R$ 0</div>
+                <div class="percentual">(20%)</div>
+            </div>
+            <div class="premio-item">
+                <h4>🥉 3º LUGAR</h4>
+                <div class="valor" id="premio3">R$ 0</div>
+                <div class="percentual">(5%)</div>
+            </div>
+            <div class="premio-item">
+                <h4>🏠 ADMIN</h4>
+                <div class="valor" id="premioAdmin">R$ 0</div>
+                <div class="percentual">(12%)</div>
+            </div>
         </div>
 
         <div class="ultimo-sorteio" id="ultimoSorteio">
             <h3>📢 Último sorteio da Quina</h3>
             <div class="numeros-sorteio" id="numerosSorteio">-</div>
+        </div>
+
+        <div class="info-participante" id="infoParticipante" style="display: none;">
+            <h3>🎯 SEUS NÚMEROS</h3>
+            <div id="numerosDoParticipante" class="numeros-participante"></div>
+            <p style="margin-top: 10px;" id="totalAcertos">Acertos: 0/17</p>
         </div>
 
         <div class="placar">
@@ -41,7 +343,19 @@
             </div>
         </div>
 
-        <div class="vencedor-info" id="vencedorInfo" style="display:none;">
+        <div class="numeros-sorteados">
+            <h3>📊 NÚMEROS QUE JÁ SAÍRAM</h3>
+            <div class="grid-numeros" id="gridNumerosSorteados"></div>
+        </div>
+
+        <div class="lista-sorteios">
+            <h3>📜 HISTÓRICO DE SORTEIOS</h3>
+            <div class="sorteios-container" id="listaSorteios">
+                <div>Carregando sorteios...</div>
+            </div>
+        </div>
+
+        <div class="vencedor-info" id="vencedorInfo" style="display: none;">
             <div class="vencedor-card">
                 <h3>🏆 VENCEDOR 🏆</h3>
                 <p id="vencedorNome"></p>
@@ -54,31 +368,14 @@
         </footer>
     </div>
 
-    <script type="module" src="firebase-config.js"></script>
-    <script type="module" src="public.js"></script>
     <script>
-    // Registrar Service Worker para PWA
-    if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/um-de-nos/sw.js')
-            .then(registration => {
-                console.log('Service Worker registrado com sucesso:', registration);
-            })
-            .catch(error => {
-                console.log('Falha ao registrar Service Worker:', error);
-            });
-    }
-</script>
-    <script>
-        // Registrar Service Worker para PWA
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js')
-                .then(registration => {
-                    console.log('Service Worker registrado com sucesso:', registration);
-                })
-                .catch(error => {
-                    console.log('Falha ao registrar Service Worker:', error);
-                });
+            navigator.serviceWorker.register('/um-de-nos/sw.js')
+                .then(registration => console.log('Service Worker registrado:', registration))
+                .catch(error => console.log('Falha no Service Worker:', error));
         }
     </script>
+    <script type="module" src="firebase-config.js"></script>
+    <script type="module" src="public.js"></script>
 </body>
 </html>
