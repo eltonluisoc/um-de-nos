@@ -79,9 +79,34 @@ async function carregarDados() {
         await carregarHistoricoSorteios();
         await carregarNumerosSorteadosAdmin();
         await verificarBloqueio();
+        await atualizarContadorParticipantes(); // NOVO
     }
     iniciarBuscaAutomatica();
     carregarTabs();
+}
+
+// NOVA FUNÇÃO: Atualizar contador de participantes
+async function atualizarContadorParticipantes() {
+    if (!jogoAtualId) return;
+    
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+    const querySnapshot = await getDocs(q);
+    const total = querySnapshot.size;
+    
+    const jogoRef = doc(db, 'jogos', jogoAtualId);
+    await updateDoc(jogoRef, { totalParticipantes: total });
+    
+    // Atualizar display
+    const statusDiv = document.getElementById('statusAdmin');
+    if (statusDiv) {
+        const html = statusDiv.innerHTML;
+        if (html.includes('Participantes:')) {
+            statusDiv.innerHTML = html.replace(/Participantes: \d+/, `Participantes: ${total}`);
+        }
+    }
+    
+    return total;
 }
 
 function inicializarEventos() {
@@ -125,13 +150,19 @@ async function carregarJogoAtivo() {
         jogoAtualId = jogoDoc.id;
         const jogoData = jogoDoc.data();
         
+        // Buscar número real de participantes
+        const participantesRef = collection(db, 'participantes');
+        const partQ = query(participantesRef, where('jogoId', '==', jogoAtualId));
+        const partSnapshot = await getDocs(partQ);
+        const totalParticipantesReal = partSnapshot.size;
+        
         const statusDiv = document.getElementById('statusAdmin');
         statusDiv.innerHTML = `
             <p>✅ Jogo ativo: ${jogoData.nome || 'Edição atual'}</p>
             <p>📅 Criado em: ${jogoData.createdAt?.toDate()?.toLocaleString('pt-BR') || 'Nova'}</p>
             <p>🎲 Último sorteio: ${jogoData.ultimoConcursoImportado || 'Nenhum ainda'}</p>
             <p>💰 Valor inscrição: R$ ${jogoData.valorInscricao || 50},00</p>
-            <p>👥 Participantes: ${jogoData.totalParticipantes || 0}</p>
+            <p>👥 Participantes: ${totalParticipantesReal}</p>
             <p>🔒 Competição iniciada: ${jogoData.primeiraConferenciaRealizada ? 'SIM (bloqueado para novos participantes)' : 'NÃO (cadastros abertos)'}</p>
         `;
         
@@ -168,7 +199,8 @@ async function carregarParametros() {
     const valorInscricao = jogoData.valorInscricao || 50;
     document.getElementById('valorInscricao').value = valorInscricao;
     
-    atualizarPreviewPremiacao(valorInscricao, jogoData.totalParticipantes || 0);
+    const totalParticipantes = jogoData.totalParticipantes || 0;
+    atualizarPreviewPremiacao(valorInscricao, totalParticipantes);
 }
 
 async function salvarParametros() {
@@ -279,7 +311,7 @@ async function carregarTodosParticipantes() {
 
 async function carregarHistoricoSorteios() {
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, orderBy('concurso', 'desc'), limit(20));
+    const q = query(sorteiosRef, orderBy('concurso', 'desc'));
     const querySnapshot = await getDocs(q);
     
     const container = document.getElementById('historicoSorteios');
@@ -318,7 +350,8 @@ async function carregarNumerosSorteadosAdmin() {
     });
     
     const container = document.getElementById('gridNumerosSorteadosAdmin');
-    let html = '';
+    // 8 colunas x 10 linhas = 80 números
+    let html = '<div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 5px;">';
     for (let i = 1; i <= 80; i++) {
         const foiSorteado = numerosSorteados.includes(i);
         html += `
@@ -327,6 +360,7 @@ async function carregarNumerosSorteadosAdmin() {
             </div>
         `;
     }
+    html += '</div>';
     container.innerHTML = html;
 }
 
@@ -396,12 +430,7 @@ async function salvarParticipante() {
             dataCadastro: new Date()
         });
         
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-        const querySnapshot = await getDocs(q);
-        
-        const jogoRef = doc(db, 'jogos', jogoAtualId);
-        await updateDoc(jogoRef, { totalParticipantes: querySnapshot.size });
+        await atualizarContadorParticipantes();
         
         alert('Participante cadastrado com sucesso!');
         
@@ -415,6 +444,7 @@ async function salvarParticipante() {
         await carregarTodosParticipantes();
         await carregarRanking();
         await carregarParametros();
+        await carregarJogoAtivo();
         
     } catch (error) {
         console.error('Erro ao salvar:', error);
@@ -447,6 +477,7 @@ function iniciarBuscaAutomatica() {
     }, 300000);
 }
 
+// FUNÇÃO BUSCAR SORTEIO CORRIGIDA
 async function buscarSorteioQuina() {
     console.log('🔍 Função buscarSorteioQuina iniciada');
     
@@ -482,12 +513,17 @@ async function buscarSorteioQuina() {
         
         console.log(`🎲 Sorteio ${concurso}:`, numerosSorteados);
         
+        // Verificar se já importou
         if (jogoData.ultimoConcursoImportado === concurso) {
             console.log(`⚠️ Sorteio ${concurso} já foi importado`);
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📢 Buscar Último Sorteio da Quina';
+            }
             return;
         }
         
-        // PRIMEIRA CONFERÊNCIA: Bloquear novos cadastros
+        // PRIMEIRA CONFERÊNCIA
         if (!jogoData.primeiraConferenciaRealizada) {
             console.log('🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros');
             await updateDoc(doc(db, 'jogos', jogoAtualIdTemp), {
@@ -498,10 +534,19 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
+        // Salvar sorteio - TRATAMENTO DE DATA CORRIGIDO
+        let dataValida = new Date();
+        if (dados.data) {
+            const partes = dados.data.split('/');
+            if (partes.length === 3) {
+                dataValida = new Date(partes[2], partes[1] - 1, partes[0]);
+            }
+        }
+        
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numerosSorteados,
-            data: dados.data ? new Date(dados.data) : new Date(),
+            data: dataValida,
             importadoEm: new Date()
         });
         
@@ -517,6 +562,7 @@ async function buscarSorteioQuina() {
         await carregarRanking();
         await carregarHistoricoSorteios();
         await carregarNumerosSorteadosAdmin();
+        await carregarJogoAtivo();
         
     } catch (error) {
         console.error('❌ Erro:', error);
@@ -567,30 +613,41 @@ async function declararVencedores(vencedores, jogoId) {
     
     if (jogoDoc.data().status !== 'aberto') return;
     
-    // Ordenar por acertos (desempate - quem tinha mais antes)
-    vencedores.sort((a, b) => b.acertos - a.acertos);
-    
-    // Distribuir prêmios
     const jogoData = jogoDoc.data();
     const valorInscricao = jogoData.valorInscricao || 50;
-    const totalParticipantes = jogoData.totalParticipantes || 0;
+    
+    // Buscar todos participantes para calcular quem tem MENOS acertos
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoId));
+    const allParticipants = await getDocs(q);
+    
+    let menosAcertos = 17;
+    let perdedor = null;
+    allParticipants.forEach(doc => {
+        const p = doc.data();
+        if (!p.acertouTodos && p.acertos < menosAcertos) {
+            menosAcertos = p.acertos;
+            perdedor = { id: doc.id, nome: p.nome, acertos: p.acertos };
+        }
+    });
+    
+    const totalParticipantes = allParticipants.size;
     const premioTotal = valorInscricao * totalParticipantes;
     
     const premio1 = premioTotal * 0.63;
     const premio2 = premioTotal * 0.20;
-    const premio3 = premioTotal * 0.05;
+    const premio3 = premioTotal * 0.05; // Prêmio para quem acertou MENOS
     
-    for (let i = 0; i < vencedores.length && i < 3; i++) {
+    // Processar vencedores (1º e 2º lugar)
+    vencedores.sort((a, b) => b.acertos - a.acertos);
+    
+    for (let i = 0; i < vencedores.length && i < 2; i++) {
         const v = vencedores[i];
-        let premio = 0;
-        if (i === 0) premio = premio1;
-        else if (i === 1) premio = premio2;
-        else if (i === 2) premio = premio3;
+        let premio = (i === 0) ? premio1 : premio2;
         
-        // Se houver empate, dividir
         const empatados = vencedores.filter(v2 => v2.acertos === v.acertos);
-        if (empatados.length > 1) {
-            premio = premio / empatados.length;
+        if (empatados.length > 1 && i === 0) {
+            premio = premio1 / empatados.length;
         }
         
         await updateDoc(doc(db, 'participantes', v.id), {
@@ -609,6 +666,23 @@ async function declararVencedores(vencedores, jogoId) {
         });
     }
     
+    // Prêmio para quem acertou MENOS números (3º lugar especial)
+    if (perdedor && totalParticipantes >= 3) {
+        await updateDoc(doc(db, 'participantes', perdedor.id), {
+            premioMenosAcertos: premio3
+        });
+        
+        await addDoc(collection(db, 'historico_vencedores'), {
+            jogoId: jogoId,
+            participanteId: perdedor.id,
+            participanteNome: perdedor.nome,
+            posicao: 'MENOS ACERTOS',
+            premio: premio3,
+            acertos: perdedor.acertos,
+            dataVitoria: new Date()
+        });
+    }
+    
     await updateDoc(jogoRef, {
         status: 'encerrado',
         encerradoEm: new Date()
@@ -616,10 +690,10 @@ async function declararVencedores(vencedores, jogoId) {
     
     if (intervaloBusca) clearInterval(intervaloBusca);
     
-    let msg = '🏆 VENCEDORES! 🏆\n\n';
-    for (let i = 0; i < vencedores.length && i < 3; i++) {
-        msg += `${i+1}º lugar: ${vencedores[i].nome}\n`;
-    }
+    let msg = '🏆 RESULTADO FINAL! 🏆\n\n';
+    if (vencedores[0]) msg += `🥇 1º lugar: ${vencedores[0].nome}\n`;
+    if (vencedores[1]) msg += `🥈 2º lugar: ${vencedores[1].nome}\n`;
+    if (perdedor) msg += `🎯 Prêmio especial (menos acertos): ${perdedor.nome} (${perdedor.acertos}/17)\n`;
     alert(msg);
     setTimeout(() => window.location.reload(), 2000);
 }
@@ -698,6 +772,7 @@ window.excluirParticipante = async function(id) {
         await deleteDoc(doc(db, 'participantes', id));
         await carregarTodosParticipantes();
         await carregarRanking();
+        await atualizarContadorParticipantes();
         alert('Participante excluído!');
     }
 };

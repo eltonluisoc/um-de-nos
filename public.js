@@ -78,12 +78,10 @@ async function carregarPremiacao() {
     const premio1 = premioTotal * 0.63;
     const premio2 = premioTotal * 0.20;
     const premio3 = premioTotal * 0.05;
-    const premioAdmin = premioTotal * 0.12;
     
     document.getElementById('premio1').innerHTML = `R$ ${premio1.toFixed(2)}`;
     document.getElementById('premio2').innerHTML = `R$ ${premio2.toFixed(2)}`;
     document.getElementById('premio3').innerHTML = `R$ ${premio3.toFixed(2)}`;
-    document.getElementById('premioAdmin').innerHTML = `R$ ${premioAdmin.toFixed(2)}`;
     document.getElementById('premiacao').style.display = 'grid';
 }
 
@@ -125,15 +123,17 @@ async function carregarNumerosSorteados() {
         }
     }
     
-    let html = '';
+    // 8 colunas x 10 linhas = 80 números
+    let html = '<div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;">';
     for (let i = 1; i <= 80; i++) {
         const foiSorteado = numerosSorteadosAcumulados.includes(i);
         html += `
-            <div class="grid-numero ${foiSorteado ? 'sorteados' : ''}">
+            <div class="grid-numero ${foiSorteado ? 'sorteados' : ''}" style="text-align: center; padding: 8px; border-radius: 8px;">
                 ${i}
             </div>
         `;
     }
+    html += '</div>';
     grid.innerHTML = html;
 }
 
