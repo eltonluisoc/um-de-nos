@@ -599,5 +599,23 @@
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
+    <script>
+        // Forçar atualização do Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+            
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('Service Worker atualizado! Recarregando página...');
+                window.location.reload();
+            });
+        }
+        
+        // Versão do app para debug
+        console.log('Um de Nós - Versão 2.0 - ' + new Date().toLocaleString());
+    </script>
 </body>
 </html>

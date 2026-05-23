@@ -470,11 +470,11 @@ function iniciarBuscaAutomatica() {
     }, 3000);
     
     intervaloBusca = setInterval(() => {
-        if (jogoAtualId && isHorarioSorteios()) {
-            console.log('⏰ Busca automática...');
-            buscarSorteioQuina();
-        }
-    }, 300000);
+    if (jogoAtualId && isHorarioSorteios()) {
+        console.log('⏰ Busca automática...');
+        buscarSorteioQuina();
+    }
+}, 120000); // 2 minutos
 }
 
 // FUNÇÃO BUSCAR SORTEIO CORRIGIDA

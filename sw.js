@@ -1,5 +1,4 @@
-// Service Worker para o Um de Nós - Super Quina 17
-const CACHE_NAME = 'umdenos-cache-v1';
+const CACHE_NAME = 'umdenos-v2'; // Mudei a versão para forçar atualização
 const urlsToCache = [
   '/um-de-nos/',
   '/um-de-nos/index.html',
@@ -11,9 +10,8 @@ const urlsToCache = [
   '/um-de-nos/manifest.json'
 ];
 
-// Instalação do Service Worker
 self.addEventListener('install', event => {
-  console.log('Service Worker instalado');
+  console.log('Service Worker instalado v2');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -21,11 +19,12 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
+  // Forçar ativação imediata
+  self.skipWaiting();
 });
 
-// Ativação e limpeza de caches antigos
 self.addEventListener('activate', event => {
-  console.log('Service Worker ativado');
+  console.log('Service Worker ativado v2');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -38,30 +37,34 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  // Tomar controle das páginas imediatamente
+  event.waitUntil(clients.claim());
 });
 
-// Interceptar requisições e servir do cache
 self.addEventListener('fetch', event => {
+  // Ignorar requisições para o Firebase e API
+  if (event.request.url.includes('firebase') || 
+      event.request.url.includes('googleapis') ||
+      event.request.url.includes('loteriascaixa-api')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+  
   event.respondWith(
     caches.match(event.request)
       .then(response => {
-        // Cache hit - retorna do cache
         if (response) {
           return response;
         }
         
-        // Clone da requisição
         const fetchRequest = event.request.clone();
         
         return fetch(fetchRequest).then(response => {
-          // Verifica se resposta é válida
           if (!response || response.status !== 200 || response.type !== 'basic') {
             return response;
           }
           
-          // Clone da resposta
           const responseToCache = response.clone();
-          
           caches.open(CACHE_NAME)
             .then(cache => {
               cache.put(event.request, responseToCache);
@@ -70,19 +73,5 @@ self.addEventListener('fetch', event => {
           return response;
         });
       })
-  );
-});
-
-// Suporte para notificações push (opcional)
-self.addEventListener('push', event => {
-  const options = {
-    body: event.data.text(),
-    icon: 'assets/icon-192.png',
-    badge: 'assets/icon-72.png',
-    vibrate: [200, 100, 200]
-  };
-  
-  event.waitUntil(
-    self.registration.showNotification('Um de Nós', options)
   );
 });

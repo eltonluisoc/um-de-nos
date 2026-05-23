@@ -300,3 +300,8 @@ async function carregarUltimoVencedor() {
         console.error('Erro ao carregar histórico:', error);
     }
 }
+// Recarregar a página a cada 5 minutos para garantir dados atualizados
+setTimeout(() => {
+    console.log('🔄 Recarregando página para atualizar dados...');
+    window.location.reload();
+}, 300000); // 5 minutos
