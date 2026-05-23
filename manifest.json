@@ -1,7 +1,7 @@
 {
-  "name": "Um de Nós - Super Quina 17",
+  "name": "Um de Nós - Desafio dos 17",
   "short_name": "Um de Nós",
-  "description": "Bingo com sorteios oficiais da Quina",
+  "description": "Quem acertar 17 números primeiro vence!",
   "start_url": "/um-de-nos/",
   "display": "standalone",
   "theme_color": "#2E7D32",
