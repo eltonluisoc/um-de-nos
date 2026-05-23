@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Cron Job - Um de Nós</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>🤖 Cron Job - Um de Nós</h1>
+    <pre id="status" style="background:#f0f0f0; padding:15px; border-radius:10px;">Iniciando...</pre>
+
+    <script type="module">
+        import { db } from './firebase-config.js';
+        import { 
+            collection, 
+            getDocs, 
+            query, 
+            where, 
+            limit,
+            updateDoc,
+            doc,
+            addDoc,
+            getDoc
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const statusDiv = document.getElementById('status');
+        
+        async function log(msg) {
+            console.log(msg);
+            statusDiv.innerHTML += '\n' + msg;
+        }
+        
+        async function buscarSorteioSemLogin() {
+            try {
+                await log('🔍 Iniciando busca automática...');
+                
+                // Buscar jogo ativo
+                await log('📡 Buscando jogo ativo...');
+                const jogosRef = collection(db, 'jogos');
+                const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
+                const querySnapshot = await getDocs(q);
+                
+                if (querySnapshot.empty) {
+                    await log('❌ Nenhum jogo ativo encontrado');
+                    return;
+                }
+                
+                const jogoDoc = querySnapshot.docs[0];
+                const jogoAtualId = jogoDoc.id;
+                const jogoData = jogoDoc.data();
+                
+                await log(`✅ Jogo ativo: ${jogoData.nome || 'Edição atual'}`);
+                
+                // Buscar API da Quina
+                await log('📡 Buscando último sorteio na API da Quina...');
+                const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
+                const dados = await response.json();
+                
+                if (!dados || !dados.dezenas) {
+                    throw new Error('API não retornou dados válidos');
+                }
+                
+                const numerosSorteados = dados.dezenas.map(Number);
+                const concurso = dados.concurso;
+                
+                await log(`🎲 Sorteio encontrado: #${concurso} - Números: ${numerosSorteados.join(', ')}`);
+                
+                // Verificar se já foi importado
+                if (jogoData.ultimoConcursoImportado === concurso) {
+                    await log(`⚠️ Sorteio #${concurso} já foi importado anteriormente. Nada a fazer.`);
+                    return;
+                }
+                
+                // Primeira conferência - bloquear novos cadastros
+                if (!jogoData.primeiraConferenciaRealizada) {
+                    await log(`🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros...`);
+                    await updateDoc(doc(db, 'jogos', jogoAtualId), {
+                        primeiraConferenciaRealizada: true,
+                        dataPrimeiraConferencia: new Date()
+                    });
+                }
+                
+                // Salvar sorteio no histórico
+                await log(`💾 Salvando sorteio #${concurso} no histórico...`);
+                await addDoc(collection(db, 'sorteios_quina'), {
+                    concurso: concurso,
+                    numeros: numerosSorteados,
+                    data: new Date(),
+                    importadoEm: new Date()
+                });
+                
+                // Atualizar jogo
+                await log(`📝 Atualizando jogo com último sorteio...`);
+                await updateDoc(doc(db, 'jogos', jogoAtualId), {
+                    ultimosNumerosSorteados: numerosSorteados,
+                    ultimoConcursoImportado: concurso
+                });
+                
+                // Atualizar acertos dos participantes
+                await log(`🔄 Atualizando acertos dos participantes...`);
+                
+                const participantesRef = collection(db, 'participantes');
+                const partQ = query(participantesRef, where('jogoId', '==', jogoAtualId));
+                const participantes = await getDocs(partQ);
+                
+                let totalParticipantes = 0;
+                let vencedorEncontrado = false;
+                
+                for (const docSnap of participantes.docs) {
+                    const participante = docSnap.data();
+                    totalParticipantes++;
+                    
+                    if (participante.acertouTodos) continue;
+                    
+                    let novosAcertos = 0;
+                    for (const num of numerosSorteados) {
+                        if (participante.numeros.includes(num)) novosAcertos++;
+                    }
+                    
+                    if (novosAcertos > 0) {
+                        const novoTotal = (participante.acertos || 0) + novosAcertos;
+                        await updateDoc(doc(db, 'participantes', docSnap.id), { acertos: novoTotal });
+                        await log(`   📊 ${participante.nome}: +${novosAcertos} acertos (total: ${novoTotal}/17)`);
+                        
+                        if (novoTotal >= 17 && !vencedorEncontrado) {
+                            vencedorEncontrado = true;
+                            await log(`🏆🏆🏆 VENCEDOR! ${participante.nome} chegou a 17 acertos! 🏆🏆🏆`);
+                            await updateDoc(doc(db, 'jogos', jogoAtualId), { 
+                                status: 'encerrado',
+                                vencedorNome: participante.nome,
+                                encerradoEm: new Date()
+                            });
+                            
+                            // Salvar no histórico de vencedores
+                            await addDoc(collection(db, 'historico_vencedores'), {
+                                jogoId: jogoAtualId,
+                                participanteId: docSnap.id,
+                                participanteNome: participante.nome,
+                                dataVitoria: new Date(),
+                                concurso: concurso
+                            });
+                        }
+                    }
+                }
+                
+                await log(`\n✅ RESULTADO FINAL:`);
+                await log(`   📊 Total de participantes: ${totalParticipantes}`);
+                await log(`   🎲 Sorteio #${concurso} importado: ${numerosSorteados.join(', ')}`);
+                if (vencedorEncontrado) {
+                    await log(`   🏆 JOGO ENCERRADO!`);
+                } else {
+                    await log(`   ⏳ Jogo continua... ninguém atingiu 17 acertos ainda.`);
+                }
+                
+            } catch (error) {
+                await log(`❌ ERRO: ${error.message}`);
+                console.error(error);
+            }
+        }
+        
+        buscarSorteioSemLogin();
+    </script>
+</body>
+</html>
