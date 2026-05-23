@@ -210,10 +210,24 @@ function atualizarRanking(participantes) {
         else if (posicao === 3) medalha = '🥉 ';
         else medalha = `${posicao}º `;
         
+        // Gerar números do participante com marcação de acertos
+        let numerosHtml = '';
+        if (p.numeros && numerosSorteadosAcumulados) {
+            numerosHtml = '<div class="participante-numeros">';
+            for (const num of p.numeros) {
+                const acertou = numerosSorteadosAcumulados.includes(num);
+                numerosHtml += `<span class="numero-mini ${acertou ? 'acertado' : ''}">${num}</span>`;
+            }
+            numerosHtml += '</div>';
+        }
+        
         html += `
-            <div class="linha-participante ${destaque}" onclick="window.mostrarNumeros('${p.id}')" style="cursor:pointer;">
+            <div class="linha-participante ${destaque}" onclick="window.mostrarDetalhes('${p.id}')">
                 <span>${medalha}</span>
-                <span><strong>${p.nome}</strong></span>
+                <div>
+                    <div class="participante-nome"><strong>${p.nome}</strong></div>
+                    ${numerosHtml}
+                </div>
                 <span>${p.acertos}/17</span>
                 <div class="barra-progresso">
                     <div class="barra-progresso-fill" style="width: ${progressoPercent}%"></div>
@@ -225,10 +239,20 @@ function atualizarRanking(participantes) {
     container.innerHTML = html;
 }
 
-window.mostrarNumeros = async function(participanteId) {
+// Função para mostrar detalhes ao clicar (opcional)
+window.mostrarDetalhes = function(participanteId) {
     const participante = participantes.find(p => p.id === participanteId);
-    if (participante) {
-        mostrarNumerosParticipante(participante);
+    if (participante && participantes.length > 0) {
+        // Criar um modal simples ou alert com os números
+        let acertos = 0;
+        let msg = `📋 ${participante.nome}\n\nNúmeros: `;
+        for (const num of participante.numeros) {
+            const acertou = numerosSorteadosAcumulados.includes(num);
+            if (acertou) acertos++;
+            msg += `\n${num} ${acertou ? '✅' : '❌'}`;
+        }
+        msg += `\n\n✅ Acertos: ${acertos}/17`;
+        alert(msg);
     }
 };
 
