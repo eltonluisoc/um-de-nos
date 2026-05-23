@@ -139,7 +139,7 @@
         .tabela-placar {
             background: rgba(255,255,255,0.1);
             border-radius: 15px;
-            overflow: hidden;
+            overflow-x: auto;
         }
         
         .cabecalho {
@@ -156,44 +156,56 @@
         .linha-participante {
             display: grid;
             grid-template-columns: 50px 1fr 70px 90px;
-            padding: 8px 10px;
+            padding: 10px;
             border-bottom: 1px solid rgba(255,255,255,0.1);
-            text-align: center;
             align-items: center;
             cursor: pointer;
+            transition: background 0.2s;
         }
         
         .linha-participante:hover {
-            background: rgba(255,215,0,0.1);
+            background: rgba(255,215,0,0.15);
+        }
+        
+        .linha-participante.destaque {
+            background: rgba(255,215,0,0.25);
+            border-left: 3px solid #ffd700;
+        }
+        
+        /* Informações do participante */
+        .participante-info {
+            text-align: left;
+            width: 100%;
         }
         
         .participante-nome {
-            text-align: left;
             font-weight: bold;
+            margin-bottom: 6px;
+            font-size: 0.95em;
         }
         
-        /* NÚMEROS DO PARTICIPANTE - pequenos, em linha */
+        /* NÚMEROS DO PARTICIPANTE - caixinhas pequenas */
         .participante-numeros {
-            grid-column: span 4;
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
-            margin-top: 5px;
-            margin-bottom: 5px;
-            padding-left: 10px;
         }
         
         .numero-mini {
             background: rgba(255,255,255,0.2);
-            padding: 2px 6px;
-            border-radius: 12px;
+            padding: 3px 7px;
+            border-radius: 14px;
             font-size: 10px;
             font-weight: bold;
+            min-width: 26px;
+            text-align: center;
+            transition: all 0.2s;
         }
         
         .numero-mini.acertado {
             background: #28a745;
             color: white;
+            box-shadow: 0 0 4px rgba(40,167,69,0.5);
         }
         
         .barra-progresso {
@@ -238,6 +250,7 @@
             border-radius: 6px;
             font-weight: bold;
             font-size: 0.8em;
+            transition: all 0.2s;
         }
         
         .grid-numero.sorteados {
@@ -294,21 +307,34 @@
         
         .loading {
             text-align: center;
-            padding: 20px;
+            padding: 20;
         }
         
+        /* Responsividade */
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
             }
             
             .cabecalho {
-                grid-template-columns: 40px 1fr 50px 70px;
-                font-size: 0.8em;
+                grid-template-columns: 40px 1fr 50px 65px;
+                font-size: 0.75em;
+                padding: 8px;
             }
             
             .linha-participante {
-                grid-template-columns: 40px 1fr 50px 70px;
+                grid-template-columns: 40px 1fr 50px 65px;
+                padding: 8px;
+            }
+            
+            .participante-nome {
+                font-size: 0.85em;
+            }
+            
+            .numero-mini {
+                padding: 2px 5px;
+                font-size: 8px;
+                min-width: 22px;
             }
             
             .numeros-sorteio span {
@@ -322,6 +348,14 @@
                 padding: 10px;
             }
             
+            .premio-item {
+                padding: 8px;
+            }
+            
+            .premio-item h4 {
+                font-size: 0.75em;
+            }
+            
             .premio-item .valor {
                 font-size: 1em;
             }
@@ -333,7 +367,45 @@
             
             .grid-numero {
                 padding: 4px;
+                font-size: 0.65em;
+            }
+            
+            .sorteio-item {
                 font-size: 0.7em;
+                padding: 3px 7px;
+            }
+        }
+        
+        /* Tablet */
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .container {
+                max-width: 95%;
+            }
+            
+            .grid-numeros {
+                gap: 4px;
+            }
+            
+            .grid-numero {
+                padding: 5px;
+                font-size: 0.75em;
+            }
+        }
+        
+        /* Desktop grande */
+        @media (min-width: 1400px) {
+            .container {
+                max-width: 1400px;
+            }
+            
+            .participante-numeros {
+                gap: 6px;
+            }
+            
+            .numero-mini {
+                padding: 4px 8px;
+                font-size: 11px;
+                min-width: 28px;
             }
         }
     </style>
