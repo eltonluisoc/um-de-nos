@@ -123,12 +123,11 @@ async function carregarNumerosSorteados() {
         }
     }
     
-    // 8 colunas x 10 linhas = 80 números
-    let html = '<div style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px;">';
+    let html = '<div class="grid-numeros">';
     for (let i = 1; i <= 80; i++) {
         const foiSorteado = numerosSorteadosAcumulados.includes(i);
         html += `
-            <div class="grid-numero ${foiSorteado ? 'sorteados' : ''}" style="text-align: center; padding: 8px; border-radius: 8px;">
+            <div class="grid-numero ${foiSorteado ? 'sorteados' : ''}">
                 ${i}
             </div>
         `;
@@ -151,13 +150,6 @@ function escutarParticipantes() {
         });
         
         atualizarRanking(participantes);
-        
-        // Verificar se há um participante específico (para mostrar números)
-        // Por enquanto, mostra o primeiro da lista como exemplo
-        if (participantes.length > 0 && !document.getElementById('infoParticipante').style.display === 'block') {
-            mostrarNumerosParticipante(participantes[0]);
-        }
-        
         verificarVencedor(participantes);
         
     }, (error) => {
@@ -165,72 +157,72 @@ function escutarParticipantes() {
     });
 }
 
-function mostrarNumerosParticipante(participante) {
-    const container = document.getElementById('numerosDoParticipante');
-    const totalAcertos = document.getElementById('totalAcertos');
-    
-    if (!participante.numeros) return;
-    
-    let html = '';
-    let acertos = 0;
-    
-    for (const num of participante.numeros) {
-        const acertou = numerosSorteadosAcumulados.includes(num);
-        if (acertou) acertos++;
-        html += `
-            <div class="${acertou ? 'numero-acertado' : 'numero-nao-acertado'}">
-                ${num}
-            </div>
-        `;
-    }
-    
-    container.innerHTML = html;
-    totalAcertos.innerHTML = `Acertos: ${acertos}/17 | Progresso: ${Math.round((acertos/17)*100)}%`;
-    document.getElementById('infoParticipante').style.display = 'block';
-    document.getElementById('totalAcertos').innerHTML = `✅ Acertos: ${acertos}/17 | ${Math.round((acertos/17)*100)}% completado`;
-}
-
+// FUNÇÃO PRINCIPAL DO RANKING - COM FORMATAÇÃO CORRETA
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
+    const totalSpan = document.getElementById('totalParticipantes');
+    const maiorSpan = document.getElementById('maiorPontuacao');
     
     if (participantes.length === 0) {
         container.innerHTML = '<div class="loading">📋 Nenhum participante cadastrado ainda...</div>';
+        if (totalSpan) totalSpan.textContent = '0';
+        if (maiorSpan) maiorSpan.textContent = '0';
         return;
     }
+    
+    // Atualizar estatísticas
+    const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+    if (totalSpan) totalSpan.textContent = participantes.length;
+    if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}/17`;
     
     let html = '';
     participantes.forEach((p, index) => {
         const posicao = index + 1;
-        const progressoPercent = (p.acertos / 17) * 100;
-        const destaque = p.acertouTodos ? 'destaque' : '';
+        const progressoPercent = ((p.acertos || 0) / 17) * 100;
+        const isChampion = p.acertouTodos === true;
         
+        let posClass = '';
         let medalha = '';
-        if (posicao === 1) medalha = '🥇 ';
-        else if (posicao === 2) medalha = '🥈 ';
-        else if (posicao === 3) medalha = '🥉 ';
-        else medalha = `${posicao}º `;
-        
-        // Gerar números do participante com marcação de acertos
-        let numerosHtml = '';
-        if (p.numeros && numerosSorteadosAcumulados) {
-            numerosHtml = '<div class="participante-numeros">';
-            for (const num of p.numeros) {
-                const acertou = numerosSorteadosAcumulados.includes(num);
-                numerosHtml += `<span class="numero-mini ${acertou ? 'acertado' : ''}">${num}</span>`;
-            }
-            numerosHtml += '</div>';
+        if (posicao === 1) {
+            posClass = 'pos-1';
+            medalha = '👑 ';
+        } else if (posicao === 2) {
+            posClass = 'pos-2';
+            medalha = '🥈 ';
+        } else if (posicao === 3) {
+            posClass = 'pos-3';
+            medalha = '🥉 ';
         }
         
+        // Gerar números do participante
+        let numerosHtml = '<div class="player-numbers">';
+        if (p.numeros && Array.isArray(p.numeros)) {
+            for (const num of p.numeros) {
+                const acertou = numerosSorteadosAcumulados && numerosSorteadosAcumulados.includes(num);
+                numerosHtml += `<span class="number-badge ${acertou ? 'hit' : ''}">${num}</span>`;
+            }
+        }
+        numerosHtml += '</div>';
+        
         html += `
-            <div class="linha-participante ${destaque}" onclick="window.mostrarDetalhes('${p.id}')">
-                <span>${medalha}</span>
-                <div>
-                    <div class="participante-nome"><strong>${p.nome}</strong></div>
+            <div class="ranking-row ${isChampion ? 'champion' : ''}" onclick="window.mostrarDetalhes('${p.id}')">
+                <div class="ranking-pos ${posClass}">
+                    ${medalha}${posicao}
+                </div>
+                <div class="ranking-player">
+                    <div class="player-name">${p.nome}</div>
                     ${numerosHtml}
                 </div>
-                <span>${p.acertos}/17</span>
-                <div class="barra-progresso">
-                    <div class="barra-progresso-fill" style="width: ${progressoPercent}%"></div>
+                <div class="ranking-score">
+                    ${p.acertos || 0}<small>/17</small>
+                </div>
+                <div class="ranking-progress">
+                    <div class="progress-wrapper">
+                        <div class="progress-bar-container">
+                            <div class="progress-fill" style="width: ${progressoPercent}%"></div>
+                        </div>
+                        <div class="progress-percent">${Math.round(progressoPercent)}%</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -239,36 +231,21 @@ function atualizarRanking(participantes) {
     container.innerHTML = html;
 }
 
-// Função para mostrar detalhes ao clicar (opcional)
 window.mostrarDetalhes = function(participanteId) {
     const participante = participantes.find(p => p.id === participanteId);
-    if (participante && participantes.length > 0) {
-        // Criar um modal simples ou alert com os números
+    if (participante) {
         let acertos = 0;
-        let msg = `📋 ${participante.nome}\n\nNúmeros: `;
+        let msg = `📋 ${participante.nome}\n\n🎯 Números Selecionados:\n`;
         for (const num of participante.numeros) {
             const acertou = numerosSorteadosAcumulados.includes(num);
             if (acertou) acertos++;
-            msg += `\n${num} ${acertou ? '✅' : '❌'}`;
+            msg += `${num} ${acertou ? '✅' : '❌'}  `;
         }
         msg += `\n\n✅ Acertos: ${acertos}/17`;
+        msg += `\n📊 Progresso: ${Math.round((acertos/17)*100)}%`;
         alert(msg);
     }
 };
-
-function verificarVencedor(participantes) {
-    const vencedor = participantes.find(p => p.acertouTodos === true);
-    
-    if (vencedor) {
-        document.getElementById('statusJogo').innerHTML = `
-            <span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>
-        `;
-        
-        document.getElementById('vencedorInfo').style.display = 'block';
-        document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedor.nome} 🎉`;
-        document.getElementById('vencedorData').innerHTML = `Acertou 17 números primeiro!`;
-    }
-}
 
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
@@ -282,6 +259,20 @@ function mostrarNumerosSorteados(numeros) {
         html += `<span>${num}</span>`;
     });
     container.innerHTML = html;
+}
+
+function verificarVencedor(participantes) {
+    const vencedor = participantes.find(p => p.acertouTodos === true);
+    
+    if (vencedor) {
+        document.getElementById('statusJogo').innerHTML = `
+            <span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>
+        `;
+        
+        document.getElementById('vencedorInfo').style.display = 'block';
+        document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedor.nome} 🎉`;
+        document.getElementById('vencedorData').innerHTML = `Acertou 17 números primeiro!`;
+    }
 }
 
 async function carregarUltimoVencedor() {
@@ -300,8 +291,14 @@ async function carregarUltimoVencedor() {
         console.error('Erro ao carregar histórico:', error);
     }
 }
-// Recarregar a página a cada 5 minutos para garantir dados atualizados
-setTimeout(() => {
-    console.log('🔄 Recarregando página para atualizar dados...');
-    window.location.reload();
-}, 300000); // 5 minutos
+
+// Recarregar a página a cada 2 minutos para garantir dados atualizados
+let ultimoRecarregamento = Date.now();
+setInterval(() => {
+    const agora = Date.now();
+    if (agora - ultimoRecarregamento > 120000) {
+        console.log('🔄 Auto-recarregamento para atualizar dados...');
+        ultimoRecarregamento = agora;
+        window.location.reload();
+    }
+}, 30000);

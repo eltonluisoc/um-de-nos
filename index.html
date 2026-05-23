@@ -411,6 +411,242 @@
                 min-width: 28px;
             }
         }
+        /* RANKING PROFISSIONAL */
+.ranking-container {
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 20px;
+    margin-bottom: 25px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+.ranking-header {
+    background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4));
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.ranking-header h3 {
+    font-size: 1.2em;
+    font-weight: 600;
+    margin-bottom: 10px;
+    color: #f1c40f;
+    letter-spacing: 1px;
+}
+
+.ranking-stats {
+    display: flex;
+    gap: 24px;
+    flex-wrap: wrap;
+}
+
+.stat-item {
+    font-size: 0.8em;
+    color: rgba(255,255,255,0.6);
+    letter-spacing: 0.5px;
+}
+
+.stat-item strong {
+    color: #f1c40f;
+    font-weight: 700;
+    font-size: 1.1em;
+}
+
+.ranking-table {
+    padding: 0;
+}
+
+.ranking-columns {
+    display: grid;
+    grid-template-columns: 60px 1fr 70px 80px;
+    background: rgba(241, 196, 15, 0.08);
+    padding: 12px 20px;
+    font-size: 0.7em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: rgba(255,255,255,0.5);
+    border-bottom: 1px solid rgba(255,215,0,0.15);
+}
+
+.col-pos, .col-player, .col-score, .col-progress {
+    text-align: left;
+}
+
+.col-score, .col-progress {
+    text-align: center;
+}
+
+.ranking-list {
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+/* SCROLL PERSONALIZADO */
+.ranking-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.ranking-list::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+}
+
+.ranking-list::-webkit-scrollbar-thumb {
+    background: #f1c40f;
+    border-radius: 10px;
+}
+
+/* LINHA DO PARTICIPANTE */
+.ranking-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 70px 80px;
+    padding: 14px 20px;
+    align-items: center;
+    border-bottom: 1px solid rgba(255,255,255,0.03);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.ranking-row:hover {
+    background: rgba(241, 196, 15, 0.05);
+    transform: translateX(4px);
+}
+
+/* POSIÇÃO */
+.ranking-pos {
+    font-weight: 800;
+    font-size: 1.1em;
+}
+
+.pos-1 { color: #ffd700; text-shadow: 0 0 5px rgba(255,215,0,0.3); }
+.pos-2 { color: #c0c0c0; }
+.pos-3 { color: #cd7f32; }
+
+/* PARTICIPANTE */
+.ranking-player {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.player-name {
+    font-weight: 700;
+    font-size: 0.95em;
+    letter-spacing: 0.3px;
+}
+
+.player-numbers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.number-badge {
+    background: rgba(255,255,255,0.08);
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 0.7em;
+    font-weight: 600;
+    transition: all 0.2s;
+}
+
+.number-badge.hit {
+    background: rgba(40, 167, 69, 0.3);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.5);
+}
+
+/* PONTOS */
+.ranking-score {
+    text-align: center;
+    font-weight: 800;
+    font-size: 1.2em;
+    color: #f1c40f;
+}
+
+.ranking-score small {
+    font-size: 0.6em;
+    font-weight: 400;
+    color: rgba(255,255,255,0.5);
+}
+
+/* PROGRESSO */
+.ranking-progress {
+    text-align: center;
+}
+
+.progress-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.progress-bar-container {
+    background: rgba(255,255,255,0.1);
+    border-radius: 20px;
+    height: 4px;
+    width: 100%;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #f1c40f, #ff8c00);
+    height: 100%;
+    width: 0%;
+    border-radius: 20px;
+    transition: width 0.5s ease;
+}
+
+.progress-percent {
+    font-size: 0.7em;
+    font-weight: 600;
+    color: rgba(255,255,255,0.6);
+}
+
+/* VENCEDOR DESTAQUE */
+.ranking-row.champion {
+    background: linear-gradient(90deg, rgba(241,196,15,0.1), transparent);
+    border-left: 3px solid #f1c40f;
+}
+
+.ranking-row.champion .player-name {
+    color: #f1c40f;
+}
+
+/* LOADING */
+.loading {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.9em;
+}
+
+@media (max-width: 768px) {
+    .ranking-columns, .ranking-row {
+        grid-template-columns: 45px 1fr 50px 60px;
+        padding: 10px 12px;
+    }
+    
+    .player-name {
+        font-size: 0.85em;
+    }
+    
+    .number-badge {
+        font-size: 0.6em;
+        padding: 1px 4px;
+    }
+    
+    .ranking-score {
+        font-size: 0.9em;
+    }
+    
+    .ranking-stats {
+        flex-direction: column;
+        gap: 8px;
+    }
+}
     </style>
 </head>
 <body>
@@ -451,17 +687,24 @@
             <div class="numeros-sorteio" id="numerosSorteio">-</div>
         </div>
 
-        <!-- RANKING com números do participante -->
-        <div class="placar">
-            <h3>🏆 RANKING DE ACERTOS</h3>
-            <div class="tabela-placar">
-                <div class="cabecalho">
-                    <span>Pos</span>
-                    <span>Participante</span>
-                    <span>Acertos</span>
-                    <span>Progresso</span>
+        <!-- RANKING PROFISSIONAL -->
+        <div class="ranking-container">
+            <div class="ranking-header">
+                <h3>🏆 RANKING DE ACERTOS</h3>
+                <div class="ranking-stats" id="rankingStats">
+                    <span class="stat-item">🎯 Participantes: <strong id="totalParticipantes">0</strong></span>
+                    <span class="stat-item">⭐ Maior pontuação: <strong id="maiorPontuacao">0</strong>/17</span>
                 </div>
-                <div id="listaParticipantes">
+            </div>
+            
+            <div class="ranking-table">
+                <div class="ranking-columns">
+                    <div class="col-pos">POS</div>
+                    <div class="col-player">PARTICIPANTE</div>
+                    <div class="col-score">PTS</div>
+                    <div class="col-progress">%</div>
+                </div>
+                <div id="listaParticipantes" class="ranking-list">
                     <div class="loading">Carregando participantes...</div>
                 </div>
             </div>
