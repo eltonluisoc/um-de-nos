@@ -311,7 +311,8 @@ async function carregarTodosParticipantes() {
 
 async function carregarHistoricoSorteios() {
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const querySnapshot = await getDocs(sorteiosRef);
+    const q = query(sorteiosRef, orderBy('concurso', 'desc'));
+    const querySnapshot = await getDocs(q);
     
     const container = document.getElementById('historicoSorteios');
     if (querySnapshot.empty) {
@@ -319,29 +320,17 @@ async function carregarHistoricoSorteios() {
         return;
     }
     
-    // Usar Map para evitar duplicatas por concurso
-    const sorteiosMap = new Map();
+    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
     querySnapshot.forEach(doc => {
         const s = doc.data();
-        if (!sorteiosMap.has(s.concurso)) {
-            sorteiosMap.set(s.concurso, s);
-        }
-    });
-    
-    // Converter para array e ordenar
-    const sorteios = Array.from(sorteiosMap.values());
-    sorteios.sort((a, b) => b.concurso - a.concurso);
-    
-    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
-    for (const s of sorteios) {
         html += `
             <div style="background: rgba(255,215,0,0.2); border-radius: 10px; padding: 10px;">
                 <strong>#${s.concurso}</strong><br>
                 ${s.numeros.join(', ')}<br>
-                <small>${s.data?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}</small>
+                <small>${s.data?.toDate()?.toLocaleDateString('pt-BR') || '-'}</small>
             </div>
         `;
-    }
+    });
     html += '</div>';
     container.innerHTML = html;
 }
@@ -488,7 +477,7 @@ function iniciarBuscaAutomatica() {
     }, 300000);
 }
 
-// FUNÇÃO BUSCAR SORTEIO CORRIGIDA - SEM DUPLICAÇÃO
+// FUNÇÃO BUSCAR SORTEIO CORRIGIDA
 async function buscarSorteioQuina() {
     console.log('🔍 Função buscarSorteioQuina iniciada');
     
@@ -524,35 +513,9 @@ async function buscarSorteioQuina() {
         
         console.log(`🎲 Sorteio ${concurso}:`, numerosSorteados);
         
-        // ✅ VERIFICAÇÃO MAIS RIGOROSA - Verificar se já existe no banco
-        const sorteiosExistentes = await getDocs(collection(db, 'sorteios_quina'));
-        let jaExiste = false;
-        sorteiosExistentes.forEach(doc => {
-            const s = doc.data();
-            if (s.concurso === concurso) {
-                jaExiste = true;
-            }
-        });
-        
-        if (jaExiste) {
-            console.log(`⚠️ Sorteio ${concurso} JÁ EXISTE no banco! Não será duplicado.`);
-            
-            // Atualizar o jogo com o concurso existente
-            await updateDoc(doc(db, 'jogos', jogoAtualIdTemp), {
-                ultimosNumerosSorteados: numerosSorteados,
-                ultimoConcursoImportado: concurso
-            });
-            
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = '📢 Buscar Último Sorteio da Quina';
-            }
-            return;
-        }
-        
-        // Verificar se já importou pelo jogo
+        // Verificar se já importou
         if (jogoData.ultimoConcursoImportado === concurso) {
-            console.log(`⚠️ Sorteio ${concurso} já foi importado neste jogo`);
+            console.log(`⚠️ Sorteio ${concurso} já foi importado`);
             if (btn) {
                 btn.disabled = false;
                 btn.textContent = '📢 Buscar Último Sorteio da Quina';
@@ -571,26 +534,15 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
-        // TRATAMENTO DE DATA CORRIGIDO
+        // Salvar sorteio - TRATAMENTO DE DATA CORRIGIDO
         let dataValida = new Date();
         if (dados.data) {
-            if (dados.data.includes('/')) {
-                const partes = dados.data.split('/');
-                if (partes.length === 3) {
-                    dataValida = new Date(partes[2], partes[1] - 1, partes[0]);
-                }
-            } else if (dados.data.includes('-')) {
-                dataValida = new Date(dados.data);
-            }
-            
-            if (isNaN(dataValida.getTime())) {
-                console.warn('Data inválida, usando data atual');
-                dataValida = new Date();
+            const partes = dados.data.split('/');
+            if (partes.length === 3) {
+                dataValida = new Date(partes[2], partes[1] - 1, partes[0]);
             }
         }
-        console.log('📅 Data do sorteio:', dataValida.toLocaleDateString('pt-BR'));
         
-        // ✅ SALVAR SORTEIO APENAS UMA VEZ (removida a segunda chamada)
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numerosSorteados,
@@ -598,7 +550,6 @@ async function buscarSorteioQuina() {
             importadoEm: new Date()
         });
         
-        // Atualizar o jogo
         await updateDoc(doc(db, 'jogos', jogoAtualIdTemp), {
             ultimosNumerosSorteados: numerosSorteados,
             ultimoConcursoImportado: concurso
