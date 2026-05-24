@@ -123,7 +123,7 @@ async function carregarNumerosSorteados() {
         }
     }
     
-    let html = '<div class="grid-numeros">';
+    let html = '<div class="grid-numeros" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px;">';
     for (let i = 1; i <= 80; i++) {
         const foiSorteado = numerosSorteadosAcumulados.includes(i);
         html += `
@@ -173,7 +173,7 @@ function atualizarRanking(participantes) {
     // Atualizar estatísticas
     const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
     if (totalSpan) totalSpan.textContent = participantes.length;
-    if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}/17`;
+    if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
     let html = '';
     participantes.forEach((p, index) => {

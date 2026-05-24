@@ -242,23 +242,25 @@
         
         .grid-numeros {
             display: grid;
-            grid-template-columns: repeat(8, 1fr);
-            gap: 5px;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
         }
-        
+
         .grid-numero {
-            background: rgba(255,255,255,0.2);
-            padding: 6px;
+            background: rgba(255,255,255,0.08);
+            padding: 8px 4px;
             text-align: center;
-            border-radius: 6px;
-            font-weight: bold;
+            border-radius: 8px;
+            font-weight: 600;
             font-size: 0.8em;
             transition: all 0.2s;
         }
-        
+
         .grid-numero.sorteados {
-            background: #ffd700;
-            color: #1a472a;
+            background: linear-gradient(135deg, #f1c40f, #ff8c00);
+            color: #0b1e19;
+            font-weight: bold;
+            transform: scale(1.02);
         }
         
         .lista-sorteios {
