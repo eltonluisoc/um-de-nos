@@ -4,430 +4,207 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Desafio dos 17</title>
-    <link rel="stylesheet" href="style.css">
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0b1e19">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b1e19'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='%23f1c40f'%3E🎯%3C/text%3E%3C/svg%3E">
-    <meta name="theme-color" content="#2E7D32">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a472a 0%, #0d2818 100%);
-            min-height: 100vh;
-            color: white;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        header {
-            text-align: center;
-            padding: 20px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 20px;
-            margin-bottom: 20px;
-            backdrop-filter: blur(10px);
-        }
-        
-        header h1 {
-            font-size: 2.5em;
-            letter-spacing: 2px;
-        }
-        
-        header h2 {
-            color: #ffd700;
-            margin-top: 5px;
-        }
-        
-        .status-jogo {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .status-badge {
-            background: #ffd700;
-            color: #1a472a;
-            padding: 8px 20px;
-            border-radius: 30px;
-            font-weight: bold;
-            display: inline-block;
-        }
-        
-        /* PREMIAÇÃO - 3 cards em linha */
-        .premiacao {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: #1a472a;
-            border-radius: 15px;
-            padding: 15px;
-            margin-bottom: 20px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            text-align: center;
-        }
-        
-        .premio-item {
-            background: rgba(255,255,255,0.3);
-            border-radius: 10px;
-            padding: 12px;
-        }
-        
-        .premio-item h4 {
-            font-size: 0.9em;
-            margin-bottom: 5px;
-        }
-        
-        .premio-item .valor {
-            font-size: 1.3em;
-            font-weight: bold;
-        }
-        
-        /* ÚLTIMO SORTEIO - fonte um pouco menor */
-        .ultimo-sorteio {
-            background: rgba(255,215,0,0.1);
-            border: 1px solid #ffd700;
-            border-radius: 15px;
-            padding: 12px;
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .ultimo-sorteio h3 {
-            font-size: 1.1em;
-            margin-bottom: 8px;
-        }
-        
-        .numeros-sorteio {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .numeros-sorteio span {
-            background: #ffd700;
-            color: #1a472a;
-            width: 45px;
-            height: 45px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.2em;
-            font-weight: bold;
-        }
-        
-        .placar {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-        
-        .placar h3 {
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        
-        .tabela-placar {
-            background: rgba(255,255,255,0.1);
-            border-radius: 15px;
-            overflow-x: auto;
-        }
-        
-        .cabecalho {
-            display: grid;
-            grid-template-columns: 50px 1fr 70px 90px;
-            background: #ffd700;
-            color: #1a472a;
-            padding: 10px;
-            font-weight: bold;
-            text-align: center;
-            font-size: 0.9em;
-        }
-        
-        .linha-participante {
-            display: grid;
-            grid-template-columns: 50px 1fr 70px 90px;
-            padding: 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
-            align-items: center;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-        
-        .linha-participante:hover {
-            background: rgba(255,215,0,0.15);
-        }
-        
-        .linha-participante.destaque {
-            background: rgba(255,215,0,0.25);
-            border-left: 3px solid #ffd700;
-        }
-        
-        /* Informações do participante */
-        .participante-info {
-            text-align: left;
-            width: 100%;
-        }
-        
-        .participante-nome {
-            font-weight: bold;
-            margin-bottom: 6px;
-            font-size: 0.95em;
-        }
-        
-        /* NÚMEROS DO PARTICIPANTE - caixinhas pequenas */
-        .participante-numeros {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-        }
-        
-        .numero-mini {
-            background: rgba(255,255,255,0.2);
-            padding: 3px 7px;
-            border-radius: 14px;
-            font-size: 10px;
-            font-weight: bold;
-            min-width: 26px;
-            text-align: center;
-            transition: all 0.2s;
-        }
-        
-        .numero-mini.acertado {
-            background: #28a745;
-            color: white;
-            box-shadow: 0 0 4px rgba(40,167,69,0.5);
-        }
-        
-        .barra-progresso {
-            background: rgba(255,255,255,0.2);
-            border-radius: 10px;
-            height: 8px;
-            overflow: hidden;
-            width: 100%;
-        }
-        
-        .barra-progresso-fill {
-            background: #ffd700;
-            height: 100%;
-            width: 0%;
-            transition: width 0.5s ease;
-            border-radius: 10px;
-        }
-        
-        .numeros-sorteados {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .numeros-sorteados h3 {
-            font-size: 1em;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        
-        .grid-numeros {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 6px;
-        }
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
+    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
 
-        .grid-numero {
-            background: rgba(255,255,255,0.08);
-            padding: 8px 4px;
-            text-align: center;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.8em;
-            transition: all 0.2s;
-        }
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
 
-        .grid-numero.sorteados {
-            background: linear-gradient(135deg, #f1c40f, #ff8c00);
-            color: #0b1e19;
-            font-weight: bold;
-            transform: scale(1.02);
-        }
-        
-        .lista-sorteios {
-            background: rgba(0,0,0,0.4);
-            border-radius: 20px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-        
-        .lista-sorteios h3 {
-            font-size: 1em;
-            margin-bottom: 10px;
-        }
-        
-        .sorteios-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .sorteio-item {
-            background: rgba(255,215,0,0.2);
-            border: 1px solid #ffd700;
-            border-radius: 8px;
-            padding: 5px 10px;
-            font-size: 0.8em;
-        }
-        
-        .sorteio-item span {
-            font-weight: bold;
-            color: #ffd700;
-        }
-        
-        .vencedor-card {
-            background: linear-gradient(135deg, #ffd700, #ff8c00);
-            color: #1a472a;
-            text-align: center;
-            padding: 20px;
-            border-radius: 20px;
-            margin-top: 20px;
-        }
-        
-        footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 0.8em;
-            opacity: 0.7;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 20;
-        }
-        
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .cabecalho {
-                grid-template-columns: 40px 1fr 50px 65px;
-                font-size: 0.75em;
-                padding: 8px;
-            }
-            
-            .linha-participante {
-                grid-template-columns: 40px 1fr 50px 65px;
-                padding: 8px;
-            }
-            
-            .participante-nome {
-                font-size: 0.85em;
-            }
-            
-            .numero-mini {
-                padding: 2px 5px;
-                font-size: 8px;
-                min-width: 22px;
-            }
-            
-            .numeros-sorteio span {
-                width: 35px;
-                height: 35px;
-                font-size: 1em;
-            }
-            
-            .premiacao {
-                gap: 8px;
-                padding: 10px;
-            }
-            
-            .premio-item {
-                padding: 8px;
-            }
-            
-            .premio-item h4 {
-                font-size: 0.75em;
-            }
-            
-            .premio-item .valor {
-                font-size: 1em;
-            }
-            
-            .grid-numeros {
-                grid-template-columns: repeat(8, 1fr);
-                gap: 3px;
-            }
-            
-            .grid-numero {
-                padding: 4px;
-                font-size: 0.65em;
-            }
-            
-            .sorteio-item {
-                font-size: 0.7em;
-                padding: 3px 7px;
-            }
-        }
-        
-        /* Tablet */
-        @media (min-width: 769px) and (max-width: 1024px) {
-            .container {
-                max-width: 95%;
-            }
-            
-            .grid-numeros {
-                gap: 4px;
-            }
-            
-            .grid-numero {
-                padding: 5px;
-                font-size: 0.75em;
-            }
-        }
-        
-        /* Desktop grande */
-        @media (min-width: 1400px) {
-            .container {
-                max-width: 1400px;
-            }
-            
-            .participante-numeros {
-                gap: 6px;
-            }
-            
-            .numero-mini {
-                padding: 4px 8px;
-                font-size: 11px;
-                min-width: 28px;
-            }
-        }
-        /* RANKING PROFISSIONAL */
+body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+    min-height: 100vh;
+    color: white;
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+/* HEADER PROFISSIONAL - IDÊNTICO AO ADMIN */
+.hero-section {
+    background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+    border-radius: 16px;
+    padding: 40px 20px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.title-top {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.75em;
+    letter-spacing: 3px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    margin-bottom: 15px;
+}
+
+.main-title {
+    font-family: 'Inter', sans-serif;
+    font-size: 3.5em;
+    font-weight: 800;
+    letter-spacing: 4px;
+    background: linear-gradient(135deg, #ffffff 0%, #f1c40f 80%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    margin: 0 0 15px 0;
+    text-shadow: 0 0 20px rgba(241, 196, 15, 0.2);
+}
+
+.challenge-badge {
+    font-family: 'Inter', sans-serif;
+    color: #f1c40f;
+    font-weight: 700;
+    font-size: 1.1em;
+    letter-spacing: 1px;
+    margin-bottom: 20px;
+    display: inline-block;
+    padding: 5px 15px;
+    background: rgba(241, 196, 15, 0.08);
+    border-radius: 50px;
+    border: 1px solid rgba(241, 196, 15, 0.15);
+}
+
+.description {
+    font-family: 'Inter', sans-serif;
+    font-size: 0.95em;
+    color: rgba(255, 255, 255, 0.6);
+    line-height: 1.6;
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.description strong {
+    color: #f1c40f;
+}
+
+/* STATUS BADGE */
+.status-jogo {
+    text-align: center;
+    margin-bottom: 25px;
+}
+
+.status-badge {
+    background: rgba(241, 196, 15, 0.08);
+    border: 1px solid rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+    padding: 10px 24px;
+    border-radius: 50px;
+    font-weight: 600;
+    font-size: 0.9em;
+    display: inline-block;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.1);
+}
+
+/* PREMIAÇÃO - MESMO ESTILO DO ADMIN */
+.premiacao {
+    background: rgba(255,255,255,0.03);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 25px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 15px;
+    text-align: center;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.premio-item {
+    background: rgba(255,255,255,0.03);
+    border-radius: 12px;
+    padding: 15px;
+    transition: all 0.2s;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.premio-item:hover {
+    background: rgba(241, 196, 15, 0.05);
+    transform: translateY(-2px);
+    border-color: rgba(241, 196, 15, 0.15);
+}
+
+.premio-item h4 {
+    font-size: 0.85em;
+    margin-bottom: 8px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.5px;
+}
+
+.premio-item .valor {
+    font-size: 1.4em;
+    font-weight: 800;
+    color: #f1c40f;
+}
+
+/* ÚLTIMO SORTEIO */
+.ultimo-sorteio {
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 16px 20px;
+    text-align: center;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ultimo-sorteio h3 {
+    font-size: 0.85em;
+    margin-bottom: 12px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.numeros-sorteio {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.numeros-sorteio span {
+    background: rgba(241, 196, 15, 0.08);
+    border: 1px solid rgba(241, 196, 15, 0.2);
+    color: #f1c40f;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3em;
+    font-weight: 800;
+    box-shadow: 0 0 10px rgba(241, 196, 15, 0.1);
+}
+
+/* RANKING - IDÊNTICO AO ADMIN */
 .ranking-container {
-    background: rgba(0, 0, 0, 0.4);
-    border-radius: 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 16px;
     margin-bottom: 25px;
     overflow: hidden;
-    border: 1px solid rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .ranking-header {
-    background: linear-gradient(135deg, rgba(0,0,0,0.6), rgba(0,0,0,0.4));
+    background: rgba(0,0,0,0.4);
     padding: 18px 24px;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .ranking-header h3 {
-    font-size: 1.2em;
+    font-size: 1.1em;
     font-weight: 600;
     margin-bottom: 10px;
     color: #f1c40f;
@@ -442,39 +219,26 @@
 
 .stat-item {
     font-size: 0.8em;
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.5);
     letter-spacing: 0.5px;
 }
 
 .stat-item strong {
     color: #f1c40f;
     font-weight: 700;
-    font-size: 1.1em;
-}
-
-.ranking-table {
-    padding: 0;
 }
 
 .ranking-columns {
     display: grid;
     grid-template-columns: 60px 1fr 70px 80px;
-    background: rgba(241, 196, 15, 0.08);
+    background: rgba(241, 196, 15, 0.04);
     padding: 12px 20px;
     font-size: 0.7em;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: rgba(255,255,255,0.5);
-    border-bottom: 1px solid rgba(255,215,0,0.15);
-}
-
-.col-pos, .col-player, .col-score, .col-progress {
-    text-align: left;
-}
-
-.col-score, .col-progress {
-    text-align: center;
+    color: rgba(255,255,255,0.4);
+    border-bottom: 1px solid rgba(255,255,255,0.05);
 }
 
 .ranking-list {
@@ -482,13 +246,12 @@
     overflow-y: auto;
 }
 
-/* SCROLL PERSONALIZADO */
 .ranking-list::-webkit-scrollbar {
     width: 6px;
 }
 
 .ranking-list::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.05);
+    background: rgba(255,255,255,0.03);
     border-radius: 10px;
 }
 
@@ -497,7 +260,6 @@
     border-radius: 10px;
 }
 
-/* LINHA DO PARTICIPANTE */
 .ranking-row {
     display: grid;
     grid-template-columns: 60px 1fr 70px 80px;
@@ -509,21 +271,24 @@
 }
 
 .ranking-row:hover {
-    background: rgba(241, 196, 15, 0.05);
+    background: rgba(241, 196, 15, 0.04);
     transform: translateX(4px);
 }
 
-/* POSIÇÃO */
+.ranking-row.champion {
+    background: linear-gradient(90deg, rgba(241,196,15,0.08), transparent);
+    border-left: 3px solid #f1c40f;
+}
+
 .ranking-pos {
     font-weight: 800;
     font-size: 1.1em;
 }
 
-.pos-1 { color: #ffd700; text-shadow: 0 0 5px rgba(255,215,0,0.3); }
+.pos-1 { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.3); }
 .pos-2 { color: #c0c0c0; }
 .pos-3 { color: #cd7f32; }
 
-/* PARTICIPANTE */
 .ranking-player {
     display: flex;
     flex-direction: column;
@@ -533,7 +298,10 @@
 .player-name {
     font-weight: 700;
     font-size: 0.95em;
-    letter-spacing: 0.3px;
+}
+
+.ranking-row.champion .player-name {
+    color: #f1c40f;
 }
 
 .player-numbers {
@@ -543,21 +311,20 @@
 }
 
 .number-badge {
-    background: rgba(255,255,255,0.08);
+    background: rgba(255,255,255,0.05);
     padding: 2px 6px;
     border-radius: 12px;
-    font-size: 0.7em;
+    font-size: 0.65em;
     font-weight: 600;
     transition: all 0.2s;
 }
 
 .number-badge.hit {
-    background: rgba(40, 167, 69, 0.3);
+    background: rgba(40, 167, 69, 0.2);
     color: #28a745;
-    border: 1px solid rgba(40, 167, 69, 0.5);
+    border: 1px solid rgba(40, 167, 69, 0.3);
 }
 
-/* PONTOS */
 .ranking-score {
     text-align: center;
     font-weight: 800;
@@ -568,12 +335,7 @@
 .ranking-score small {
     font-size: 0.6em;
     font-weight: 400;
-    color: rgba(255,255,255,0.5);
-}
-
-/* PROGRESSO */
-.ranking-progress {
-    text-align: center;
+    color: rgba(255,255,255,0.4);
 }
 
 .progress-wrapper {
@@ -584,7 +346,7 @@
 }
 
 .progress-bar-container {
-    background: rgba(255,255,255,0.1);
+    background: rgba(255,255,255,0.08);
     border-radius: 20px;
     height: 4px;
     width: 100%;
@@ -597,35 +359,145 @@
     width: 0%;
     border-radius: 20px;
     transition: width 0.5s ease;
+    box-shadow: 0 0 5px rgba(241,196,15,0.5);
 }
 
 .progress-percent {
-    font-size: 0.7em;
+    font-size: 0.65em;
     font-weight: 600;
-    color: rgba(255,255,255,0.6);
+    color: rgba(255,255,255,0.4);
 }
 
-/* VENCEDOR DESTAQUE */
-.ranking-row.champion {
-    background: linear-gradient(90deg, rgba(241,196,15,0.1), transparent);
-    border-left: 3px solid #f1c40f;
+/* NÚMEROS SORTEADOS */
+.numeros-sorteados {
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
-.ranking-row.champion .player-name {
+.numeros-sorteados h3 {
+    font-size: 0.85em;
+    margin-bottom: 15px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    text-align: center;
+}
+
+.grid-numeros {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 6px;
+}
+
+.grid-numero {
+    background: rgba(255,255,255,0.04);
+    padding: 8px 4px;
+    text-align: center;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.75em;
+    transition: all 0.2s;
+}
+
+.grid-numero.sorteados {
+    background: linear-gradient(135deg, rgba(241,196,15,0.15), rgba(241,196,15,0.05));
+    color: #f1c40f;
+    font-weight: 700;
+    border: 1px solid rgba(241,196,15,0.15);
+    box-shadow: 0 0 8px rgba(241,196,15,0.1);
+}
+
+/* HISTÓRICO */
+.lista-sorteios {
+    background: rgba(0,0,0,0.3);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.lista-sorteios h3 {
+    font-size: 0.85em;
+    margin-bottom: 15px;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.sorteios-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.sorteio-item {
+    background: rgba(241, 196, 15, 0.05);
+    border: 1px solid rgba(241, 196, 15, 0.1);
+    border-radius: 10px;
+    padding: 6px 12px;
+    font-size: 0.75em;
+    font-weight: 500;
+}
+
+.sorteio-item span {
+    font-weight: 700;
     color: #f1c40f;
 }
 
-/* LOADING */
+/* VENCEDOR */
+.vencedor-card {
+    background: linear-gradient(135deg, rgba(241,196,15,0.1), rgba(0,0,0,0.3));
+    border: 1px solid rgba(241,196,15,0.2);
+    text-align: center;
+    padding: 25px;
+    border-radius: 16px;
+    margin-top: 20px;
+}
+
+.vencedor-card h3 {
+    color: #f1c40f;
+    margin-bottom: 10px;
+}
+
+.vencedor-card p {
+    font-size: 1.2em;
+    font-weight: 700;
+}
+
 .loading {
     text-align: center;
     padding: 40px;
-    color: rgba(255,255,255,0.5);
+    color: rgba(255,255,255,0.4);
     font-size: 0.9em;
 }
 
+footer {
+    text-align: center;
+    padding: 20px;
+    font-size: 0.7em;
+    opacity: 0.4;
+    letter-spacing: 0.5px;
+}
+
 @media (max-width: 768px) {
+    .container {
+        padding: 12px;
+    }
+    
+    .main-title {
+        font-size: 2em;
+        letter-spacing: 2px;
+    }
+    
+    .hero-section {
+        padding: 25px 15px;
+    }
+    
     .ranking-columns, .ranking-row {
-        grid-template-columns: 45px 1fr 50px 60px;
+        grid-template-columns: 45px 1fr 55px 65px;
         padding: 10px 12px;
     }
     
@@ -634,7 +506,7 @@
     }
     
     .number-badge {
-        font-size: 0.6em;
+        font-size: 0.55em;
         padding: 1px 4px;
     }
     
@@ -642,15 +514,34 @@
         font-size: 0.9em;
     }
     
-    .ranking-stats {
-        flex-direction: column;
+    .grid-numeros {
+        gap: 4px;
+    }
+    
+    .grid-numero {
+        font-size: 0.65em;
+        padding: 5px 2px;
+    }
+    
+    .premiacao {
         gap: 8px;
+        padding: 12px;
+    }
+    
+    .premio-item .valor {
+        font-size: 1em;
+    }
+    
+    .numeros-sorteio span {
+        width: 40px;
+        height: 40px;
+        font-size: 1em;
     }
 }
-    </style>
 </head>
 <body>
     <div class="container">
+        <!-- HEADER PROFISSIONAL -->
         <header class="hero-section">
             <div class="title-top">OFICIAL</div>
             <h1 class="main-title">UM DE NÓS</h1>
@@ -661,11 +552,12 @@
             </p>
         </header>
 
+        <!-- STATUS -->
         <div class="status-jogo" id="statusJogo">
             <span class="status-badge">🟢 CARREGANDO...</span>
         </div>
 
-        <!-- PREMIAÇÃO - 3 cards -->
+        <!-- PREMIAÇÃO -->
         <div class="premiacao" id="premiacao" style="display: none;">
             <div class="premio-item">
                 <h4>🥇 1º LUGAR</h4>
@@ -681,13 +573,13 @@
             </div>
         </div>
 
-        <!-- ÚLTIMO SORTEIO - fonte menor -->
+        <!-- ÚLTIMO SORTEIO -->
         <div class="ultimo-sorteio" id="ultimoSorteio">
             <h3>📢 ÚLTIMO SORTEIO DA QUINA</h3>
             <div class="numeros-sorteio" id="numerosSorteio">-</div>
         </div>
 
-        <!-- RANKING PROFISSIONAL -->
+        <!-- RANKING -->
         <div class="ranking-container">
             <div class="ranking-header">
                 <h3>🏆 RANKING DE ACERTOS</h3>
@@ -696,7 +588,6 @@
                     <span class="stat-item">⭐ Maior pontuação: <strong id="maiorPontuacao">0</strong>/17</span>
                 </div>
             </div>
-            
             <div class="ranking-table">
                 <div class="ranking-columns">
                     <div class="col-pos">POS</div>
@@ -720,10 +611,11 @@
         <div class="lista-sorteios">
             <h3>📜 HISTÓRICO DE SORTEIOS</h3>
             <div class="sorteios-container" id="listaSorteios">
-                <div>Carregando sorteios...</div>
+                <div class="loading">Carregando sorteios...</div>
             </div>
         </div>
 
+        <!-- VENCEDOR -->
         <div class="vencedor-info" id="vencedorInfo" style="display: none;">
             <div class="vencedor-card">
                 <h3>🏆 VENCEDOR 🏆</h3>
@@ -746,23 +638,5 @@
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>
-    <script>
-        // Forçar atualização do Service Worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    registration.update();
-                }
-            });
-            
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                console.log('Service Worker atualizado! Recarregando página...');
-                window.location.reload();
-            });
-        }
-        
-        // Versão do app para debug
-        console.log('Um de Nós - Versão 2.0 - ' + new Date().toLocaleString());
-    </script>
 </body>
 </html>
