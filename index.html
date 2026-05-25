@@ -436,6 +436,52 @@
             .premio-item .valor { font-size: 1em; }
             .numeros-sorteio span { width: 40px; height: 40px; font-size: 1em; }
         }
+        /* DESTAQUES DO RANKING */
+.ranking-row.first-place {
+    background: linear-gradient(90deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+    border-left: 4px solid #ffd700;
+    position: relative;
+}
+
+.ranking-row.first-place:hover {
+    background: linear-gradient(90deg, rgba(255,215,0,0.2), rgba(255,215,0,0.08));
+}
+
+.ranking-row.second-place {
+    background: linear-gradient(90deg, rgba(192,192,192,0.12), rgba(192,192,192,0.04));
+    border-left: 4px solid #c0c0c0;
+}
+
+.ranking-row.second-place:hover {
+    background: linear-gradient(90deg, rgba(192,192,192,0.18), rgba(192,192,192,0.06));
+}
+
+.ranking-row.last-place {
+    border: 1px solid rgba(220,53,69,0.5);
+    border-left: 4px solid #dc3545;
+    background: rgba(220,53,69,0.05);
+    margin-top: 8px;
+    border-radius: 12px;
+}
+
+.ranking-row.last-place:hover {
+    background: rgba(220,53,69,0.1);
+}
+
+.last-place-badge {
+    display: inline-block;
+    background: rgba(220,53,69,0.15);
+    color: #ff6b6b;
+    font-size: 0.65em;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+    font-weight: 600;
+}
+
+.ranking-pos i {
+    font-style: normal;
+}
     </style>
 </head>
 <body>

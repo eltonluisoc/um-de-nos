@@ -175,23 +175,47 @@ function atualizarRanking(participantes) {
     if (totalSpan) totalSpan.textContent = participantes.length;
     if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
+    // Ordenar por acertos (decrescente)
+    const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
+    const ultimoIndex = ordenados.length - 1;
+    
     let html = '';
-    participantes.forEach((p, index) => {
+    
+    ordenados.forEach((p, index) => {
         const posicao = index + 1;
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
+        const isFirst = posicao === 1;
+        const isSecond = posicao === 2;
+        const isLast = index === ultimoIndex;
         
-        let posClass = '';
-        let medalha = '';
-        if (posicao === 1) {
-            posClass = 'pos-1';
-            medalha = '👑 ';
-        } else if (posicao === 2) {
-            posClass = 'pos-2';
-            medalha = '🥈 ';
-        } else if (posicao === 3) {
-            posClass = 'pos-3';
-            medalha = '🥉 ';
+        // Definir classe especial
+        let rowClass = '';
+        let medalhaIcon = '';
+        
+        if (isFirst) {
+            rowClass = 'first-place';
+            medalhaIcon = '👑';
+        } else if (isSecond) {
+            rowClass = 'second-place';
+            medalhaIcon = '🥈';
+        } else if (isLast && ordenados.length > 2) {
+            rowClass = 'last-place';
+            medalhaIcon = '🎯';
+        }
+        
+        if (isChampion) rowClass += ' champion';
+        
+        // Texto da posição
+        let posText = '';
+        if (isFirst) {
+            posText = `${medalhaIcon} 1º`;
+        } else if (isSecond) {
+            posText = `${medalhaIcon} 2º`;
+        } else if (isLast && ordenados.length > 2) {
+            posText = `${medalhaIcon} ${posicao}º`;
+        } else {
+            posText = `${posicao}º`;
         }
         
         // Gerar números do participante
@@ -204,13 +228,17 @@ function atualizarRanking(participantes) {
         }
         numerosHtml += '</div>';
         
+        // Badge de menos acertos
+        let lastBadge = '';
+        if (isLast && ordenados.length > 2) {
+            lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
+        }
+        
         html += `
-            <div class="ranking-row ${isChampion ? 'champion' : ''}" onclick="window.mostrarDetalhes('${p.id}')">
-                <div class="ranking-pos ${posClass}">
-                    ${medalha}${posicao}
-                </div>
+            <div class="ranking-row ${rowClass}" onclick="window.mostrarDetalhes('${p.id}')">
+                <div class="ranking-pos">${posText}</div>
                 <div class="ranking-player">
-                    <div class="player-name">${p.nome}</div>
+                    <div class="player-name">${p.nome} ${lastBadge}</div>
                     ${numerosHtml}
                 </div>
                 <div class="ranking-score">
