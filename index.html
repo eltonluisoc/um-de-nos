@@ -8,540 +8,438 @@
     <meta name="theme-color" content="#0b1e19">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b1e19'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='%23f1c40f'%3E🎯%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
-    @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Inter', 'Segoe UI', sans-serif;
-    background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-    min-height: 100vh;
-    color: white;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-}
-
-/* HEADER PROFISSIONAL - IDÊNTICO AO ADMIN */
-.hero-section {
-    background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-    border-radius: 16px;
-    padding: 40px 20px;
-    margin-bottom: 30px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-    text-align: center;
-}
-
-.title-top {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.75em;
-    letter-spacing: 3px;
-    color: rgba(255, 255, 255, 0.5);
-    text-transform: uppercase;
-    margin-bottom: 15px;
-}
-
-.main-title {
-    font-family: 'Inter', sans-serif;
-    font-size: 3.5em;
-    font-weight: 800;
-    letter-spacing: 4px;
-    background: linear-gradient(135deg, #ffffff 0%, #f1c40f 80%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-    margin: 0 0 15px 0;
-    text-shadow: 0 0 20px rgba(241, 196, 15, 0.2);
-}
-
-.challenge-badge {
-    font-family: 'Inter', sans-serif;
-    color: #f1c40f;
-    font-weight: 700;
-    font-size: 1.1em;
-    letter-spacing: 1px;
-    margin-bottom: 20px;
-    display: inline-block;
-    padding: 5px 15px;
-    background: rgba(241, 196, 15, 0.08);
-    border-radius: 50px;
-    border: 1px solid rgba(241, 196, 15, 0.15);
-}
-
-.description {
-    font-family: 'Inter', sans-serif;
-    font-size: 0.95em;
-    color: rgba(255, 255, 255, 0.6);
-    line-height: 1.6;
-    max-width: 500px;
-    margin: 0 auto;
-}
-
-.description strong {
-    color: #f1c40f;
-}
-
-/* STATUS BADGE */
-.status-jogo {
-    text-align: center;
-    margin-bottom: 25px;
-}
-
-.status-badge {
-    background: rgba(241, 196, 15, 0.08);
-    border: 1px solid rgba(241, 196, 15, 0.2);
-    color: #f1c40f;
-    padding: 10px 24px;
-    border-radius: 50px;
-    font-weight: 600;
-    font-size: 0.9em;
-    display: inline-block;
-    backdrop-filter: blur(5px);
-    box-shadow: 0 0 15px rgba(241, 196, 15, 0.1);
-}
-
-/* PREMIAÇÃO - MESMO ESTILO DO ADMIN */
-.premiacao {
-    background: rgba(255,255,255,0.03);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 25px;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 15px;
-    text-align: center;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.premio-item {
-    background: rgba(255,255,255,0.03);
-    border-radius: 12px;
-    padding: 15px;
-    transition: all 0.2s;
-    border: 1px solid rgba(255, 255, 255, 0.03);
-}
-
-.premio-item:hover {
-    background: rgba(241, 196, 15, 0.05);
-    transform: translateY(-2px);
-    border-color: rgba(241, 196, 15, 0.15);
-}
-
-.premio-item h4 {
-    font-size: 0.85em;
-    margin-bottom: 8px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 0.5px;
-}
-
-.premio-item .valor {
-    font-size: 1.4em;
-    font-weight: 800;
-    color: #f1c40f;
-}
-
-/* ÚLTIMO SORTEIO */
-.ultimo-sorteio {
-    background: rgba(0,0,0,0.3);
-    border-radius: 16px;
-    padding: 16px 20px;
-    text-align: center;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.ultimo-sorteio h3 {
-    font-size: 0.85em;
-    margin-bottom: 12px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.numeros-sorteio {
-    display: flex;
-    justify-content: center;
-    gap: 12px;
-    flex-wrap: wrap;
-}
-
-.numeros-sorteio span {
-    background: rgba(241, 196, 15, 0.08);
-    border: 1px solid rgba(241, 196, 15, 0.2);
-    color: #f1c40f;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.3em;
-    font-weight: 800;
-    box-shadow: 0 0 10px rgba(241, 196, 15, 0.1);
-}
-
-/* RANKING - IDÊNTICO AO ADMIN */
-.ranking-container {
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 16px;
-    margin-bottom: 25px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.ranking-header {
-    background: rgba(0,0,0,0.4);
-    padding: 18px 24px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.ranking-header h3 {
-    font-size: 1.1em;
-    font-weight: 600;
-    margin-bottom: 10px;
-    color: #f1c40f;
-    letter-spacing: 1px;
-}
-
-.ranking-stats {
-    display: flex;
-    gap: 24px;
-    flex-wrap: wrap;
-}
-
-.stat-item {
-    font-size: 0.8em;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 0.5px;
-}
-
-.stat-item strong {
-    color: #f1c40f;
-    font-weight: 700;
-}
-
-.ranking-columns {
-    display: grid;
-    grid-template-columns: 60px 1fr 70px 80px;
-    background: rgba(241, 196, 15, 0.04);
-    padding: 12px 20px;
-    font-size: 0.7em;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    color: rgba(255,255,255,0.4);
-    border-bottom: 1px solid rgba(255,255,255,0.05);
-}
-
-.ranking-list {
-    max-height: 500px;
-    overflow-y: auto;
-}
-
-.ranking-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-.ranking-list::-webkit-scrollbar-track {
-    background: rgba(255,255,255,0.03);
-    border-radius: 10px;
-}
-
-.ranking-list::-webkit-scrollbar-thumb {
-    background: #f1c40f;
-    border-radius: 10px;
-}
-
-.ranking-row {
-    display: grid;
-    grid-template-columns: 60px 1fr 70px 80px;
-    padding: 14px 20px;
-    align-items: center;
-    border-bottom: 1px solid rgba(255,255,255,0.03);
-    transition: all 0.2s ease;
-    cursor: pointer;
-}
-
-.ranking-row:hover {
-    background: rgba(241, 196, 15, 0.04);
-    transform: translateX(4px);
-}
-
-.ranking-row.champion {
-    background: linear-gradient(90deg, rgba(241,196,15,0.08), transparent);
-    border-left: 3px solid #f1c40f;
-}
-
-.ranking-pos {
-    font-weight: 800;
-    font-size: 1.1em;
-}
-
-.pos-1 { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.3); }
-.pos-2 { color: #c0c0c0; }
-.pos-3 { color: #cd7f32; }
-
-.ranking-player {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-}
-
-.player-name {
-    font-weight: 700;
-    font-size: 0.95em;
-}
-
-.ranking-row.champion .player-name {
-    color: #f1c40f;
-}
-
-.player-numbers {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-}
-
-.number-badge {
-    background: rgba(255,255,255,0.05);
-    padding: 2px 6px;
-    border-radius: 12px;
-    font-size: 0.65em;
-    font-weight: 600;
-    transition: all 0.2s;
-}
-
-.number-badge.hit {
-    background: rgba(40, 167, 69, 0.2);
-    color: #28a745;
-    border: 1px solid rgba(40, 167, 69, 0.3);
-}
-
-.ranking-score {
-    text-align: center;
-    font-weight: 800;
-    font-size: 1.2em;
-    color: #f1c40f;
-}
-
-.ranking-score small {
-    font-size: 0.6em;
-    font-weight: 400;
-    color: rgba(255,255,255,0.4);
-}
-
-.progress-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.progress-bar-container {
-    background: rgba(255,255,255,0.08);
-    border-radius: 20px;
-    height: 4px;
-    width: 100%;
-    overflow: hidden;
-}
-
-.progress-fill {
-    background: linear-gradient(90deg, #f1c40f, #ff8c00);
-    height: 100%;
-    width: 0%;
-    border-radius: 20px;
-    transition: width 0.5s ease;
-    box-shadow: 0 0 5px rgba(241,196,15,0.5);
-}
-
-.progress-percent {
-    font-size: 0.65em;
-    font-weight: 600;
-    color: rgba(255,255,255,0.4);
-}
-
-/* NÚMEROS SORTEADOS */
-.numeros-sorteados {
-    background: rgba(0,0,0,0.3);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.numeros-sorteados h3 {
-    font-size: 0.85em;
-    margin-bottom: 15px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-    text-align: center;
-}
-
-.grid-numeros {
-    display: grid;
-    grid-template-columns: repeat(10, 1fr);
-    gap: 6px;
-}
-
-.grid-numero {
-    background: rgba(255,255,255,0.04);
-    padding: 8px 4px;
-    text-align: center;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.75em;
-    transition: all 0.2s;
-}
-
-.grid-numero.sorteados {
-    background: linear-gradient(135deg, rgba(241,196,15,0.15), rgba(241,196,15,0.05));
-    color: #f1c40f;
-    font-weight: 700;
-    border: 1px solid rgba(241,196,15,0.15);
-    box-shadow: 0 0 8px rgba(241,196,15,0.1);
-}
-
-/* HISTÓRICO */
-.lista-sorteios {
-    background: rgba(0,0,0,0.3);
-    border-radius: 16px;
-    padding: 18px;
-    margin-bottom: 25px;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.lista-sorteios h3 {
-    font-size: 0.85em;
-    margin-bottom: 15px;
-    color: rgba(255,255,255,0.5);
-    letter-spacing: 1px;
-    text-transform: uppercase;
-}
-
-.sorteios-container {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-.sorteio-item {
-    background: rgba(241, 196, 15, 0.05);
-    border: 1px solid rgba(241, 196, 15, 0.1);
-    border-radius: 10px;
-    padding: 6px 12px;
-    font-size: 0.75em;
-    font-weight: 500;
-}
-
-.sorteio-item span {
-    font-weight: 700;
-    color: #f1c40f;
-}
-
-/* VENCEDOR */
-.vencedor-card {
-    background: linear-gradient(135deg, rgba(241,196,15,0.1), rgba(0,0,0,0.3));
-    border: 1px solid rgba(241,196,15,0.2);
-    text-align: center;
-    padding: 25px;
-    border-radius: 16px;
-    margin-top: 20px;
-}
-
-.vencedor-card h3 {
-    color: #f1c40f;
-    margin-bottom: 10px;
-}
-
-.vencedor-card p {
-    font-size: 1.2em;
-    font-weight: 700;
-}
-
-.loading {
-    text-align: center;
-    padding: 40px;
-    color: rgba(255,255,255,0.4);
-    font-size: 0.9em;
-}
-
-footer {
-    text-align: center;
-    padding: 20px;
-    font-size: 0.7em;
-    opacity: 0.4;
-    letter-spacing: 0.5px;
-}
-
-@media (max-width: 768px) {
-    .container {
-        padding: 12px;
-    }
-    
-    .main-title {
-        font-size: 2em;
-        letter-spacing: 2px;
-    }
-    
-    .hero-section {
-        padding: 25px 15px;
-    }
-    
-    .ranking-columns, .ranking-row {
-        grid-template-columns: 45px 1fr 55px 65px;
-        padding: 10px 12px;
-    }
-    
-    .player-name {
-        font-size: 0.85em;
-    }
-    
-    .number-badge {
-        font-size: 0.55em;
-        padding: 1px 4px;
-    }
-    
-    .ranking-score {
-        font-size: 0.9em;
-    }
-    
-    .grid-numeros {
-        gap: 4px;
-    }
-    
-    .grid-numero {
-        font-size: 0.65em;
-        padding: 5px 2px;
-    }
-    
-    .premiacao {
-        gap: 8px;
-        padding: 12px;
-    }
-    
-    .premio-item .valor {
-        font-size: 1em;
-    }
-    
-    .numeros-sorteio span {
-        width: 40px;
-        height: 40px;
-        font-size: 1em;
-    }
-}
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+            min-height: 100vh;
+            color: #ffffff;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .hero-section {
+            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+            border-radius: 16px;
+            padding: 40px 20px;
+            margin-bottom: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+        
+        .title-top {
+            font-size: 0.75em;
+            letter-spacing: 3px;
+            color: rgba(255, 255, 255, 0.5);
+            text-transform: uppercase;
+            margin-bottom: 15px;
+        }
+        
+        .main-title {
+            font-size: 3.5em;
+            font-weight: 800;
+            letter-spacing: 4px;
+            background: linear-gradient(135deg, #ffffff 0%, #f1c40f 80%);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin: 0 0 15px 0;
+        }
+        
+        .challenge-badge {
+            color: #f1c40f;
+            font-weight: 700;
+            font-size: 1.1em;
+            letter-spacing: 1px;
+            margin-bottom: 20px;
+            display: inline-block;
+            padding: 5px 15px;
+            background: rgba(241, 196, 15, 0.08);
+            border-radius: 50px;
+            border: 1px solid rgba(241, 196, 15, 0.15);
+        }
+        
+        .description {
+            font-size: 0.95em;
+            color: rgba(255, 255, 255, 0.6);
+            line-height: 1.6;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .description strong {
+            color: #f1c40f;
+        }
+        
+        .status-jogo {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+        
+        .status-badge {
+            background: rgba(241, 196, 15, 0.08);
+            border: 1px solid rgba(241, 196, 15, 0.2);
+            color: #f1c40f;
+            padding: 10px 24px;
+            border-radius: 50px;
+            font-weight: 600;
+            font-size: 0.9em;
+            display: inline-block;
+        }
+        
+        .premiacao {
+            background: rgba(255,255,255,0.03);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 25px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .premio-item {
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            padding: 15px;
+            transition: all 0.2s;
+        }
+        
+        .premio-item:hover {
+            background: rgba(241, 196, 15, 0.05);
+            transform: translateY(-2px);
+        }
+        
+        .premio-item h4 {
+            font-size: 0.85em;
+            margin-bottom: 8px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .premio-item .valor {
+            font-size: 1.4em;
+            font-weight: 800;
+            color: #f1c40f;
+        }
+        
+        .ultimo-sorteio {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 16px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .ultimo-sorteio h3 {
+            font-size: 0.85em;
+            margin-bottom: 12px;
+            color: rgba(255,255,255,0.5);
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+        
+        .numeros-sorteio {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        
+        .numeros-sorteio span {
+            background: rgba(241, 196, 15, 0.08);
+            border: 1px solid rgba(241, 196, 15, 0.2);
+            color: #f1c40f;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.3em;
+            font-weight: 800;
+        }
+        
+        .ranking-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            margin-bottom: 25px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .ranking-header {
+            background: rgba(0,0,0,0.4);
+            padding: 18px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .ranking-header h3 {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #f1c40f;
+        }
+        
+        .ranking-stats {
+            display: flex;
+            gap: 24px;
+            flex-wrap: wrap;
+        }
+        
+        .stat-item {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .stat-item strong {
+            color: #f1c40f;
+        }
+        
+        .ranking-columns {
+            display: grid;
+            grid-template-columns: 60px 1fr 70px 80px;
+            background: rgba(241, 196, 15, 0.04);
+            padding: 12px 20px;
+            font-size: 0.7em;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        .ranking-list {
+            max-height: 500px;
+            overflow-y: auto;
+        }
+        
+        .ranking-row {
+            display: grid;
+            grid-template-columns: 60px 1fr 70px 80px;
+            padding: 14px 20px;
+            align-items: center;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        
+        .ranking-row:hover {
+            background: rgba(241, 196, 15, 0.04);
+            transform: translateX(4px);
+        }
+        
+        .ranking-pos {
+            font-weight: 800;
+            font-size: 1.1em;
+        }
+        
+        .pos-1 { color: #ffd700; }
+        .pos-2 { color: #c0c0c0; }
+        .pos-3 { color: #cd7f32; }
+        
+        .ranking-player {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .player-name {
+            font-weight: 700;
+            font-size: 0.95em;
+        }
+        
+        .player-numbers {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        
+        .number-badge {
+            background: rgba(255,255,255,0.05);
+            padding: 2px 6px;
+            border-radius: 12px;
+            font-size: 0.65em;
+            font-weight: 600;
+        }
+        
+        .number-badge.hit {
+            background: rgba(40, 167, 69, 0.2);
+            color: #28a745;
+            border: 1px solid rgba(40, 167, 69, 0.3);
+        }
+        
+        .ranking-score {
+            text-align: center;
+            font-weight: 800;
+            font-size: 1.2em;
+            color: #f1c40f;
+        }
+        
+        .ranking-score small {
+            font-size: 0.6em;
+            font-weight: 400;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        .progress-wrapper {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .progress-bar-container {
+            background: rgba(255,255,255,0.08);
+            border-radius: 20px;
+            height: 4px;
+            width: 100%;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            background: linear-gradient(90deg, #f1c40f, #ff8c00);
+            height: 100%;
+            width: 0%;
+            border-radius: 20px;
+            transition: width 0.5s ease;
+        }
+        
+        .progress-percent {
+            font-size: 0.65em;
+            font-weight: 600;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        .numeros-sorteados {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .numeros-sorteados h3 {
+            font-size: 0.85em;
+            margin-bottom: 15px;
+            color: rgba(255,255,255,0.5);
+            text-align: center;
+        }
+        
+        .grid-numeros {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+        }
+        
+        .grid-numero {
+            background: rgba(255,255,255,0.04);
+            padding: 8px 4px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75em;
+        }
+        
+        .grid-numero.sorteados {
+            background: rgba(241,196,15,0.15);
+            color: #f1c40f;
+            font-weight: 700;
+        }
+        
+        .lista-sorteios {
+            background: rgba(0,0,0,0.3);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .lista-sorteios h3 {
+            font-size: 0.85em;
+            margin-bottom: 15px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .sorteios-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .sorteio-item {
+            background: rgba(241, 196, 15, 0.05);
+            border: 1px solid rgba(241, 196, 15, 0.1);
+            border-radius: 10px;
+            padding: 6px 12px;
+            font-size: 0.75em;
+        }
+        
+        .sorteio-item span {
+            font-weight: 700;
+            color: #f1c40f;
+        }
+        
+        .vencedor-card {
+            background: linear-gradient(135deg, rgba(241,196,15,0.1), rgba(0,0,0,0.3));
+            border: 1px solid rgba(241,196,15,0.2);
+            text-align: center;
+            padding: 25px;
+            border-radius: 16px;
+            margin-top: 20px;
+        }
+        
+        .vencedor-card h3 {
+            color: #f1c40f;
+            margin-bottom: 10px;
+        }
+        
+        .vencedor-card p {
+            font-size: 1.2em;
+            font-weight: 700;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 0.7em;
+            opacity: 0.4;
+        }
+        
+        @media (max-width: 768px) {
+            .container { padding: 12px; }
+            .main-title { font-size: 2em; letter-spacing: 2px; }
+            .ranking-columns, .ranking-row { grid-template-columns: 45px 1fr 55px 65px; padding: 10px 12px; }
+            .player-name { font-size: 0.85em; }
+            .number-badge { font-size: 0.55em; padding: 1px 4px; }
+            .ranking-score { font-size: 0.9em; }
+            .grid-numeros { gap: 4px; }
+            .grid-numero { font-size: 0.65em; padding: 5px 2px; }
+            .premiacao { gap: 8px; padding: 12px; }
+            .premio-item .valor { font-size: 1em; }
+            .numeros-sorteio span { width: 40px; height: 40px; font-size: 1em; }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <!-- HEADER PROFISSIONAL -->
         <header class="hero-section">
             <div class="title-top">OFICIAL</div>
             <h1 class="main-title">UM DE NÓS</h1>
@@ -552,12 +450,10 @@ footer {
             </p>
         </header>
 
-        <!-- STATUS -->
         <div class="status-jogo" id="statusJogo">
             <span class="status-badge">🟢 CARREGANDO...</span>
         </div>
 
-        <!-- PREMIAÇÃO -->
         <div class="premiacao" id="premiacao" style="display: none;">
             <div class="premio-item">
                 <h4>🥇 1º LUGAR</h4>
@@ -573,19 +469,17 @@ footer {
             </div>
         </div>
 
-        <!-- ÚLTIMO SORTEIO -->
         <div class="ultimo-sorteio" id="ultimoSorteio">
             <h3>📢 ÚLTIMO SORTEIO DA QUINA</h3>
             <div class="numeros-sorteio" id="numerosSorteio">-</div>
         </div>
 
-        <!-- RANKING -->
         <div class="ranking-container">
             <div class="ranking-header">
                 <h3>🏆 RANKING DE ACERTOS</h3>
                 <div class="ranking-stats" id="rankingStats">
                     <span class="stat-item">🎯 Participantes: <strong id="totalParticipantes">0</strong></span>
-                    <span class="stat-item">⭐ Maior pontuação: <strong id="maiorPontuacao">0</strong>/17</span>
+                    <span class="stat-item">⭐ Maior pontuação: <strong id="maiorPontuacao">0</strong></span>
                 </div>
             </div>
             <div class="ranking-table">
@@ -601,13 +495,11 @@ footer {
             </div>
         </div>
 
-        <!-- NÚMEROS QUE JÁ SAÍRAM -->
         <div class="numeros-sorteados">
             <h3>📊 NÚMEROS QUE JÁ SAÍRAM</h3>
             <div class="grid-numeros" id="gridNumerosSorteados"></div>
         </div>
 
-        <!-- HISTÓRICO DE SORTEIOS -->
         <div class="lista-sorteios">
             <h3>📜 HISTÓRICO DE SORTEIOS</h3>
             <div class="sorteios-container" id="listaSorteios">
@@ -615,7 +507,6 @@ footer {
             </div>
         </div>
 
-        <!-- VENCEDOR -->
         <div class="vencedor-info" id="vencedorInfo" style="display: none;">
             <div class="vencedor-card">
                 <h3>🏆 VENCEDOR 🏆</h3>
