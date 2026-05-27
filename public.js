@@ -19,9 +19,6 @@ let sorteiosRealizados = [];
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Um de Nós - Página Pública iniciada');
     carregarDados();
-    // Iniciar verificação de status (leve, apenas consulta)
-    setTimeout(atualizarStatusSorteio, 1000);
-    setInterval(atualizarStatusSorteio, 60000);
 });
 
 async function carregarDados() {
@@ -31,6 +28,7 @@ async function carregarDados() {
         await carregarSorteios();
         await carregarNumerosSorteados();
         escutarParticipantes();
+        await atualizarStatusSorteio();
     }
 }
 
@@ -126,7 +124,7 @@ async function carregarNumerosSorteados() {
         }
     }
     
-    let html = '<div class="grid-numeros" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px;">';
+    let html = '<div class="grid-numeros">';
     for (let i = 1; i <= 80; i++) {
         const foiSorteado = numerosSorteadosAcumulados.includes(i);
         html += `
@@ -141,7 +139,7 @@ async function carregarNumerosSorteados() {
 
 function escutarParticipantes() {
     const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoId), orderBy('acertos', 'desc'));
+    const q = query(participantesRef, where('jogoId', '==', jogoId));
     
     onSnapshot(q, (snapshot) => {
         participantes = [];
@@ -160,6 +158,9 @@ function escutarParticipantes() {
     });
 }
 
+// ============================================
+// RANKING INTELIGENTE COM SUPORTE A EMPATES
+// ============================================
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
     const totalSpan = document.getElementById('totalParticipantes');
@@ -172,27 +173,49 @@ function atualizarRanking(participantes) {
         return;
     }
     
-    const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+    // Ordenar por acertos (decrescente)
+    const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
+    const maiorAcertos = ordenados[0]?.acertos || 0;
+    const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
+    
     if (totalSpan) totalSpan.textContent = participantes.length;
     if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
-    const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
-    const ultimoIndex = ordenados.length - 1;
+    // Calcular posições com EMPATES
+    const posicoes = [];
+    let posicaoAtual = 1;
+    
+    for (let i = 0; i < ordenados.length; i++) {
+        if (i > 0 && ordenados[i].acertos === ordenados[i-1].acertos) {
+            posicoes.push(posicaoAtual);
+        } else {
+            posicaoAtual = i + 1;
+            posicoes.push(posicaoAtual);
+        }
+    }
+    
+    // Verificar se há empate no primeiro lugar
+    const primeiroAcerto = ordenados[0]?.acertos || 0;
+    const temEmpatePrimeiro = ordenados.filter(p => p.acertos === primeiroAcerto).length > 1;
     
     let html = '';
     
     ordenados.forEach((p, index) => {
-        const posicao = index + 1;
+        const posicao = posicoes[index];
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
         const isFirst = posicao === 1;
         const isSecond = posicao === 2;
-        const isLast = index === ultimoIndex;
+        const isLast = index === ordenados.length - 1;
         
         let rowClass = '';
         let medalhaIcon = '';
         
-        if (isFirst) {
+        // Lógica de destaque com suporte a empates
+        if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
+            rowClass = 'first-place';
+            medalhaIcon = '👑';
+        } else if (isFirst && !temEmpatePrimeiro) {
             rowClass = 'first-place';
             medalhaIcon = '👑';
         } else if (isSecond) {
@@ -205,17 +228,21 @@ function atualizarRanking(participantes) {
         
         if (isChampion) rowClass += ' champion';
         
+        // Formatar texto da posição
         let posText = '';
-        if (isFirst) {
-            posText = `${medalhaIcon} 1º`;
+        if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
+            posText = `👑 ${posicao}º`;
+        } else if (isFirst && !temEmpatePrimeiro) {
+            posText = `👑 1º`;
         } else if (isSecond) {
-            posText = `${medalhaIcon} 2º`;
+            posText = `🥈 2º`;
         } else if (isLast && ordenados.length > 2) {
-            posText = `${medalhaIcon} ${posicao}º`;
+            posText = `🎯 ${posicao}º`;
         } else {
             posText = `${posicao}º`;
         }
         
+        // Gerar números do participante
         let numerosHtml = '<div class="player-numbers">';
         if (p.numeros && Array.isArray(p.numeros)) {
             for (const num of p.numeros) {
@@ -225,8 +252,9 @@ function atualizarRanking(participantes) {
         }
         numerosHtml += '</div>';
         
+        // Badge de menos acertos (apenas se não houver empate no primeiro)
         let lastBadge = '';
-        if (isLast && ordenados.length > 2) {
+        if (isLast && ordenados.length > 2 && !temEmpatePrimeiro) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
         }
         
@@ -317,10 +345,7 @@ async function carregarUltimoVencedor() {
 }
 
 // ============================================
-// INDICADOR DE STATUS DO SORTEIO
-// Apenas consulta a API e mostra se o sorteio 
-// do dia já foi importado ou não.
-// A BUSCA E IMPORTAÇÃO é feita pelo admin.js
+// INDICADOR DE STATUS - Busca APENAS UMA VEZ AO ABRIR
 // ============================================
 
 async function atualizarStatusSorteio() {
@@ -335,7 +360,6 @@ async function atualizarStatusSorteio() {
     
     if (horaSpan) horaSpan.textContent = `${dataStr} ${horaStr}`;
     
-    // Se não tem jogo ativo, não faz sentido verificar
     if (!jogoId) {
         statusSpan.innerHTML = '⏳ Sem jogo ativo';
         statusSpan.className = 'aguardando';

@@ -98,6 +98,26 @@
             display: inline-block;
         }
         
+        .status-info {
+            text-align: center;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            font-size: 0.65em;
+            opacity: 0.6;
+            letter-spacing: 0.3px;
+        }
+        
+        .status-info span {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .status-info .atualizado { color: #28a745; }
+        .status-info .aguardando { color: #f1c40f; }
+        .status-info .verificando { color: #ff8c00; }
+        .status-info .erro { color: #dc3545; }
+        
         .premiacao {
             background: rgba(255,255,255,0.03);
             border-radius: 16px;
@@ -210,7 +230,7 @@
         
         .ranking-columns {
             display: grid;
-            grid-template-columns: 60px 1fr 70px 80px;
+            grid-template-columns: 70px 1fr 70px 80px;
             background: rgba(241, 196, 15, 0.04);
             padding: 12px 20px;
             font-size: 0.7em;
@@ -225,9 +245,23 @@
             overflow-y: auto;
         }
         
+        .ranking-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .ranking-list::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+        }
+        
+        .ranking-list::-webkit-scrollbar-thumb {
+            background: #f1c40f;
+            border-radius: 10px;
+        }
+        
         .ranking-row {
             display: grid;
-            grid-template-columns: 60px 1fr 70px 80px;
+            grid-template-columns: 70px 1fr 70px 80px;
             padding: 14px 20px;
             align-items: center;
             border-bottom: 1px solid rgba(255,255,255,0.03);
@@ -242,50 +276,8 @@
         
         .ranking-pos {
             font-weight: 800;
-            font-size: 1.1em;
+            font-size: 1em;
         }
-        
-        .pos-1 { color: #ffd700; }
-        .pos-2 { color: #c0c0c0; }
-        .pos-3 { color: #cd7f32; }
-        
-        .ranking-player {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        /* INDICADOR DE STATUS DO SORTEIO */
-.status-info {
-    text-align: center;
-    margin-top: 5px;
-    margin-bottom: 15px;
-    font-size: 0.65em;
-    opacity: 0.6;
-    letter-spacing: 0.3px;
-}
-
-.status-info span {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.status-info .atualizado {
-    color: #28a745;
-}
-
-.status-info .aguardando {
-    color: #f1c40f;
-}
-
-.status-info .verificando {
-    color: #ff8c00;
-}
-
-.status-info .erro {
-    color: #dc3545;
-}
         
         .player-name {
             font-weight: 700;
@@ -296,18 +288,20 @@
             display: flex;
             flex-wrap: wrap;
             gap: 4px;
+            margin-top: 4px;
         }
         
         .number-badge {
-            background: rgba(255,255,255,0.05);
+            background: rgba(255,255,255,0.08);
             padding: 2px 6px;
             border-radius: 12px;
             font-size: 0.65em;
             font-weight: 600;
+            transition: all 0.2s;
         }
         
         .number-badge.hit {
-            background: rgba(40, 167, 69, 0.2);
+            background: rgba(40, 167, 69, 0.25);
             color: #28a745;
             border: 1px solid rgba(40, 167, 69, 0.3);
         }
@@ -455,10 +449,241 @@
             opacity: 0.4;
         }
         
+        /* DESTAQUES DO RANKING */
+        .ranking-row.first-place {
+            background: linear-gradient(90deg, rgba(255,215,0,0.12), rgba(255,215,0,0.03));
+            border-left: 4px solid #ffd700;
+        }
+        
+        .ranking-row.second-place {
+            background: linear-gradient(90deg, rgba(192,192,192,0.1), rgba(192,192,192,0.02));
+            border-left: 4px solid #c0c0c0;
+        }
+        
+        .ranking-row.last-place {
+            border: 1px solid rgba(220,53,69,0.4);
+            border-left: 4px solid #dc3545;
+            background: rgba(220,53,69,0.03);
+            margin-top: 8px;
+            border-radius: 12px;
+        }
+        
+        .last-place-badge {
+            display: inline-block;
+            background: rgba(220,53,69,0.15);
+            color: #ff6b6b;
+            font-size: 0.6em;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            font-weight: 600;
+        }
+        
+        /* MENU LATERAL HAMBÚRGUER */
+        .menu-btn {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            width: 45px;
+            height: 45px;
+            background: rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 1001;
+            border: 1px solid rgba(255,255,255,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .menu-btn:hover {
+            background: rgba(241,196,15,0.2);
+            border-color: rgba(241,196,15,0.3);
+        }
+        
+        .menu-btn span {
+            font-size: 24px;
+        }
+        
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: -280px;
+            width: 280px;
+            height: 100%;
+            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+            backdrop-filter: blur(20px);
+            z-index: 1002;
+            transition: left 0.3s ease;
+            border-right: 1px solid rgba(241,196,15,0.2);
+            box-shadow: 5px 0 30px rgba(0,0,0,0.5);
+        }
+        
+        .side-menu.open {
+            left: 0;
+        }
+        
+        .menu-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1001;
+            display: none;
+        }
+        
+        .menu-overlay.active {
+            display: block;
+        }
+        
+        .menu-header {
+            padding: 30px 20px;
+            border-bottom: 1px solid rgba(241,196,15,0.2);
+            margin-bottom: 20px;
+        }
+        
+        .menu-header h3 {
+            color: #f1c40f;
+            font-size: 1.2em;
+        }
+        
+        .menu-header p {
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75em;
+            margin-top: 5px;
+        }
+        
+        .menu-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border-left: 3px solid transparent;
+        }
+        
+        .menu-item:hover {
+            background: rgba(241,196,15,0.1);
+            border-left-color: #f1c40f;
+        }
+        
+        .menu-item .icon {
+            font-size: 1.3em;
+        }
+        
+        .menu-item .text {
+            font-size: 1em;
+            font-weight: 500;
+        }
+        
+        .menu-footer {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.7em;
+            color: rgba(255,255,255,0.3);
+            text-align: center;
+        }
+        
+        /* MODAL */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 2000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
+            border-radius: 24px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(241,196,15,0.2);
+            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid rgba(241,196,15,0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-header h2 {
+            color: #f1c40f;
+            font-size: 1.3em;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 0 8px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+            color: rgba(255,255,255,0.8);
+            line-height: 1.6;
+        }
+        
+        .modal-body h3 {
+            color: #f1c40f;
+            margin: 15px 0 10px 0;
+        }
+        
+        .modal-body ul {
+            margin-left: 20px;
+        }
+        
+        .modal-body li {
+            margin: 8px 0;
+        }
+        
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            text-align: center;
+        }
+        
+        .modal-footer button {
+            background: rgba(241,196,15,0.15);
+            border: 1px solid rgba(241,196,15,0.3);
+            color: #f1c40f;
+            padding: 8px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        
         @media (max-width: 768px) {
             .container { padding: 12px; }
             .main-title { font-size: 2em; letter-spacing: 2px; }
-            .ranking-columns, .ranking-row { grid-template-columns: 45px 1fr 55px 65px; padding: 10px 12px; }
+            .ranking-columns, .ranking-row { grid-template-columns: 50px 1fr 55px 65px; padding: 10px 12px; }
             .player-name { font-size: 0.85em; }
             .number-badge { font-size: 0.55em; padding: 1px 4px; }
             .ranking-score { font-size: 0.9em; }
@@ -467,56 +692,80 @@
             .premiacao { gap: 8px; padding: 12px; }
             .premio-item .valor { font-size: 1em; }
             .numeros-sorteio span { width: 40px; height: 40px; font-size: 1em; }
+            .side-menu { width: 260px; }
+            .menu-btn { top: 15px; left: 15px; width: 40px; height: 40px; }
         }
-        /* DESTAQUES DO RANKING */
-.ranking-row.first-place {
-    background: linear-gradient(90deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
-    border-left: 4px solid #ffd700;
-    position: relative;
-}
-
-.ranking-row.first-place:hover {
-    background: linear-gradient(90deg, rgba(255,215,0,0.2), rgba(255,215,0,0.08));
-}
-
-.ranking-row.second-place {
-    background: linear-gradient(90deg, rgba(192,192,192,0.12), rgba(192,192,192,0.04));
-    border-left: 4px solid #c0c0c0;
-}
-
-.ranking-row.second-place:hover {
-    background: linear-gradient(90deg, rgba(192,192,192,0.18), rgba(192,192,192,0.06));
-}
-
-.ranking-row.last-place {
-    border: 1px solid rgba(220,53,69,0.5);
-    border-left: 4px solid #dc3545;
-    background: rgba(220,53,69,0.05);
-    margin-top: 8px;
-    border-radius: 12px;
-}
-
-.ranking-row.last-place:hover {
-    background: rgba(220,53,69,0.1);
-}
-
-.last-place-badge {
-    display: inline-block;
-    background: rgba(220,53,69,0.15);
-    color: #ff6b6b;
-    font-size: 0.65em;
-    padding: 2px 8px;
-    border-radius: 20px;
-    margin-left: 8px;
-    font-weight: 600;
-}
-
-.ranking-pos i {
-    font-style: normal;
-}
     </style>
 </head>
 <body>
+    <!-- BOTÃO MENU -->
+    <div class="menu-btn" id="menuBtn">
+        <span>☰</span>
+    </div>
+
+    <!-- OVERLAY -->
+    <div class="menu-overlay" id="menuOverlay"></div>
+
+    <!-- MENU LATERAL -->
+    <div class="side-menu" id="sideMenu">
+        <div class="menu-header">
+            <h3>UM DE NÓS</h3>
+            <p>Desafio dos 17</p>
+        </div>
+        
+        <div class="menu-item" id="menuHome">
+            <span class="icon">🏠</span>
+            <span class="text">Início</span>
+        </div>
+        
+        <div class="menu-item" id="menuHowItWorks">
+            <span class="icon">📖</span>
+            <span class="text">Como Funciona</span>
+        </div>
+        
+        <div class="menu-item" id="menuExit">
+            <span class="icon">🚪</span>
+            <span class="text">Sair do App</span>
+        </div>
+        
+        <div class="menu-footer">
+            Um de Nós • v1.0
+        </div>
+    </div>
+
+    <!-- MODAL COMO FUNCIONA -->
+    <div class="modal" id="howModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>📖 Como Funciona</h2>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h3>🎯 O Desafio dos 17</h3>
+                <p>Cada participante escolhe <strong>17 números</strong> de 1 a 80.</p>
+                
+                <h3>📢 Sorteios</h3>
+                <p>Utilizamos os <strong>sorteios oficiais da Quina</strong>. A cada novo sorteio, os acertos são atualizados automaticamente.</p>
+                
+                <h3>🏆 Vitória</h3>
+                <p>O <strong>primeiro participante</strong> que acertar todos os 17 números vence a competição!</p>
+                
+                <h3>💰 Premiação</h3>
+                <ul>
+                    <li><strong>🥇 1º lugar:</strong> 63% do total arrecadado</li>
+                    <li><strong>🥈 2º lugar:</strong> 20% do total arrecadado</li>
+                    <li><strong>🎯 Menos acertos:</strong> 5% do total arrecadado</li>
+                </ul>
+                
+                <h3>📱 Como jogar</h3>
+                <p>Os participantes cadastrados acompanham o ranking em tempo real. Quando alguém atingir 17 acertos, a competição é encerrada automaticamente!</p>
+            </div>
+            <div class="modal-footer">
+                <button id="modalCloseBtn">Entendi!</button>
+            </div>
+        </div>
+    </div>
+
     <div class="container">
         <header class="hero-section">
             <div class="title-top">OFICIAL</div>
@@ -608,6 +857,51 @@
                 .then(registration => console.log('Service Worker registrado:', registration))
                 .catch(error => console.log('Falha no Service Worker:', error));
         }
+        
+        // MENU LATERAL
+        const menuBtn = document.getElementById('menuBtn');
+        const sideMenu = document.getElementById('sideMenu');
+        const menuOverlay = document.getElementById('menuOverlay');
+        
+        function closeMenu() {
+            sideMenu.classList.remove('open');
+            menuOverlay.classList.remove('active');
+        }
+        
+        function openMenu() {
+            sideMenu.classList.add('open');
+            menuOverlay.classList.add('active');
+        }
+        
+        menuBtn.addEventListener('click', openMenu);
+        menuOverlay.addEventListener('click', closeMenu);
+        
+        document.getElementById('menuHome').addEventListener('click', () => {
+            closeMenu();
+            window.location.reload();
+        });
+        
+        const howModal = document.getElementById('howModal');
+        document.getElementById('menuHowItWorks').addEventListener('click', () => {
+            closeMenu();
+            howModal.classList.add('active');
+        });
+        
+        const closeModal = () => howModal.classList.remove('active');
+        document.getElementById('modalClose').addEventListener('click', closeModal);
+        document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
+        howModal.addEventListener('click', (e) => {
+            if (e.target === howModal) closeModal();
+        });
+        
+        document.getElementById('menuExit').addEventListener('click', () => {
+            closeMenu();
+            if (window.matchMedia('(display-mode: standalone)').matches) {
+                window.close();
+            } else {
+                alert('Para fechar, clique no X do navegador.');
+            }
+        });
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>
