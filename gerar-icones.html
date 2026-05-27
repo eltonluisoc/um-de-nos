@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerador de Ícones - Um de Nós</title>
+</head>
+<body>
+    <h1>Gerador de Ícones para PWA</h1>
+    <p>Selecione sua imagem principal:</p>
+    <input type="file" id="upload" accept="image/*">
+    <div id="preview"></div>
+    <div id="downloads"></div>
+
+    <script>
+        const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+        
+        document.getElementById('upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            const reader = new FileReader();
+            
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onload = function() {
+                    const downloadsDiv = document.getElementById('downloads');
+                    downloadsDiv.innerHTML = '<h2>Clique em cada link para baixar:</h2>';
+                    
+                    sizes.forEach(size => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Desenhar imagem redimensionada
+                        ctx.drawImage(img, 0, 0, size, size);
+                        
+                        // Criar link de download
+                        const link = document.createElement('a');
+                        link.download = `icon-${size}.png`;
+                        link.href = canvas.toDataURL();
+                        link.textContent = `Baixar ${size}x${size}`;
+                        link.style.display = 'block';
+                        link.style.margin = '5px';
+                        downloadsDiv.appendChild(link);
+                    });
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    </script>
+</body>
+</html>

@@ -14,14 +14,7 @@ import {
     limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-// Endpoint secreto para Cron Job
-if (window.location.search.includes('cron=CRON172163')) {
-    console.log('🤖 Cron job ativado! Buscando sorteio...');
-    (async () => {
-        await buscarSorteioQuina();
-        document.body.innerHTML = '<h1>✅ Sorteio buscado com sucesso!</h1><p>' + new Date().toLocaleString() + '</p>';
-    })();
-}
+
 
 const SENHA_ADMIN = "172163";
 let jogoAtualId = null;

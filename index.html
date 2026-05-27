@@ -254,6 +254,38 @@
             flex-direction: column;
             gap: 6px;
         }
+
+        /* INDICADOR DE STATUS DO SORTEIO */
+.status-info {
+    text-align: center;
+    margin-top: 5px;
+    margin-bottom: 15px;
+    font-size: 0.65em;
+    opacity: 0.6;
+    letter-spacing: 0.3px;
+}
+
+.status-info span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.status-info .atualizado {
+    color: #28a745;
+}
+
+.status-info .aguardando {
+    color: #f1c40f;
+}
+
+.status-info .verificando {
+    color: #ff8c00;
+}
+
+.status-info .erro {
+    color: #dc3545;
+}
         
         .player-name {
             font-weight: 700;
@@ -498,6 +530,10 @@
 
         <div class="status-jogo" id="statusJogo">
             <span class="status-badge">🟢 CARREGANDO...</span>
+        </div>
+
+        <div class="status-info" id="statusInfo">
+            <span>🕐 <span id="ultimaVerificacao">--</span> • <span id="statusSorteio">Verificando...</span></span>
         </div>
 
         <div class="premiacao" id="premiacao" style="display: none;">

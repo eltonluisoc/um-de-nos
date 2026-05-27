@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-v4'; // Mudei a versão para forçar atualização
+const CACHE_NAME = 'umdenos-v5'; // Mudei a versão para forçar atualização
 const urlsToCache = [
   '/um-de-nos/',
   '/um-de-nos/index.html',
