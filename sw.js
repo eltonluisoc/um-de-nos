@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-v5'; // Mudei a versão para forçar atualização
+const CACHE_NAME = 'umdenos-v6';
 const urlsToCache = [
   '/um-de-nos/',
   '/um-de-nos/index.html',
@@ -11,7 +11,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker instalado v2');
+  console.log('Service Worker instalado v6');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -19,12 +19,11 @@ self.addEventListener('install', event => {
         return cache.addAll(urlsToCache);
       })
   );
-  // Forçar ativação imediata
   self.skipWaiting();
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker ativado v2');
+  console.log('Service Worker ativado v6');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
@@ -37,12 +36,10 @@ self.addEventListener('activate', event => {
       );
     })
   );
-  // Tomar controle das páginas imediatamente
   event.waitUntil(clients.claim());
 });
 
 self.addEventListener('fetch', event => {
-  // Ignorar requisições para o Firebase e API
   if (event.request.url.includes('firebase') || 
       event.request.url.includes('googleapis') ||
       event.request.url.includes('loteriascaixa-api')) {
