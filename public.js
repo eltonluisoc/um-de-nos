@@ -222,10 +222,9 @@ function atualizarRanking(participantes) {
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
         
-        // ============================================
-        // CORREÇÃO: Todos com menor pontuação ficam vermelhos
-        // ============================================
-        const isLastPlace = p.acertos === menorAcertos;
+        // Verificar se é último lugar (menor pontuação)
+        const menorAcertosLista = ordenados[ordenados.length - 1]?.acertos || 0;
+        const isLastPlace = p.acertos === menorAcertosLista;
         const isLast = index === ordenados.length - 1;
         
         let rowClass = '';
