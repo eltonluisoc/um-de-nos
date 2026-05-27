@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnPrepararCompeticao')?.addEventListener('click', criarNovaCompeticaoPreparando);
     document.getElementById('btnSelecionarCompeticao')?.addEventListener('click', selecionarCompeticaoAtiva);
     document.getElementById('btnListarCompeticoes')?.addEventListener('click', mostrarCompeticoes);
+    document.getElementById('btnSelecionarCompeticao')?.addEventListener('click', ativarCompeticaoSelecionada);
 });
 
 function verificarSenha() {
@@ -131,6 +132,7 @@ function logout() {
 async function carregarDados() {
     inicializarEventos();
     await carregarJogoAtivo();
+    await carregarSelectCompeticoes();
     if (jogoAtualId) {
         await carregarRanking();
         await carregarTodosParticipantes();
@@ -235,6 +237,8 @@ async function criarNovaCompeticaoPreparando() {
     jogoAtualStatus = 'preparando';
     jogoBloqueado = false;
     sorteioEncontradoHoje = false;
+    
+    await carregarSelectCompeticoes();
     
     alert(`✅ Competição "${nomeJogo}" criada em modo PREPARAÇÃO!`);
     await carregarJogoAtivo();
@@ -903,6 +907,57 @@ async function resetarTudo() {
     }
 }
 
+// ============================================
+// FUNÇÕES DE GESTÃO DE COMPETIÇÕES MELHORADAS
+// ============================================
+
+async function carregarSelectCompeticoes() {
+    const select = document.getElementById('selectCompeticao');
+    if (!select) return;
+    
+    const jogosRef = collection(db, 'jogos');
+    const q = query(jogosRef, where('status', 'in', ['aberto', 'preparando']), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        const selected = (doc.id === jogoAtualId) ? 'selected' : '';
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : '🟡';
+        select.innerHTML += `<option value="${doc.id}" ${selected}>${statusIcon} ${jogo.nome} (${jogo.status === 'aberto' ? 'ATIVO' : 'PREPARANDO'}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+    }
+}
+
+async function ativarCompeticaoSelecionada() {
+    const select = document.getElementById('selectCompeticao');
+    const selectedId = select.value;
+    
+    if (!selectedId) {
+        alert('Selecione uma competição primeiro!');
+        return;
+    }
+    
+    const jogoRef = doc(db, 'jogos', selectedId);
+    const jogoDoc = await getDoc(jogoRef);
+    
+    if (!jogoDoc.exists()) {
+        alert('Competição não encontrada!');
+        return;
+    }
+    
+    jogoAtualId = selectedId;
+    jogoAtualStatus = jogoDoc.data().status;
+    
+    await carregarJogoAtivo();
+    await carregarRanking();
+    await carregarTodosParticipantes();
+    await verificarBloqueio();
+    await carregarSelectCompeticoes();
+    
+    alert(`✅ Competição "${jogoDoc.data().nome}" ativada!`);
+}
+
 window.excluirParticipante = async function(id) {
     if (jogoAtualStatus === 'aberto') {
         alert('⚠️ Competição já iniciada! Não é possível excluir participantes.');
@@ -917,6 +972,81 @@ window.excluirParticipante = async function(id) {
         alert('Participante excluído!');
     }
 };
+
+// ============================================
+// FUNÇÕES DE GESTÃO DE COMPETIÇÕES
+// ============================================
+
+async function carregarSelectCompeticoes() {
+    const select = document.getElementById('selectCompeticao');
+    if (!select) return;
+    
+    const jogosRef = collection(db, 'jogos');
+    const q = query(jogosRef, where('status', 'in', ['aberto', 'preparando']), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        const selected = (doc.id === jogoAtualId) ? 'selected' : '';
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : '🟡';
+        select.innerHTML += `<option value="${doc.id}" ${selected}>${statusIcon} ${jogo.nome} (${jogo.status === 'aberto' ? 'ATIVO' : 'PREPARANDO'}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+    }
+}
+
+async function ativarCompeticaoSelecionada() {
+    const select = document.getElementById('selectCompeticao');
+    const selectedId = select.value;
+    
+    if (!selectedId) {
+        alert('Selecione uma competição primeiro!');
+        return;
+    }
+    
+    const jogoRef = doc(db, 'jogos', selectedId);
+    const jogoDoc = await getDoc(jogoRef);
+    
+    if (!jogoDoc.exists()) {
+        alert('Competição não encontrada!');
+        return;
+    }
+    
+    jogoAtualId = selectedId;
+    jogoAtualStatus = jogoDoc.data().status;
+    
+    await carregarJogoAtivo();
+    await carregarRanking();
+    await carregarTodosParticipantes();
+    await verificarBloqueio();
+    await carregarSelectCompeticoes();
+    
+    alert(`✅ Competição "${jogoDoc.data().nome}" ativada!`);
+}
+
+async function mostrarCompeticoes() {
+    const jogosRef = collection(db, 'jogos');
+    const q = query(jogosRef, orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+        alert('Nenhuma competição encontrada');
+        return;
+    }
+    
+    let msg = '📋 COMPETIÇÕES:\n\n';
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
+        msg += `${statusIcon} ${jogo.nome}\n   Status: ${jogo.status}\n   Participantes: ${jogo.totalParticipantes || 0}\n\n`;
+    }
+    
+    msg += '\n🟢 ATIVO - Em andamento (busca sorteios)';
+    msg += '\n🟡 PREPARANDO - Cadastrando participantes';
+    msg += '\n🔴 ENCERRADO - Finalizado';
+    
+    alert(msg);
+}
 
 window.verificarSenha = verificarSenha;
 window.logout = logout;

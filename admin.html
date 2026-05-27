@@ -620,11 +620,14 @@
                 <div class="card">
                     <h3>🎮 Gerenciar Competições</h3>
                     <button class="btn btn-success" id="btnPrepararCompeticao">📋 Preparar Nova Competição</button>
-                    <button class="btn btn-warning" id="btnSelecionarCompeticao" style="background:#17a2b8;">🔄 Selecionar Competição Ativa</button>
-                    <button class="btn" id="btnListarCompeticoes" style="background:#6c757d;">📋 Listar Competições</button>
+                    <select id="selectCompeticao" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <option value="">-- Selecione uma competição --</option>
+                    </select>
+                    <button class="btn btn-warning" id="btnSelecionarCompeticao" style="background:#17a2b8; width: 100%;">🔄 Ativar Competição Selecionada</button>
+                    <button class="btn" id="btnListarCompeticoes" style="background:#6c757d; width: 100%; margin-top: 10px;">📋 Listar Competições</button>
                     <p style="font-size:0.7em; margin-top:10px; opacity:0.6;">
                         * "Preparar" cria uma nova competição para cadastrar participantes sem iniciar.<br>
-                        * "Selecionar" alterna entre competições em andamento ou preparação.
+                        * Selecione uma competição no menu e clique em "Ativar" para começar a gerenciá-la.
                     </p>
                 </div>
                 <div class="card">
@@ -632,8 +635,6 @@
                     <button class="btn btn-danger" id="btnResetarTudo">⚠️ Resetar Tudo (CUIDADO!)</button>
                 </div>
             </div>
-        </div>
-    </div>
 
     <script>
         if ('serviceWorker' in navigator) {
