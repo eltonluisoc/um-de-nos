@@ -194,6 +194,23 @@ function atualizarRanking(participantes) {
         }
     }
     
+    // Identificar grupos de empate
+    const grupos = [];
+    let grupoAtual = [];
+    let ultimoAcerto = null;
+    
+    for (let i = 0; i < ordenados.length; i++) {
+        const acerto = ordenados[i].acertos;
+        if (acerto === ultimoAcerto) {
+            grupoAtual.push(i);
+        } else {
+            if (grupoAtual.length > 0) grupos.push(grupoAtual);
+            grupoAtual = [i];
+            ultimoAcerto = acerto;
+        }
+    }
+    if (grupoAtual.length > 0) grupos.push(grupoAtual);
+    
     // Verificar se há empate no primeiro lugar
     const primeiroAcerto = ordenados[0]?.acertos || 0;
     const temEmpatePrimeiro = ordenados.filter(p => p.acertos === primeiroAcerto).length > 1;
@@ -204,8 +221,11 @@ function atualizarRanking(participantes) {
         const posicao = posicoes[index];
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
-        const isFirst = posicao === 1;
-        const isSecond = posicao === 2;
+        
+        // ============================================
+        // CORREÇÃO: Todos com menor pontuação ficam vermelhos
+        // ============================================
+        const isLastPlace = p.acertos === menorAcertos;
         const isLast = index === ordenados.length - 1;
         
         let rowClass = '';
@@ -215,31 +235,50 @@ function atualizarRanking(participantes) {
         if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
             rowClass = 'first-place';
             medalhaIcon = '👑';
-        } else if (isFirst && !temEmpatePrimeiro) {
+        } else if (posicao === 1 && !temEmpatePrimeiro) {
             rowClass = 'first-place';
             medalhaIcon = '👑';
-        } else if (isSecond) {
+        } else if (posicao === 2 && ordenados[0].acertos !== p.acertos) {
             rowClass = 'second-place';
             medalhaIcon = '🥈';
-        } else if (isLast && ordenados.length > 2) {
+        } else if (isLastPlace && ordenados.length > 2) {
             rowClass = 'last-place';
             medalhaIcon = '🎯';
         }
         
         if (isChampion) rowClass += ' champion';
         
+        // Verificar se esta posição está em um grupo de empate
+        const grupoEmpate = grupos.find(g => g.includes(index));
+        const temEmpateNestaPosicao = grupoEmpate && grupoEmpate.length > 1;
+        const ehPrimeiroDoGrupo = temEmpateNestaPosicao && grupoEmpate[0] === index;
+        
         // Formatar texto da posição
         let posText = '';
         if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
-            posText = `👑 ${posicao}º`;
-        } else if (isFirst && !temEmpatePrimeiro) {
+            if (ehPrimeiroDoGrupo) {
+                posText = `👑 1º (${grupoEmpate.length} empatados)`;
+            } else {
+                posText = `👑 1º`;
+            }
+        } else if (posicao === 1 && !temEmpatePrimeiro) {
             posText = `👑 1º`;
-        } else if (isSecond) {
+        } else if (posicao === 2 && ordenados[0].acertos !== p.acertos) {
             posText = `🥈 2º`;
-        } else if (isLast && ordenados.length > 2) {
-            posText = `🎯 ${posicao}º`;
+        } else if (isLastPlace && ordenados.length > 2) {
+            if (temEmpateNestaPosicao && ehPrimeiroDoGrupo && grupoEmpate.length > 1) {
+                posText = `🎯 ${posicao}º (${grupoEmpate.length} empatados)`;
+            } else if (temEmpateNestaPosicao && !ehPrimeiroDoGrupo) {
+                posText = `🎯 ${posicao}º`;
+            } else {
+                posText = `🎯 ${posicao}º`;
+            }
         } else {
-            posText = `${posicao}º`;
+            if (temEmpateNestaPosicao && ehPrimeiroDoGrupo && grupoEmpate.length > 1) {
+                posText = `${posicao}º (${grupoEmpate.length} empatados)`;
+            } else {
+                posText = `${posicao}º`;
+            }
         }
         
         // Gerar números do participante
@@ -252,9 +291,9 @@ function atualizarRanking(participantes) {
         }
         numerosHtml += '</div>';
         
-        // Badge de menos acertos (apenas se não houver empate no primeiro)
+        // Badge de menos acertos (para todos que estão na menor pontuação)
         let lastBadge = '';
-        if (isLast && ordenados.length > 2 && !temEmpatePrimeiro) {
+        if (isLastPlace && ordenados.length > 2 && !temEmpatePrimeiro) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
         }
         
@@ -282,22 +321,6 @@ function atualizarRanking(participantes) {
     
     container.innerHTML = html;
 }
-
-window.mostrarDetalhes = function(participanteId) {
-    const participante = participantes.find(p => p.id === participanteId);
-    if (participante) {
-        let acertos = 0;
-        let msg = `📋 ${participante.nome}\n\n🎯 Números Selecionados:\n`;
-        for (const num of participante.numeros) {
-            const acertou = numerosSorteadosAcumulados.includes(num);
-            if (acertou) acertos++;
-            msg += `${num} ${acertou ? '✅' : '❌'}  `;
-        }
-        msg += `\n\n✅ Acertos: ${acertos}/17`;
-        msg += `\n📊 Progresso: ${Math.round((acertos/17)*100)}%`;
-        alert(msg);
-    }
-};
 
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
