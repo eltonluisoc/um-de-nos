@@ -194,23 +194,6 @@ function atualizarRanking(participantes) {
         }
     }
     
-    // Identificar grupos de empate
-    const grupos = [];
-    let grupoAtual = [];
-    let ultimoAcerto = null;
-    
-    for (let i = 0; i < ordenados.length; i++) {
-        const acerto = ordenados[i].acertos;
-        if (acerto === ultimoAcerto) {
-            grupoAtual.push(i);
-        } else {
-            if (grupoAtual.length > 0) grupos.push(grupoAtual);
-            grupoAtual = [i];
-            ultimoAcerto = acerto;
-        }
-    }
-    if (grupoAtual.length > 0) grupos.push(grupoAtual);
-    
     // Verificar se há empate no primeiro lugar
     const primeiroAcerto = ordenados[0]?.acertos || 0;
     const temEmpatePrimeiro = ordenados.filter(p => p.acertos === primeiroAcerto).length > 1;
@@ -222,11 +205,8 @@ function atualizarRanking(participantes) {
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
         
-        // ============================================
-        // CORREÇÃO: Todos com menor pontuação ficam vermelhos
-        // ============================================
+        // Todos com menor pontuação ficam vermelhos
         const isLastPlace = p.acertos === menorAcertos;
-        const isLast = index === ordenados.length - 1;
         
         let rowClass = '';
         let medalhaIcon = '';
@@ -248,37 +228,20 @@ function atualizarRanking(participantes) {
         
         if (isChampion) rowClass += ' champion';
         
-        // Verificar se esta posição está em um grupo de empate
-        const grupoEmpate = grupos.find(g => g.includes(index));
-        const temEmpateNestaPosicao = grupoEmpate && grupoEmpate.length > 1;
-        const ehPrimeiroDoGrupo = temEmpateNestaPosicao && grupoEmpate[0] === index;
-        
-        // Formatar texto da posição
+        // ============================================
+        // TEXTO DA POSIÇÃO - SEM "(X empatados)"
+        // ============================================
         let posText = '';
         if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
-            if (ehPrimeiroDoGrupo) {
-                posText = `👑 1º (${grupoEmpate.length} empatados)`;
-            } else {
-                posText = `👑 1º`;
-            }
+            posText = `👑 ${posicao}º`;
         } else if (posicao === 1 && !temEmpatePrimeiro) {
             posText = `👑 1º`;
         } else if (posicao === 2 && ordenados[0].acertos !== p.acertos) {
             posText = `🥈 2º`;
         } else if (isLastPlace && ordenados.length > 2) {
-            if (temEmpateNestaPosicao && ehPrimeiroDoGrupo && grupoEmpate.length > 1) {
-                posText = `🎯 ${posicao}º (${grupoEmpate.length} empatados)`;
-            } else if (temEmpateNestaPosicao && !ehPrimeiroDoGrupo) {
-                posText = `🎯 ${posicao}º`;
-            } else {
-                posText = `🎯 ${posicao}º`;
-            }
+            posText = `🎯 ${posicao}º`;
         } else {
-            if (temEmpateNestaPosicao && ehPrimeiroDoGrupo && grupoEmpate.length > 1) {
-                posText = `${posicao}º (${grupoEmpate.length} empatados)`;
-            } else {
-                posText = `${posicao}º`;
-            }
+            posText = `${posicao}º`;
         }
         
         // Gerar números do participante
