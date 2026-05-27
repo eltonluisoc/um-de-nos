@@ -630,6 +630,20 @@
                         * Selecione uma competição no menu e clique em "Ativar" para começar a gerenciá-la.
                     </p>
                 </div>
+                
+                <!-- NOVO CARD DE EXCLUSÃO -->
+                <div class="card">
+                    <h3>🗑️ Excluir Competição</h3>
+                    <select id="selectExcluirCompeticao" style="width: 100%; padding: 10px; margin: 10px 0; border-radius: 8px; background: rgba(255,255,255,0.1); color: white; border: 1px solid rgba(255,255,255,0.2);">
+                        <option value="">-- Selecione uma competição para excluir --</option>
+                    </select>
+                    <button class="btn btn-danger" id="btnExcluirCompeticao" style="width: 100%;">🗑️ Excluir Competição Selecionada</button>
+                    <p style="font-size:0.7em; margin-top:10px; opacity:0.6;">
+                        * Apenas competições em PREPARANDO ou ENCERRADO podem ser excluídas.<br>
+                        * ATIVAS precisam ser encerradas primeiro.
+                    </p>
+                </div>
+                
                 <div class="card">
                     <h3>⚙️ Configurações do Jogo</h3>
                     <button class="btn btn-danger" id="btnResetarTudo">⚠️ Resetar Tudo (CUIDADO!)</button>

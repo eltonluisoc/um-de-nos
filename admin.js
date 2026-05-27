@@ -82,6 +82,20 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnPrepararCompeticao')?.addEventListener('click', criarNovaCompeticaoPreparando);
     document.getElementById('btnSelecionarCompeticao')?.addEventListener('click', ativarCompeticaoSelecionada);
     document.getElementById('btnListarCompeticoes')?.addEventListener('click', mostrarCompeticoes);
+    
+    // NOVO: Evento para excluir competição
+    document.getElementById('btnExcluirCompeticao')?.addEventListener('click', async () => {
+        const select = document.getElementById('selectExcluirCompeticao');
+        const competicaoId = select.value;
+        if (!competicaoId) {
+            alert('Selecione uma competição para excluir!');
+            return;
+        }
+        const selectedOption = select.options[select.selectedIndex];
+        const competicaoNome = selectedOption.text.split(')')[0].split(' ').slice(1).join(' ').trim();
+        const statusIcon = selectedOption.text.includes('🟢') ? 'aberto' : (selectedOption.text.includes('🟡') ? 'preparando' : 'encerrado');
+        await excluirCompeticao(competicaoId, competicaoNome, statusIcon);
+    });
 });
 
 function verificarSenha() {
@@ -881,16 +895,42 @@ async function carregarSelectCompeticoes() {
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', 'in', ['aberto', 'preparando']), orderBy('createdAt', 'desc'));
+    const q = query(jogosRef, where('status', 'in', ['aberto', 'preparando']));
     const querySnapshot = await getDocs(q);
+    
+    // Ordenar manualmente
+    const jogos = [];
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        jogos.push({ id: doc.id, ...jogo });
+    }
+    jogos.sort((a, b) => {
+        const dateA = a.createdAt?.toDate() || new Date(0);
+        const dateB = b.createdAt?.toDate() || new Date(0);
+        return dateB - dateA;
+    });
     
     select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
     
-    for (const doc of querySnapshot.docs) {
-        const jogo = doc.data();
-        const selected = (doc.id === jogoAtualId) ? 'selected' : '';
+    for (const jogo of jogos) {
+        const selected = (jogo.id === jogoAtualId) ? 'selected' : '';
         const statusIcon = jogo.status === 'aberto' ? '🟢' : '🟡';
-        select.innerHTML += `<option value="${doc.id}" ${selected}>${statusIcon} ${jogo.nome} (${jogo.status === 'aberto' ? 'ATIVO' : 'PREPARANDO'}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+        const statusText = jogo.status === 'aberto' ? 'ATIVO' : 'PREPARANDO';
+        select.innerHTML += `<option value="${jogo.id}" ${selected}>${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+    }
+    
+    // Adicionar seletor de exclusão
+    const jogosAllRef = collection(db, 'jogos');
+    const allJogos = await getDocs(jogosAllRef);
+    const selectExcluir = document.getElementById('selectExcluirCompeticao');
+    if (selectExcluir) {
+        selectExcluir.innerHTML = '<option value="">-- Selecione para excluir --</option>';
+        for (const doc of allJogos.docs) {
+            const jogo = doc.data();
+            const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
+            const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
+            selectExcluir.innerHTML += `<option value="${doc.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+        }
     }
 }
 
@@ -937,6 +977,65 @@ window.excluirParticipante = async function(id) {
         alert('Participante excluído!');
     }
 };
+
+// ============================================
+// EXCLUIR COMPETIÇÃO
+// ============================================
+
+async function excluirCompeticao(competicaoId, competicaoNome, competicaoStatus) {
+    // Só permite excluir se estiver PREPARANDO ou ENCERRADO
+    if (competicaoStatus !== 'preparando' && competicaoStatus !== 'encerrado') {
+        alert(`❌ Não é possível excluir uma competição ATIVA!`);
+        alert(`A competição "${competicaoNome}" está ${competicaoStatus === 'aberto' ? 'ATIVA' : competicaoStatus}. Finalize ou aguarde encerrar primeiro.`);
+        return;
+    }
+    
+    const confirmar = confirm(`⚠️ Tem certeza que deseja EXCLUIR a competição "${competicaoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá todos os participantes e dados relacionados.`);
+    
+    if (!confirmar) return;
+    
+    try {
+        // Buscar e excluir todos os participantes desta competição
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', competicaoId));
+        const participantes = await getDocs(q);
+        
+        const batch = writeBatch(db);
+        participantes.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        
+        // Excluir a competição
+        await deleteDoc(doc(db, 'jogos', competicaoId));
+        
+        alert(`✅ Competição "${competicaoNome}" excluída com sucesso!`);
+        
+        // Recarregar a lista
+        await carregarSelectCompeticoes();
+        
+        // Se a competição excluída era a atual, carregar outra
+        if (jogoAtualId === competicaoId) {
+            const jogosRef = collection(db, 'jogos');
+            const q2 = query(jogosRef, where('status', 'in', ['aberto', 'preparando']), limit(1));
+            const snapshot = await getDocs(q2);
+            if (!snapshot.empty) {
+                const novoJogo = snapshot.docs[0];
+                jogoAtualId = novoJogo.id;
+                jogoAtualStatus = novoJogo.data().status;
+                await carregarJogoAtivo();
+                await carregarRanking();
+                await carregarTodosParticipantes();
+            } else {
+                jogoAtualId = null;
+                jogoAtualStatus = null;
+                location.reload();
+            }
+        }
+        
+    } catch (error) {
+        console.error('Erro ao excluir competição:', error);
+        alert('Erro ao excluir competição: ' + error.message);
+    }
+}
 
 window.verificarSenha = verificarSenha;
 window.logout = logout;
