@@ -19,6 +19,9 @@ let sorteiosRealizados = [];
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 Um de Nós - Página Pública iniciada');
     carregarDados();
+    // Iniciar verificação de status (leve, apenas consulta)
+    setTimeout(atualizarStatusSorteio, 1000);
+    setInterval(atualizarStatusSorteio, 60000);
 });
 
 async function carregarDados() {
@@ -157,7 +160,6 @@ function escutarParticipantes() {
     });
 }
 
-// FUNÇÃO PRINCIPAL DO RANKING - COM FORMATAÇÃO CORRETA
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
     const totalSpan = document.getElementById('totalParticipantes');
@@ -170,12 +172,10 @@ function atualizarRanking(participantes) {
         return;
     }
     
-    // Atualizar estatísticas
     const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
     if (totalSpan) totalSpan.textContent = participantes.length;
     if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
-    // Ordenar por acertos (decrescente)
     const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
     const ultimoIndex = ordenados.length - 1;
     
@@ -189,7 +189,6 @@ function atualizarRanking(participantes) {
         const isSecond = posicao === 2;
         const isLast = index === ultimoIndex;
         
-        // Definir classe especial
         let rowClass = '';
         let medalhaIcon = '';
         
@@ -206,7 +205,6 @@ function atualizarRanking(participantes) {
         
         if (isChampion) rowClass += ' champion';
         
-        // Texto da posição
         let posText = '';
         if (isFirst) {
             posText = `${medalhaIcon} 1º`;
@@ -218,7 +216,6 @@ function atualizarRanking(participantes) {
             posText = `${posicao}º`;
         }
         
-        // Gerar números do participante
         let numerosHtml = '<div class="player-numbers">';
         if (p.numeros && Array.isArray(p.numeros)) {
             for (const num of p.numeros) {
@@ -228,7 +225,6 @@ function atualizarRanking(participantes) {
         }
         numerosHtml += '</div>';
         
-        // Badge de menos acertos
         let lastBadge = '';
         if (isLast && ordenados.length > 2) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
@@ -320,13 +316,56 @@ async function carregarUltimoVencedor() {
     }
 }
 
-// Recarregar a página a cada 2 minutos para garantir dados atualizados
-let ultimoRecarregamento = Date.now();
-setInterval(() => {
-    const agora = Date.now();
-    if (agora - ultimoRecarregamento > 120000) {
-        console.log('🔄 Auto-recarregamento para atualizar dados...');
-        ultimoRecarregamento = agora;
-        window.location.reload();
+// ============================================
+// INDICADOR DE STATUS DO SORTEIO
+// Apenas consulta a API e mostra se o sorteio 
+// do dia já foi importado ou não.
+// A BUSCA E IMPORTAÇÃO é feita pelo admin.js
+// ============================================
+
+async function atualizarStatusSorteio() {
+    const statusSpan = document.getElementById('statusSorteio');
+    const horaSpan = document.getElementById('ultimaVerificacao');
+    
+    if (!statusSpan) return;
+    
+    const agora = new Date();
+    const horaStr = agora.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    const dataStr = agora.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    
+    if (horaSpan) horaSpan.textContent = `${dataStr} ${horaStr}`;
+    
+    // Se não tem jogo ativo, não faz sentido verificar
+    if (!jogoId) {
+        statusSpan.innerHTML = '⏳ Sem jogo ativo';
+        statusSpan.className = 'aguardando';
+        return;
     }
-}, 30000);
+    
+    try {
+        const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
+        const dados = await response.json();
+        const concursoAPI = dados.concurso;
+        
+        const jogoRef = doc(db, 'jogos', jogoId);
+        const jogoDoc = await getDoc(jogoRef);
+        const concursoImportado = jogoDoc.data()?.ultimoConcursoImportado;
+        
+        if (concursoAPI === concursoImportado) {
+            statusSpan.innerHTML = '✅ Atualizado';
+            statusSpan.className = 'atualizado';
+        } else {
+            const horarioAtual = agora.getHours();
+            if (horarioAtual >= 20 && horarioAtual <= 23) {
+                statusSpan.innerHTML = '⏳ Aguardando sorteio de hoje';
+            } else {
+                statusSpan.innerHTML = '⏳ Aguardando horário (20h)';
+            }
+            statusSpan.className = 'aguardando';
+        }
+    } catch (error) {
+        console.error('Erro ao verificar status:', error);
+        statusSpan.innerHTML = '⚠️ Falha na verificação';
+        statusSpan.className = 'erro';
+    }
+}
