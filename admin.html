@@ -34,7 +34,7 @@
             padding: 25px 30px;
             margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0,  , 0.3);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -142,7 +142,7 @@
             font-weight: bold;
         }
         
-        .form-group input {
+        .form-group input, .form-group select {
             width: 100%;
             padding: 12px;
             border-radius: 8px;
@@ -152,9 +152,14 @@
             color: white;
         }
         
-        .form-group input:focus {
+        .form-group input:focus, .form-group select:focus {
             outline: none;
             border: 1px solid #f1c40f;
+        }
+        
+        .form-group select option {
+            background: #0b1e19;
+            color: white;
         }
         
         .form-group small {
@@ -164,7 +169,6 @@
             margin-top: 5px;
         }
         
-        /* SELECTS MELHORADOS */
         select {
             width: 100%;
             padding: 12px;
@@ -471,6 +475,19 @@
             text-align: center;
         }
         
+        .status-info {
+            font-size: 0.8em;
+            margin-top: 10px;
+            padding: 8px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .status-info .ativo { color: #28a745; }
+        .status-info .preparando { color: #f1c40f; }
+        .status-info .encerrado { color: #dc3545; }
+        
         @media (max-width: 768px) {
             .senha-box {
                 min-width: 320px;
@@ -546,6 +563,7 @@
                 <div class="tab" data-tab="config">⚙️ Configurações</div>
             </div>
 
+            <!-- DASHBOARD -->
             <div id="dashboard" class="tab-content ativo">
                 <div class="card">
                     <h3>🏆 Ranking Atual</h3>
@@ -570,6 +588,7 @@
                 </div>
             </div>
 
+            <!-- PARÂMETROS -->
             <div id="parametros" class="tab-content">
                 <div class="card">
                     <h3>💰 Configuração da Competição</h3>
@@ -600,37 +619,53 @@
                 </div>
             </div>
 
+            <!-- CADASTRO DE PARTICIPANTE -->
             <div id="cadastro" class="tab-content">
                 <div class="card">
                     <h3>➕ Novo Participante</h3>
-                    <div id="bloqueioCadastro" class="info-box warning" style="display: none; margin-bottom: 15px;">
-                        ⚠️ COMPETIÇÃO INICIADA! Não é possível adicionar novos participantes após a primeira conferência.
+                    
+                    <!-- Select para escolher a competição em PREPARAÇÃO -->
+                    <div class="form-group">
+                        <label>🎮 Competição:</label>
+                        <select id="selectCompeticaoCadastro">
+                            <option value="">-- Selecione uma competição em PREPARAÇÃO --</option>
+                        </select>
+                        <small>Apenas competições com status "PREPARANDO" aparecem aqui</small>
                     </div>
+                    
+                    <div id="bloqueioCadastro" class="info-box warning" style="display: none; margin-bottom: 15px;">
+                        ⚠️ Nenhuma competição em PREPARAÇÃO disponível. Crie uma nova competição na aba Configurações.
+                    </div>
+                    
                     <div class="form-group">
                         <label>Nome do Participante:</label>
                         <input type="text" id="nomeParticipante" placeholder="Ex: João Silva">
                     </div>
+                    
                     <div class="form-group">
                         <label>Escolha 17 números (1 a 80):</label>
                         <div id="numerosGrid" class="numeros-input"></div>
                         <p id="contadorNumeros" style="margin-top: 10px;">0/17 números selecionados</p>
                     </div>
+                    
                     <button class="btn btn-success" id="btnSalvarParticipante">💾 Salvar Participante</button>
                 </div>
             </div>
 
+            <!-- LISTA DE PARTICIPANTES -->
             <div id="lista" class="tab-content">
                 <div class="card">
                     <h3>📋 Todos os Participantes</h3>
                     <table id="tabelaParticipantes">
                         <thead>
-                            <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
+                            <tr><th>Competição</th><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
                         </thead>
                         <tbody id="corpoTabela"></tbody>
-                    </table>
+                    寸
                 </div>
             </div>
 
+            <!-- SORTEIOS -->
             <div id="sorteios" class="tab-content">
                 <div class="card">
                     <h3>📜 Histórico de Sorteios Importados</h3>
@@ -642,18 +677,19 @@
                 </div>
             </div>
 
+            <!-- CONFIGURAÇÕES -->
             <div id="config" class="tab-content">
                 <div class="card">
                     <h3>🎮 Gerenciar Competições</h3>
                     <button class="btn btn-success" id="btnPrepararCompeticao">📋 Preparar Nova Competição</button>
                     <select id="selectCompeticao" style="width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #0b1e19; color: #f1c40f; border: 1px solid rgba(241,196,15,0.3); font-size: 14px;">
-                        <option value="">-- Selecione uma competição --</option>
+                        <option value="">-- Selecione uma competição para ATIVAR --</option>
                     </select>
                     <button class="btn btn-warning" id="btnSelecionarCompeticao" style="background:#17a2b8; width: 100%;">🔄 Ativar Competição Selecionada</button>
                     <button class="btn" id="btnListarCompeticoes" style="background:#6c757d; width: 100%; margin-top: 10px;">📋 Listar Competições</button>
                     <p style="font-size:0.7em; margin-top:10px; opacity:0.6;">
                         * "Preparar" cria uma nova competição para cadastrar participantes sem iniciar.<br>
-                        * Selecione uma competição no menu e clique em "Ativar" para começar a gerenciá-la.
+                        * Selecione uma competição PREPARANDO e clique em "Ativar" para iniciar a competição.
                     </p>
                 </div>
                 
@@ -684,7 +720,6 @@
                 .catch(error => console.log('Falha no Service Worker:', error));
         }
         
-        // Forçar atualização do Service Worker
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(registrations => {
                 for (let registration of registrations) {
