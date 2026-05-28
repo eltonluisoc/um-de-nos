@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-v6';
+const CACHE_NAME = 'umdenos-v7';
 const urlsToCache = [
   '/um-de-nos/',
   '/um-de-nos/index.html',
@@ -11,7 +11,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker instalado v6');
+  console.log('Service Worker instalado v7');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -23,7 +23,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker ativado v6');
+  console.log('Service Worker ativado v7');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
