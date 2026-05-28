@@ -655,10 +655,17 @@
             <!-- LISTA DE PARTICIPANTES -->
             <div id="lista" class="tab-content">
                 <div class="card">
-                    <h3>📋 Todos os Participantes</h3>
+                    <h3>📋 Lista de Participantes</h3>
+                    <div class="form-group">
+                        <label>🎮 Selecionar Competição:</label>
+                        <select id="selectCompeticaoLista">
+                            <option value="">-- Selecione uma competição --</option>
+                        </select>
+                        <small>Escolha a competição para ver os participantes</small>
+                    </div>
                     <table id="tabelaParticipantes">
                         <thead>
-                            <tr><th>Competição</th><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
+                            <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
                         </thead>
                         <tbody id="corpoTabela"></tbody>
                     寸

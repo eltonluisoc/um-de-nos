@@ -104,6 +104,18 @@ document.addEventListener('DOMContentLoaded', () => {
         await excluirCompeticao(competicaoId, competicaoNome, statusIcon);
     });
     
+    // Recarregar lista quando mudar para a tab de lista
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', async () => {
+            if (tab.dataset.tab === 'lista') {
+                const selectLista = document.getElementById('selectCompeticaoLista');
+                if (selectLista && selectLista.value) {
+                    await carregarParticipantesPorCompeticao(selectLista.value);
+                }
+            }
+        });
+    });
+    
     criarGridNumeros();
 });
 
@@ -166,6 +178,7 @@ async function carregarDados() {
     await carregarNumerosSorteadosAdmin();
     await verificarBloqueio();
     await atualizarContadorParticipantes();
+    await carregarSelectCompeticaoLista();
     iniciarBuscaAutomaticaMelhorada();
     carregarTabs();
 }
@@ -530,35 +543,11 @@ async function salvarParticipante() {
 }
 
 async function carregarTodosParticipantes() {
-    const tbody = document.getElementById('corpoTabela');
-    if (!tbody) return;
-    
-    // Buscar todas as competições para mostrar o nome
-    const jogosRef = collection(db, 'jogos');
-    const jogosSnapshot = await getDocs(jogosRef);
-    const jogosMap = new Map();
-    jogosSnapshot.forEach(doc => {
-        jogosMap.set(doc.id, doc.data().nome);
-    });
-    
-    const participantesRef = collection(db, 'participantes');
-    const querySnapshot = await getDocs(participantesRef);
-    
-    tbody.innerHTML = '';
-    for (const docSnap of querySnapshot.docs) {
-        const p = docSnap.data();
-        const competicaoNome = jogosMap.get(p.jogoId) || 'Desconhecida';
-        const tr = document.createElement('tr');
-        const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
-        tr.innerHTML = `
-            <td>${competicaoNome}</td>
-            <td>${p.nome}</td>
-            <td style="font-size:11px;">${p.numeros.join(', ')}</td>
-            <td>${p.acertos || 0}/17</td>
-            <td>${dataCadastro}</td>
-            <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
-        `;
-        tbody.appendChild(tr);
+    // Esta função agora é substituída por carregarParticipantesPorCompeticao
+    // Mantida para compatibilidade com outras chamadas
+    const selectLista = document.getElementById('selectCompeticaoLista');
+    if (selectLista && selectLista.value) {
+        await carregarParticipantesPorCompeticao(selectLista.value);
     }
 }
 
@@ -1030,6 +1019,97 @@ async function carregarNumerosSorteadosAdmin() {
     }
     html += '</div>';
     container.innerHTML = html;
+}
+
+async function carregarSelectCompeticaoLista() {
+    const select = document.getElementById('selectCompeticaoLista');
+    if (!select) return;
+    
+    const jogosRef = collection(db, 'jogos');
+    const querySnapshot = await getDocs(jogosRef);
+    
+    const jogos = [];
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        jogos.push({ id: doc.id, nome: jogo.nome, status: jogo.status, participantes: jogo.totalParticipantes || 0 });
+    }
+    jogos.sort((a, b) => {
+        const statusPriority = { 'aberto': 1, 'preparando': 2, 'encerrado': 3 };
+        return statusPriority[a.status] - statusPriority[b.status];
+    });
+    
+    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    
+    for (const jogo of jogos) {
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
+        const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
+        select.innerHTML += `<option value="${jogo.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.participantes} participantes</option>`;
+    }
+    
+    // Adicionar evento para carregar participantes ao selecionar
+    select.onchange = async () => {
+        await carregarParticipantesPorCompeticao(select.value);
+    };
+}
+
+async function carregarParticipantesPorCompeticao(competicaoId) {
+    const tbody = document.getElementById('corpoTabela');
+    if (!tbody || !competicaoId) {
+        if (tbody && !competicaoId) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
+    
+    try {
+        // Buscar nome da competição
+        const jogoRef = doc(db, 'jogos', competicaoId);
+        const jogoDoc = await getDoc(jogoRef);
+        const competicaoNome = jogoDoc.exists() ? jogoDoc.data().nome : 'Desconhecida';
+        
+        // Buscar participantes
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', competicaoId));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado na competição "${competicaoNome}"</td></tr>`;
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        for (const docSnap of querySnapshot.docs) {
+            const p = docSnap.data();
+            const tr = document.createElement('tr');
+            const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
+            tr.innerHTML = `
+                <td><strong>${p.nome}</strong></td>
+                <td style="font-size:11px;">${p.numeros.join(', ')}</td>
+                <td>${p.acertos || 0}/17</td>
+                <td>${dataCadastro}</td>
+                <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+        
+        // Adicionar resumo
+        const resumoRow = document.createElement('tr');
+        resumoRow.style.background = 'rgba(241,196,15,0.1)';
+        resumoRow.innerHTML = `
+            <td colspan="5" style="text-align: center; font-weight: bold;">
+                📊 Total de participantes: ${querySnapshot.size} | 
+                🎯 Competição: ${competicaoNome} | 
+                📅 Criada em: ${jogoDoc.data().createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}
+            </td>
+        `;
+        tbody.appendChild(resumoRow);
+        
+    } catch (error) {
+        console.error('Erro ao carregar participantes:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc3545;">Erro ao carregar participantes</td></tr>';
+    }
 }
 
 // ============================================
