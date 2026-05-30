@@ -902,6 +902,15 @@
                 alert('Para fechar, clique no X do navegador.');
             }
         });
+        
+        // Forçar atualização do Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+        }
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>

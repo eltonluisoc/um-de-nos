@@ -34,7 +34,7 @@
             padding: 25px 30px;
             margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 20px 40px rgba(0, 0,  , 0.3);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -624,7 +624,6 @@
                 <div class="card">
                     <h3>➕ Novo Participante</h3>
                     
-                    <!-- Select para escolher a competição em PREPARAÇÃO -->
                     <div class="form-group">
                         <label>🎮 Competição:</label>
                         <select id="selectCompeticaoCadastro">
@@ -721,6 +720,17 @@
     </div>
 
     <script>
+        // BLOQUEIO DE INSTALAÇÃO COMO PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            console.log('Instale o app pela página pública (ícone de casa)');
+        });
+        
+        // Se estiver em modo standalone (instalado), redirecionar para index
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            window.location.href = '/um-de-nos/';
+        }
+        
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/um-de-nos/sw.js')
                 .then(registration => console.log('Service Worker registrado:', registration))
