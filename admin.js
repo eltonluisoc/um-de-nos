@@ -90,28 +90,33 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('btnBuscarSorteio')?.addEventListener('click', buscarSorteioQuina);
     document.getElementById('btnEncerrarJogo')?.addEventListener('click', encerrarJogo);
     document.getElementById('btnResetarTudo')?.addEventListener('click', resetarTudo);
+    document.getElementById('btnExcluirCompeticao')?.addEventListener('click', excluirCompeticaoHandler);
+    document.getElementById('btnRefresh')?.addEventListener('click', () => window.location.reload());
     
-    document.getElementById('btnExcluirCompeticao')?.addEventListener('click', async () => {
-        const select = document.getElementById('selectExcluirCompeticao');
-        const competicaoId = select.value;
-        if (!competicaoId) {
-            alert('Selecione uma competição para excluir!');
-            return;
-        }
-        const selectedOption = select.options[select.selectedIndex];
-        const competicaoNome = selectedOption.text.split(')')[0].split(' ').slice(1).join(' ').trim();
-        const statusIcon = selectedOption.text.includes('🟢') ? 'aberto' : (selectedOption.text.includes('🟡') ? 'preparando' : 'encerrado');
-        await excluirCompeticao(competicaoId, competicaoNome, statusIcon);
-    });
-    
-    // Recarregar lista quando mudar para a tab de lista
+    // Eventos das TABS
     document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', async () => {
-            if (tab.dataset.tab === 'lista') {
-                const selectLista = document.getElementById('selectCompeticaoLista');
-                if (selectLista && selectLista.value) {
-                    await carregarParticipantesPorCompeticao(selectLista.value);
-                }
+        tab.addEventListener('click', (e) => {
+            const tabId = tab.dataset.tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('ativo'));
+            tab.classList.add('ativo');
+            const targetContent = document.getElementById(tabId);
+            if (targetContent) targetContent.classList.add('ativo');
+            
+            // Recarregar dados específicos ao abrir cada tab
+            if (tabId === 'lista') {
+                carregarSelectCompeticaoLista();
+            }
+            if (tabId === 'sorteios') {
+                carregarNumerosSorteadosAdmin();
+                carregarHistoricoSorteios();
+            }
+            if (tabId === 'cadastro') {
+                carregarSelectCompeticoesCadastro();
+            }
+            if (tabId === 'config') {
+                carregarSelectCompeticoes();
+                carregarSelectExcluirCompeticao();
             }
         });
     });
@@ -171,35 +176,97 @@ async function carregarDados() {
     await carregarJogoAtivo();
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
+    await carregarSelectCompeticaoLista();
+    await carregarSelectExcluirCompeticao();
     await carregarRanking();
     await carregarTodosParticipantes();
     await carregarParametros();
     await carregarHistoricoSorteios();
     await carregarNumerosSorteadosAdmin();
     await verificarBloqueio();
-    await atualizarContadorParticipantes();
-    await carregarSelectCompeticaoLista();
+    await atualizarStatusGame();
     iniciarBuscaAutomaticaMelhorada();
-    carregarTabs();
 }
 
-function carregarTabs() {
-    document.querySelectorAll('.tab').forEach(tab => {
-        tab.addEventListener('click', () => {
-            const tabId = tab.dataset.tab;
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('ativo'));
-            tab.classList.add('ativo');
-            document.getElementById(tabId).classList.add('ativo');
-            
-            if (tabId === 'sorteios') {
-                carregarNumerosSorteadosAdmin();
-            }
-            if (tabId === 'cadastro') {
-                carregarSelectCompeticoesCadastro();
-            }
-        });
-    });
+async function atualizarStatusGame() {
+    const nomeSpan = document.getElementById('statusNome');
+    const situacaoSpan = document.getElementById('statusSituacao');
+    const ultimoSorteioSpan = document.getElementById('statusUltimoSorteio');
+    const participantesSpan = document.getElementById('statusParticipantes');
+    const valorSpan = document.getElementById('statusValor');
+    const dataSpan = document.getElementById('statusData');
+    
+    if (!jogoAtualId) {
+        if (nomeSpan) nomeSpan.textContent = 'Nenhuma competição ativa';
+        if (situacaoSpan) situacaoSpan.innerHTML = '<span class="status-badge-inactive">INATIVO</span>';
+        return;
+    }
+    
+    const jogoRef = doc(db, 'jogos', jogoAtualId);
+    const jogoDoc = await getDoc(jogoRef);
+    const jogoData = jogoDoc.data();
+    
+    if (nomeSpan) nomeSpan.textContent = jogoData.nome || 'Edição atual';
+    
+    const statusClass = jogoData.status === 'aberto' ? 'status-badge-active' : 'status-badge-preparing';
+    const statusText = jogoData.status === 'aberto' ? 'ATIVO' : 'PREPARANDO';
+    if (situacaoSpan) situacaoSpan.innerHTML = `<span class="${statusClass}">${statusText}</span>`;
+    
+    if (ultimoSorteioSpan) ultimoSorteioSpan.textContent = jogoData.ultimoConcursoImportado || 'Nenhum ainda';
+    
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+    const snapshot = await getDocs(q);
+    if (participantesSpan) participantesSpan.textContent = snapshot.size;
+    
+    if (valorSpan) valorSpan.textContent = `R$ ${jogoData.valorInscricao || 50},00`;
+    if (dataSpan) dataSpan.textContent = jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-';
+}
+
+async function carregarSelectExcluirCompeticao() {
+    const select = document.getElementById('selectExcluirCompeticao');
+    if (!select) return;
+    
+    const jogosRef = collection(db, 'jogos');
+    const querySnapshot = await getDocs(jogosRef);
+    
+    select.innerHTML = '<option value="">-- Selecione uma competição para excluir --</option>';
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
+        const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
+        select.innerHTML += `<option value="${doc.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+    }
+}
+
+async function excluirCompeticaoHandler() {
+    const select = document.getElementById('selectExcluirCompeticao');
+    const competicaoId = select.value;
+    if (!competicaoId) {
+        alert('Selecione uma competição para excluir!');
+        return;
+    }
+    const selectedOption = select.options[select.selectedIndex];
+    const competicaoNome = selectedOption.text.split(')')[0].split(' ').slice(1).join(' ').trim();
+    const statusIcon = selectedOption.text.includes('🟢') ? 'aberto' : (selectedOption.text.includes('🟡') ? 'preparando' : 'encerrado');
+    
+    if (statusIcon === 'aberto') {
+        alert(`❌ Não é possível excluir uma competição ATIVA!\n\nA competição "${competicaoNome}" está em andamento.`);
+        return;
+    }
+    
+    if (confirm(`⚠️ Excluir "${competicaoNome}"? Esta ação é irreversível.`)) {
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', competicaoId));
+        const participantes = await getDocs(q);
+        const batch = writeBatch(db);
+        participantes.forEach(doc => batch.delete(doc.ref));
+        await batch.commit();
+        await deleteDoc(doc(db, 'jogos', competicaoId));
+        alert(`✅ Competição "${competicaoNome}" excluída!`);
+        await carregarSelectExcluirCompeticao();
+        await carregarJogoAtivo();
+    }
 }
 
 // ============================================
@@ -235,9 +302,9 @@ async function carregarJogoAtivo() {
         }
         
         jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
+        await atualizarStatusGame();
         
     } else {
-        // Verificar se tem competição em preparação
         const preparandoQuery = query(jogosRef, where('status', '==', 'preparando'), limit(1));
         const preparandoSnapshot = await getDocs(preparandoQuery);
         
@@ -253,61 +320,33 @@ async function carregarJogoAtivo() {
             }
             jogoAtualId = null;
             jogoAtualStatus = null;
+            await atualizarStatusGame();
         } else {
             const statusDiv = document.getElementById('statusAdmin');
             if (statusDiv) {
-                statusDiv.innerHTML = `
-                    <p>⚡ Nenhuma competição encontrada.</p>
-                    <p>💡 Clique em "Preparar Nova Competição" na aba Configurações para começar.</p>
-                `;
+                statusDiv.innerHTML = `<p>⚡ Nenhuma competição encontrada. Clique em "Preparar Nova Competição" para começar.</p>`;
             }
         }
-        
         if (intervaloBusca) clearInterval(intervaloBusca);
     }
 }
 
 async function carregarSelectCompeticoes() {
     const select = document.getElementById('selectCompeticao');
-    const selectExcluir = document.getElementById('selectExcluirCompeticao');
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
     const querySnapshot = await getDocs(jogosRef);
     
-    const jogos = [];
+    select.innerHTML = '<option value="">-- Selecione uma competição para ATIVAR --</option>';
     for (const doc of querySnapshot.docs) {
         const jogo = doc.data();
-        jogos.push({ id: doc.id, ...jogo });
-    }
-    jogos.sort((a, b) => {
-        const dateA = a.createdAt?.toDate() || new Date(0);
-        const dateB = b.createdAt?.toDate() || new Date(0);
-        return dateB - dateA;
-    });
-    
-    // Select para ativação (apenas PREPARANDO)
-    select.innerHTML = '<option value="">-- Selecione uma competição para ATIVAR --</option>';
-    
-    for (const jogo of jogos) {
         if (jogo.status === 'preparando') {
-            const statusIcon = '🟡';
-            select.innerHTML += `<option value="${jogo.id}">${statusIcon} ${jogo.nome} (PREPARANDO) - ${jogo.totalParticipantes || 0} participantes</option>`;
+            select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} (PREPARANDO) - ${jogo.totalParticipantes || 0} participantes</option>`;
         }
     }
-    
     if (select.options.length === 1) {
         select.innerHTML = '<option value="">-- Nenhuma competição em PREPARAÇÃO --</option>';
-    }
-    
-    // Select para exclusão (todas)
-    if (selectExcluir) {
-        selectExcluir.innerHTML = '<option value="">-- Selecione uma competição para excluir --</option>';
-        for (const jogo of jogos) {
-            const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
-            const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
-            selectExcluir.innerHTML += `<option value="${jogo.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
-        }
     }
 }
 
@@ -320,7 +359,6 @@ async function carregarSelectCompeticoesCadastro() {
     const querySnapshot = await getDocs(q);
     
     select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
-    
     const bloqueioDiv = document.getElementById('bloqueioCadastro');
     
     if (querySnapshot.empty) {
@@ -330,7 +368,6 @@ async function carregarSelectCompeticoesCadastro() {
     } else {
         if (bloqueioDiv) bloqueioDiv.style.display = 'none';
         document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
-        
         for (const doc of querySnapshot.docs) {
             const jogo = doc.data();
             select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes</option>`;
@@ -338,11 +375,79 @@ async function carregarSelectCompeticoesCadastro() {
     }
 }
 
+async function carregarSelectCompeticaoLista() {
+    const select = document.getElementById('selectCompeticaoLista');
+    if (!select) return;
+    
+    const jogosRef = collection(db, 'jogos');
+    const querySnapshot = await getDocs(jogosRef);
+    
+    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    for (const doc of querySnapshot.docs) {
+        const jogo = doc.data();
+        const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
+        const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
+        select.innerHTML += `<option value="${doc.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+    }
+    
+    select.onchange = async () => {
+        await carregarParticipantesPorCompeticao(select.value);
+    };
+}
+
+async function carregarParticipantesPorCompeticao(competicaoId) {
+    const tbody = document.getElementById('corpoTabela');
+    if (!tbody || !competicaoId) {
+        if (tbody && !competicaoId) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
+        }
+        return;
+    }
+    
+    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
+    
+    try {
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', competicaoId));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = '';
+        for (const docSnap of querySnapshot.docs) {
+            const p = docSnap.data();
+            const tr = document.createElement('tr');
+            const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
+            tr.innerHTML = `
+                <td><strong>${p.nome}</strong></td>
+                <td style="font-size:11px;">${p.numeros.join(', ')}</td>
+                <td>${p.acertos || 0}/17</td>
+                <td>${dataCadastro}</td>
+                <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
+            `;
+            tbody.appendChild(tr);
+        }
+    } catch (error) {
+        console.error('Erro ao carregar participantes:', error);
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc3545;">Erro ao carregar participantes</td></tr>';
+    }
+}
+
+async function carregarTodosParticipantes() {
+    const selectLista = document.getElementById('selectCompeticaoLista');
+    if (selectLista && selectLista.value) {
+        await carregarParticipantesPorCompeticao(selectLista.value);
+    }
+}
+
 async function criarNovaCompeticaoPreparando() {
     const nomeJogo = prompt('Nome da nova competição:', `Um de Nós - ${new Date().toLocaleDateString('pt-BR')}`);
     if (!nomeJogo) return;
     
-    const docRef = await addDoc(collection(db, 'jogos'), {
+    await addDoc(collection(db, 'jogos'), {
         nome: nomeJogo,
         status: 'preparando',
         createdAt: new Date(),
@@ -354,9 +459,10 @@ async function criarNovaCompeticaoPreparando() {
     });
     
     alert(`✅ Competição "${nomeJogo}" criada em modo PREPARAÇÃO!`);
-    
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
+    await carregarSelectCompeticaoLista();
+    await carregarSelectExcluirCompeticao();
 }
 
 async function ativarCompeticaoSelecionada() {
@@ -371,13 +477,8 @@ async function ativarCompeticaoSelecionada() {
     const jogoRef = doc(db, 'jogos', selectedId);
     const jogoDoc = await getDoc(jogoRef);
     
-    if (!jogoDoc.exists()) {
-        alert('Competição não encontrada!');
-        return;
-    }
-    
-    if (jogoDoc.data().status !== 'preparando') {
-        alert('Apenas competições em PREPARAÇÃO podem ser ativadas!');
+    if (!jogoDoc.exists() || jogoDoc.data().status !== 'preparando') {
+        alert('Competição não encontrada ou não está em PREPARAÇÃO!');
         return;
     }
     
@@ -387,25 +488,18 @@ async function ativarCompeticaoSelecionada() {
     const totalParticipantes = snapshot.size;
     
     if (totalParticipantes < 3) {
-        alert(`É necessário pelo menos 3 participantes para iniciar a competição!\nAtualmente: ${totalParticipantes} participantes.`);
+        alert(`É necessário pelo menos 3 participantes para iniciar!\nAtualmente: ${totalParticipantes} participantes.`);
         return;
     }
     
-    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\nApós ativar, NÃO será possível adicionar novos participantes.`)) {
-        await updateDoc(jogoRef, { 
-            status: 'aberto',
-            dataInicio: new Date()
-        });
-        
-        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com sucesso!`);
-        
+    if (confirm(`Iniciar "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?`)) {
+        await updateDoc(jogoRef, { status: 'aberto', dataInicio: new Date() });
+        alert(`✅ Competição ativada!`);
         await carregarJogoAtivo();
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
         await carregarRanking();
-        await carregarTodosParticipantes();
-        
-        // Reiniciar busca automática
+        await atualizarStatusGame();
         if (intervaloBusca) clearInterval(intervaloBusca);
         iniciarBuscaAutomaticaMelhorada();
     }
@@ -413,8 +507,7 @@ async function ativarCompeticaoSelecionada() {
 
 async function mostrarCompeticoes() {
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, orderBy('createdAt', 'desc'));
-    const querySnapshot = await getDocs(q);
+    const querySnapshot = await getDocs(jogosRef);
     
     if (querySnapshot.empty) {
         alert('Nenhuma competição encontrada');
@@ -426,43 +519,9 @@ async function mostrarCompeticoes() {
         const jogo = doc.data();
         const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
         const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
-        msg += `${statusIcon} ${jogo.nome}\n   Status: ${statusText}\n   Participantes: ${jogo.totalParticipantes || 0}\n   Criado: ${jogo.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}\n\n`;
+        msg += `${statusIcon} ${jogo.nome} - ${statusText} - ${jogo.totalParticipantes || 0} participantes\n`;
     }
-    
     alert(msg);
-}
-
-async function excluirCompeticao(competicaoId, competicaoNome, competicaoStatus) {
-    if (competicaoStatus === 'aberto') {
-        alert(`❌ Não é possível excluir uma competição ATIVA!\n\nA competição "${competicaoNome}" está em andamento. Finalize ou aguarde encerrar primeiro.`);
-        return;
-    }
-    
-    const confirmar = confirm(`⚠️ Tem certeza que deseja EXCLUIR a competição "${competicaoNome}"?\n\nEsta ação é IRREVERSÍVEL e removerá todos os participantes e dados relacionados.`);
-    
-    if (!confirmar) return;
-    
-    try {
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', competicaoId));
-        const participantes = await getDocs(q);
-        
-        const batch = writeBatch(db);
-        participantes.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        
-        await deleteDoc(doc(db, 'jogos', competicaoId));
-        
-        alert(`✅ Competição "${competicaoNome}" excluída com sucesso!`);
-        
-        await carregarSelectCompeticoes();
-        await carregarSelectCompeticoesCadastro();
-        await carregarJogoAtivo();
-        
-    } catch (error) {
-        console.error('Erro ao excluir competição:', error);
-        alert('Erro ao excluir competição: ' + error.message);
-    }
 }
 
 async function verificarBloqueio() {
@@ -473,83 +532,17 @@ async function verificarBloqueio() {
     if (bloqueado && jogoAtualStatus === 'aberto') {
         if (bloqueioMsg) bloqueioMsg.style.display = 'block';
         if (infoBloqueio) infoBloqueio.style.display = 'block';
+        document.getElementById('btnSalvarParticipante')?.setAttribute('disabled', 'disabled');
     } else {
         if (bloqueioMsg) bloqueioMsg.style.display = 'none';
         if (infoBloqueio) infoBloqueio.style.display = 'none';
+        document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
     }
 }
 
 // ============================================
 // PARTICIPANTES
 // ============================================
-
-async function salvarParticipante() {
-    const selectCompeticao = document.getElementById('selectCompeticaoCadastro');
-    const competicaoId = selectCompeticao.value;
-    const nome = document.getElementById('nomeParticipante').value;
-    
-    if (!competicaoId) {
-        alert('Selecione uma competição em PREPARAÇÃO!');
-        return;
-    }
-    
-    if (!nome) {
-        alert('Digite o nome do participante!');
-        return;
-    }
-    
-    if (numerosSelecionados.length !== 17) {
-        alert(`Selecione exatamente 17 números! Você selecionou ${numerosSelecionados.length}`);
-        return;
-    }
-    
-    try {
-        await addDoc(collection(db, 'participantes'), {
-            nome: nome,
-            jogoId: competicaoId,
-            numeros: numerosSelecionados.sort((a,b) => a-b),
-            acertos: 0,
-            acertouTodos: false,
-            ordemVitoria: null,
-            dataCadastro: new Date()
-        });
-        
-        // Atualizar contador da competição
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', competicaoId));
-        const querySnapshot = await getDocs(q);
-        const total = querySnapshot.size;
-        
-        const jogoRef = doc(db, 'jogos', competicaoId);
-        await updateDoc(jogoRef, { totalParticipantes: total });
-        
-        alert('Participante cadastrado com sucesso!');
-        
-        // Limpar formulário
-        document.getElementById('nomeParticipante').value = '';
-        document.querySelectorAll('.numero-btn.selecionado').forEach(btn => {
-            btn.classList.remove('selecionado');
-        });
-        numerosSelecionados = [];
-        document.getElementById('contadorNumeros').innerHTML = '0/17 números selecionados';
-        
-        await carregarSelectCompeticoesCadastro();
-        await carregarTodosParticipantes();
-        
-    } catch (error) {
-        console.error('Erro ao salvar:', error);
-        alert('Erro ao salvar participante: ' + error.message);
-    }
-}
-
-async function carregarTodosParticipantes() {
-    // Esta função agora é substituída por carregarParticipantesPorCompeticao
-    // Mantida para compatibilidade com outras chamadas
-    const selectLista = document.getElementById('selectCompeticaoLista');
-    if (selectLista && selectLista.value) {
-        await carregarParticipantesPorCompeticao(selectLista.value);
-    }
-}
 
 let numerosSelecionados = [];
 
@@ -583,6 +576,60 @@ function toggleNumero(element) {
     if (contador) contador.innerHTML = `${numerosSelecionados.length}/17 números selecionados`;
 }
 
+async function salvarParticipante() {
+    const selectCompeticao = document.getElementById('selectCompeticaoCadastro');
+    const competicaoId = selectCompeticao.value;
+    const nome = document.getElementById('nomeParticipante').value;
+    
+    if (!competicaoId) {
+        alert('Selecione uma competição em PREPARAÇÃO!');
+        return;
+    }
+    if (!nome) {
+        alert('Digite o nome do participante!');
+        return;
+    }
+    if (numerosSelecionados.length !== 17) {
+        alert(`Selecione exatamente 17 números! Você selecionou ${numerosSelecionados.length}`);
+        return;
+    }
+    
+    try {
+        await addDoc(collection(db, 'participantes'), {
+            nome: nome,
+            jogoId: competicaoId,
+            numeros: numerosSelecionados.sort((a,b) => a-b),
+            acertos: 0,
+            acertouTodos: false,
+            ordemVitoria: null,
+            dataCadastro: new Date()
+        });
+        
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', competicaoId));
+        const querySnapshot = await getDocs(q);
+        const jogoRef = doc(db, 'jogos', competicaoId);
+        await updateDoc(jogoRef, { totalParticipantes: querySnapshot.size });
+        
+        alert('Participante cadastrado com sucesso!');
+        
+        document.getElementById('nomeParticipante').value = '';
+        document.querySelectorAll('.numero-btn.selecionado').forEach(btn => {
+            btn.classList.remove('selecionado');
+        });
+        numerosSelecionados = [];
+        document.getElementById('contadorNumeros').innerHTML = '0/17 números selecionados';
+        
+        await carregarSelectCompeticoesCadastro();
+        await carregarSelectCompeticaoLista();
+        await carregarRanking();
+        
+    } catch (error) {
+        console.error('Erro ao salvar:', error);
+        alert('Erro ao salvar participante: ' + error.message);
+    }
+}
+
 // ============================================
 // PARÂMETROS E PREMIAÇÃO
 // ============================================
@@ -608,17 +655,16 @@ async function salvarParametros() {
     }
     
     const valorInscricao = parseFloat(document.getElementById('valorInscricao').value);
-    
     if (isNaN(valorInscricao) || valorInscricao <= 0) {
-        alert('Digite um valor válido para a inscrição!');
+        alert('Digite um valor válido!');
         return;
     }
     
     const jogoRef = doc(db, 'jogos', jogoAtualId);
     await updateDoc(jogoRef, { valorInscricao: valorInscricao });
-    
-    alert('Parâmetros salvos com sucesso!');
+    alert('Parâmetros salvos!');
     await carregarParametros();
+    await atualizarStatusGame();
 }
 
 function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
@@ -632,19 +678,6 @@ function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
     document.getElementById('preview2').innerHTML = `20% = R$ ${premio2.toFixed(2)}`;
     document.getElementById('preview3').innerHTML = `5% = R$ ${premio3.toFixed(2)}`;
     document.getElementById('previewAdmin').innerHTML = `12% = R$ ${premioAdmin.toFixed(2)}`;
-}
-
-async function atualizarContadorParticipantes() {
-    if (!jogoAtualId) return;
-    
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    const querySnapshot = await getDocs(q);
-    const total = querySnapshot.size;
-    
-    const jogoRef = doc(db, 'jogos', jogoAtualId);
-    await updateDoc(jogoRef, { totalParticipantes: total });
-    return total;
 }
 
 // ============================================
@@ -704,126 +737,78 @@ async function carregarRanking() {
 
 function iniciarBuscaAutomaticaMelhorada() {
     if (intervaloBusca) clearInterval(intervaloBusca);
-    
-    // Só inicia busca se tiver competição ATIVA
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
-        console.log('⏸️ Busca automática desativada - nenhuma competição ativa');
+        console.log('⏸️ Busca automática desativada');
         return;
     }
     
-    console.log('🔄 Busca automática configurada (a cada 5 min, das 20h à 00h30)');
-    
+    console.log('🔄 Busca automática ativada');
     setTimeout(() => {
-        if (jogoAtualId && jogoAtualStatus === 'aberto') {
-            buscarSorteioQuina();
-        }
+        if (jogoAtualId && jogoAtualStatus === 'aberto') buscarSorteioQuina();
     }, 3000);
     
     intervaloBusca = setInterval(async () => {
         const agora = new Date();
         const hora = agora.getHours();
         const minutos = agora.getMinutes();
-        
         const isHorarioBusca = (hora >= 20) || (hora === 0 && minutos <= 30);
         
         if (jogoAtualId && jogoAtualStatus === 'aberto' && isHorarioBusca && !sorteioEncontradoHoje) {
-            console.log('⏰ Busca automática executando...');
             await buscarSorteioQuina();
         }
     }, 300000);
 }
 
 async function buscarSorteioQuina() {
-    console.log('🔍 Buscar sorteio - múltiplas APIs');
-    
-    if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
-        console.log('⚠️ Sem competição ativa, ignorando busca');
-        return;
-    }
+    console.log('🔍 Buscando sorteio...');
+    if (!jogoAtualId || jogoAtualStatus !== 'aberto') return;
     
     const btn = document.getElementById('btnBuscarSorteio');
-    if (btn && !btn.disabled) {
-        btn.disabled = true;
-        btn.textContent = '⏳ Buscando...';
-    }
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
     
     try {
-        const { numeros: numerosSorteados, concurso, data } = await buscarSorteioMultiplasAPIs();
-        
-        console.log(`🎲 Sorteio ${concurso}:`, numerosSorteados);
+        const { numeros, concurso, data } = await buscarSorteioMultiplasAPIs();
+        console.log(`🎲 Sorteio ${concurso}:`, numeros);
         
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         const jogoDoc = await getDoc(jogoRef);
-        const jogoData = jogoDoc.data();
         
-        const hoje = new Date();
-        let ehSorteioDeHoje = false;
-        if (data) {
-            const partes = data.split('/');
-            if (partes.length === 3) {
-                const dataSorteio = new Date(partes[2], partes[1] - 1, partes[0]);
-                ehSorteioDeHoje = dataSorteio.toDateString() === hoje.toDateString();
-            }
-        }
+        if (jogoDoc.data().ultimoConcursoImportado === concurso) return;
         
-        if (jogoData.ultimoConcursoImportado === concurso) {
-            console.log(`⚠️ Sorteio ${concurso} já foi importado`);
-            if (ehSorteioDeHoje) {
-                sorteioEncontradoHoje = true;
-            }
-            return;
-        }
-        
-        if (ehSorteioDeHoje) {
-            sorteioEncontradoHoje = true;
-            console.log('🎉 Sorteio de hoje ENCONTRADO e IMPORTADO!');
-        }
-        
-        if (!jogoData.primeiraConferenciaRealizada) {
-            console.log('🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros');
-            await updateDoc(jogoRef, {
-                primeiraConferenciaRealizada: true,
-                dataPrimeiraConferencia: new Date()
-            });
+        if (!jogoDoc.data().primeiraConferenciaRealizada) {
+            await updateDoc(jogoRef, { primeiraConferenciaRealizada: true, dataPrimeiraConferencia: new Date() });
             jogoBloqueado = true;
             await verificarBloqueio();
         }
         
-        let dataSorteioValida = new Date();
+        let dataSorteio = new Date();
         if (data) {
             const partes = data.split('/');
-            if (partes.length === 3) {
-                dataSorteioValida = new Date(partes[2], partes[1] - 1, partes[0]);
-            }
+            if (partes.length === 3) dataSorteio = new Date(partes[2], partes[1]-1, partes[0]);
         }
         
         await addDoc(collection(db, 'sorteios_quina'), {
-            concurso: concurso,
-            numeros: numerosSorteados,
-            data: dataSorteioValida,
-            importadoEm: new Date()
+            concurso, numeros, data: dataSorteio, importadoEm: new Date()
         });
         
         await updateDoc(jogoRef, {
-            ultimosNumerosSorteados: numerosSorteados,
+            ultimosNumerosSorteados: numeros,
             ultimoConcursoImportado: concurso
         });
         
-        await atualizarAcertosParticipantes(numerosSorteados);
-        
-        alert(`✅ Sorteio ${concurso} importado! Números: ${numerosSorteados.join(', ')}`);
+        await atualizarAcertosParticipantes(numeros);
+        alert(`✅ Sorteio ${concurso} importado! Números: ${numeros.join(', ')}`);
         
         await carregarRanking();
         await carregarHistoricoSorteios();
         await carregarNumerosSorteadosAdmin();
+        await atualizarStatusGame();
         
     } catch (error) {
         console.error('❌ Erro:', error);
+        alert('Erro ao buscar sorteio');
     } finally {
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = '📢 Buscar Último Sorteio da Quina';
-        }
+        if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
     }
 }
 
@@ -833,161 +818,67 @@ async function atualizarAcertosParticipantes(novosNumeros) {
     const querySnapshot = await getDocs(q);
     
     let vencedores = [];
-    
     for (const docSnap of querySnapshot.docs) {
-        const participante = docSnap.data();
-        if (participante.acertouTodos) continue;
+        const p = docSnap.data();
+        if (p.acertouTodos) continue;
         
         let novosAcertos = 0;
         for (const num of novosNumeros) {
-            if (participante.numeros.includes(num)) novosAcertos++;
+            if (p.numeros.includes(num)) novosAcertos++;
         }
-        
-        const novoTotal = (participante.acertos || 0) + novosAcertos;
-        
+        const novoTotal = (p.acertos || 0) + novosAcertos;
         await updateDoc(doc(db, 'participantes', docSnap.id), { acertos: novoTotal });
-        
-        if (novoTotal >= 17) {
-            vencedores.push({ id: docSnap.id, nome: participante.nome, acertos: novoTotal });
-        }
+        if (novoTotal >= 17) vencedores.push({ id: docSnap.id, nome: p.nome });
     }
     
-    if (vencedores.length > 0) {
-        await declararVencedores(vencedores);
-    }
-    
+    if (vencedores.length > 0) await declararVencedores(vencedores);
     await carregarRanking();
 }
 
 async function declararVencedores(vencedores) {
     const jogoRef = doc(db, 'jogos', jogoAtualId);
-    const jogoDoc = await getDoc(jogoRef);
-    
-    if (jogoDoc.data().status !== 'aberto') return;
-    
-    const jogoData = jogoDoc.data();
-    const valorInscricao = jogoData.valorInscricao || 50;
-    
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    const allParticipants = await getDocs(q);
-    
-    let menosAcertos = 17;
-    let perdedor = null;
-    allParticipants.forEach(doc => {
-        const p = doc.data();
-        if (!p.acertouTodos && p.acertos < menosAcertos) {
-            menosAcertos = p.acertos;
-            perdedor = { id: doc.id, nome: p.nome, acertos: p.acertos };
-        }
-    });
-    
-    const totalParticipantes = allParticipants.size;
-    const premioTotal = valorInscricao * totalParticipantes;
-    
-    const premio1 = premioTotal * 0.63;
-    const premio2 = premioTotal * 0.20;
-    const premio3 = premioTotal * 0.05;
-    
-    vencedores.sort((a, b) => b.acertos - a.acertos);
-    
-    for (let i = 0; i < vencedores.length && i < 2; i++) {
-        const v = vencedores[i];
-        let premio = (i === 0) ? premio1 : premio2;
-        
-        const empatados = vencedores.filter(v2 => v2.acertos === v.acertos);
-        if (empatados.length > 1 && i === 0) {
-            premio = premio1 / empatados.length;
-        }
-        
-        await updateDoc(doc(db, 'participantes', v.id), {
-            acertouTodos: true,
-            ordemVitoria: i + 1,
-            premioGanho: premio
-        });
-        
-        await addDoc(collection(db, 'historico_vencedores'), {
-            jogoId: jogoAtualId,
-            participanteId: v.id,
-            participanteNome: v.nome,
-            posicao: i + 1,
-            premio: premio,
-            dataVitoria: new Date()
-        });
-    }
-    
-    if (perdedor && totalParticipantes >= 3) {
-        await updateDoc(doc(db, 'participantes', perdedor.id), {
-            premioMenosAcertos: premio3
-        });
-        
-        await addDoc(collection(db, 'historico_vencedores'), {
-            jogoId: jogoAtualId,
-            participanteId: perdedor.id,
-            participanteNome: perdedor.nome,
-            posicao: 'MENOS ACERTOS',
-            premio: premio3,
-            acertos: perdedor.acertos,
-            dataVitoria: new Date()
-        });
-    }
-    
-    await updateDoc(jogoRef, {
-        status: 'encerrado',
-        encerradoEm: new Date()
-    });
-    
+    await updateDoc(jogoRef, { status: 'encerrado' });
     if (intervaloBusca) clearInterval(intervaloBusca);
     
-    let msg = '🏆 RESULTADO FINAL! 🏆\n\n';
-    if (vencedores[0]) msg += `🥇 1º lugar: ${vencedores[0].nome}\n`;
-    if (vencedores[1]) msg += `🥈 2º lugar: ${vencedores[1].nome}\n`;
-    if (perdedor) msg += `🎯 Prêmio especial (menos acertos): ${perdedor.nome} (${perdedor.acertos}/17)\n`;
+    let msg = '🏆 VENCEDORES! 🏆\n\n';
+    vencedores.forEach((v, i) => { msg += `${i+1}º: ${v.nome}\n`; });
     alert(msg);
     setTimeout(() => window.location.reload(), 2000);
 }
 
 async function encerrarJogo() {
-    if (!jogoAtualId) {
-        alert('Nenhuma competição ativa!');
-        return;
-    }
-    
-    if (confirm('Tem certeza que deseja encerrar o jogo atual?')) {
+    if (!jogoAtualId) { alert('Nenhuma competição ativa!'); return; }
+    if (confirm('Encerrar jogo atual?')) {
         if (intervaloBusca) clearInterval(intervaloBusca);
-        const jogoRef = doc(db, 'jogos', jogoAtualId);
-        await updateDoc(jogoRef, { status: 'encerrado' });
+        await updateDoc(doc(db, 'jogos', jogoAtualId), { status: 'encerrado' });
         alert('Jogo encerrado!');
         await carregarJogoAtivo();
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
+        await atualizarStatusGame();
     }
 }
 
 // ============================================
-// HISTÓRICO E NÚMEROS
+// HISTÓRICO
 // ============================================
 
 async function carregarHistoricoSorteios() {
     const sorteiosRef = collection(db, 'sorteios_quina');
     const q = query(sorteiosRef, orderBy('concurso', 'desc'));
     const querySnapshot = await getDocs(q);
-    
     const container = document.getElementById('historicoSorteios');
+    
     if (querySnapshot.empty) {
-        container.innerHTML = '<div>Nenhum sorteio importado ainda.</div>';
+        container.innerHTML = '<div>Nenhum sorteio importado</div>';
         return;
     }
     
     let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
     querySnapshot.forEach(doc => {
         const s = doc.data();
-        html += `
-            <div style="background: rgba(241,196,15,0.08); border-radius: 10px; padding: 8px 12px;">
-                <strong>#${s.concurso}</strong><br>
-                ${s.numeros.join(', ')}
-            </div>
-        `;
+        html += `<div style="background: rgba(241,196,15,0.08); border-radius: 10px; padding: 8px 12px;">
+                    <strong>#${s.concurso}</strong><br>${s.numeros.join(', ')}</div>`;
     });
     html += '</div>';
     container.innerHTML = html;
@@ -1000,116 +891,19 @@ async function carregarNumerosSorteadosAdmin() {
     const numerosSorteados = [];
     querySnapshot.forEach(doc => {
         const s = doc.data();
-        for (const num of s.numeros) {
-            if (!numerosSorteados.includes(num)) {
-                numerosSorteados.push(num);
-            }
-        }
+        s.numeros.forEach(num => { if (!numerosSorteados.includes(num)) numerosSorteados.push(num); });
     });
     
     const container = document.getElementById('gridNumerosSorteadosAdmin');
     let html = '<div style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 5px;">';
     for (let i = 1; i <= 80; i++) {
-        const foiSorteado = numerosSorteados.includes(i);
-        html += `
-            <div style="background: ${foiSorteado ? 'rgba(241,196,15,0.15)' : 'rgba(255,255,255,0.04)'}; color: ${foiSorteado ? '#f1c40f' : 'white'}; padding: 6px; text-align: center; border-radius: 6px; font-size:0.7em;">
-                ${i}
-            </div>
-        `;
+        const foi = numerosSorteados.includes(i);
+        html += `<div style="background: ${foi ? 'rgba(241,196,15,0.15)' : 'rgba(255,255,255,0.04)'}; 
+                        color: ${foi ? '#f1c40f' : 'white'}; padding: 6px; text-align: center; border-radius: 6px;">
+                    ${i}</div>`;
     }
     html += '</div>';
     container.innerHTML = html;
-}
-
-async function carregarSelectCompeticaoLista() {
-    const select = document.getElementById('selectCompeticaoLista');
-    if (!select) return;
-    
-    const jogosRef = collection(db, 'jogos');
-    const querySnapshot = await getDocs(jogosRef);
-    
-    const jogos = [];
-    for (const doc of querySnapshot.docs) {
-        const jogo = doc.data();
-        jogos.push({ id: doc.id, nome: jogo.nome, status: jogo.status, participantes: jogo.totalParticipantes || 0 });
-    }
-    jogos.sort((a, b) => {
-        const statusPriority = { 'aberto': 1, 'preparando': 2, 'encerrado': 3 };
-        return statusPriority[a.status] - statusPriority[b.status];
-    });
-    
-    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
-    
-    for (const jogo of jogos) {
-        const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
-        const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
-        select.innerHTML += `<option value="${jogo.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.participantes} participantes</option>`;
-    }
-    
-    // Adicionar evento para carregar participantes ao selecionar
-    select.onchange = async () => {
-        await carregarParticipantesPorCompeticao(select.value);
-    };
-}
-
-async function carregarParticipantesPorCompeticao(competicaoId) {
-    const tbody = document.getElementById('corpoTabela');
-    if (!tbody || !competicaoId) {
-        if (tbody && !competicaoId) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
-        }
-        return;
-    }
-    
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
-    
-    try {
-        // Buscar nome da competição
-        const jogoRef = doc(db, 'jogos', competicaoId);
-        const jogoDoc = await getDoc(jogoRef);
-        const competicaoNome = jogoDoc.exists() ? jogoDoc.data().nome : 'Desconhecida';
-        
-        // Buscar participantes
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', competicaoId));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado na competição "${competicaoNome}"</td></tr>`;
-            return;
-        }
-        
-        tbody.innerHTML = '';
-        for (const docSnap of querySnapshot.docs) {
-            const p = docSnap.data();
-            const tr = document.createElement('tr');
-            const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
-            tr.innerHTML = `
-                <td><strong>${p.nome}</strong></td>
-                <td style="font-size:11px;">${p.numeros.join(', ')}</td>
-                <td>${p.acertos || 0}/17</td>
-                <td>${dataCadastro}</td>
-                <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
-            `;
-            tbody.appendChild(tr);
-        }
-        
-        // Adicionar resumo
-        const resumoRow = document.createElement('tr');
-        resumoRow.style.background = 'rgba(241,196,15,0.1)';
-        resumoRow.innerHTML = `
-            <td colspan="5" style="text-align: center; font-weight: bold;">
-                📊 Total de participantes: ${querySnapshot.size} | 
-                🎯 Competição: ${competicaoNome} | 
-                📅 Criada em: ${jogoDoc.data().createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}
-            </td>
-        `;
-        tbody.appendChild(resumoRow);
-        
-    } catch (error) {
-        console.error('Erro ao carregar participantes:', error);
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; color: #dc3545;">Erro ao carregar participantes</td></tr>';
-    }
 }
 
 // ============================================
@@ -1117,22 +911,19 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
 // ============================================
 
 async function resetarTudo() {
-    if (confirm('⚠️ ATENÇÃO! Isso vai apagar TODOS os dados. Tem certeza?')) {
+    if (confirm('⚠️ APAGAR TODOS OS DADOS?')) {
         const confirmacao = prompt('Digite "SIM" para confirmar');
         if (confirmacao === 'SIM') {
             if (intervaloBusca) clearInterval(intervaloBusca);
-            
             const participantes = await getDocs(collection(db, 'participantes'));
             const jogos = await getDocs(collection(db, 'jogos'));
             const sorteios = await getDocs(collection(db, 'sorteios_quina'));
             const historico = await getDocs(collection(db, 'historico_vencedores'));
-            
             const batch = writeBatch(db);
-            participantes.forEach(doc => batch.delete(doc.ref));
-            jogos.forEach(doc => batch.delete(doc.ref));
-            sorteios.forEach(doc => batch.delete(doc.ref));
-            historico.forEach(doc => batch.delete(doc.ref));
-            
+            participantes.forEach(d => batch.delete(d.ref));
+            jogos.forEach(d => batch.delete(d.ref));
+            sorteios.forEach(d => batch.delete(d.ref));
+            historico.forEach(d => batch.delete(d.ref));
             await batch.commit();
             alert('Todos os dados foram apagados!');
             window.location.reload();
@@ -1143,7 +934,7 @@ async function resetarTudo() {
 window.excluirParticipante = async function(id) {
     if (confirm('Excluir este participante?')) {
         await deleteDoc(doc(db, 'participantes', id));
-        await carregarTodosParticipantes();
+        await carregarSelectCompeticaoLista();
         await carregarRanking();
         alert('Participante excluído!');
     }
@@ -1151,4 +942,3 @@ window.excluirParticipante = async function(id) {
 
 window.verificarSenha = verificarSenha;
 window.logout = logout;
-window.buscarSorteioQuina = buscarSorteioQuina;

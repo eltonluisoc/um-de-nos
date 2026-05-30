@@ -475,18 +475,85 @@
             text-align: center;
         }
         
-        .status-info {
-            font-size: 0.8em;
-            margin-top: 10px;
-            padding: 8px;
-            background: rgba(0,0,0,0.3);
-            border-radius: 8px;
-            text-align: center;
+        /* STATUS DO JOGO - DESIGN PROFISSIONAL */
+        .status-game {
+            background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.2));
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(241,196,15,0.15);
         }
         
-        .status-info .ativo { color: #28a745; }
-        .status-info .preparando { color: #f1c40f; }
-        .status-info .encerrado { color: #dc3545; }
+        .status-game-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .status-icon {
+            font-size: 1.8em;
+        }
+        
+        .status-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #f1c40f;
+        }
+        
+        .status-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+        }
+        
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+        }
+        
+        .status-label {
+            font-size: 0.8em;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .status-value {
+            font-weight: 700;
+            color: #f1c40f;
+        }
+        
+        .status-badge-active {
+            background: rgba(40,167,69,0.2);
+            color: #28a745;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .status-badge-preparing {
+            background: rgba(241,196,15,0.2);
+            color: #f1c40f;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .status-badge-inactive {
+            background: rgba(108,117,125,0.2);
+            color: #adb5bd;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
         
         @media (max-width: 768px) {
             .senha-box {
@@ -522,6 +589,10 @@
             .main-title-admin {
                 font-size: 1.5em;
             }
+            
+            .status-details {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
@@ -549,12 +620,12 @@
                     <div class="challenge-badge-admin">⚡ O Desafio dos 17 ⚡</div>
                 </div>
                 <div>
-                    <button class="btn" onclick="window.location.reload()">🔄 Atualizar</button>
+                    <button class="btn" id="btnRefresh">🔄 Atualizar</button>
                     <button class="btn btn-danger" id="btnLogout">🚪 Sair</button>
                 </div>
             </div>
 
-            <div class="tabs">
+            <div class="tabs" id="tabsContainer">
                 <div class="tab ativo" data-tab="dashboard">📊 Dashboard</div>
                 <div class="tab" data-tab="parametros">💰 Parâmetros</div>
                 <div class="tab" data-tab="cadastro">➕ Cadastrar Participante</div>
@@ -574,12 +645,46 @@
                             <span>Acertos</span>
                             <span>Progresso</span>
                         </div>
-                        <div id="listaRankingAdmin">Carregando...</div>
+                        <div id="listaRankingAdmin">Carregando ranking...</div>
                     </div>
                 </div>
+                
+                <!-- STATUS DO JOGO PROFISSIONAL -->
+                <div class="status-game" id="statusGame">
+                    <div class="status-game-header">
+                        <div class="status-icon">🎯</div>
+                        <div class="status-title">Status da Competição</div>
+                    </div>
+                    <div class="status-details" id="statusDetails">
+                        <div class="status-item">
+                            <span class="status-label">Competição</span>
+                            <span class="status-value" id="statusNome">Carregando...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Status</span>
+                            <span class="status-value" id="statusSituacao">Carregando...</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Último Sorteio</span>
+                            <span class="status-value" id="statusUltimoSorteio">-</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Participantes</span>
+                            <span class="status-value" id="statusParticipantes">0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Valor Inscrição</span>
+                            <span class="status-value" id="statusValor">R$ 0</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Data Criação</span>
+                            <span class="status-value" id="statusData">-</span>
+                        </div>
+                    </div>
+                </div>
+                
                 <div class="card">
-                    <h3>🎯 Status do Jogo</h3>
-                    <div id="statusAdmin"></div>
+                    <h3>🎯 Ações Rápidas</h3>
                     <div id="infoBloqueio" class="info-box warning" style="display: none;">
                         ⚠️ JOGO BLOQUEADO - Primeira conferência já realizada. Não é possível adicionar novos participantes.
                     </div>
@@ -662,12 +767,16 @@
                         </select>
                         <small>Escolha a competição para ver os participantes</small>
                     </div>
-                    <table id="tabelaParticipantes">
-                        <thead>
-                            <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
-                        </thead>
-                        <tbody id="corpoTabela"></tbody>
-                    寸
+                    <div style="overflow-x: auto;">
+                        <table id="tabelaParticipantes">
+                            <thead>
+                                <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
+                            </thead>
+                            <tbody id="corpoTabela">
+                                <tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -675,7 +784,7 @@
             <div id="sorteios" class="tab-content">
                 <div class="card">
                     <h3>📜 Histórico de Sorteios Importados</h3>
-                    <div id="historicoSorteios"></div>
+                    <div id="historicoSorteios">Carregando sorteios...</div>
                 </div>
                 <div class="card">
                     <h3>📊 Números que já saíram</h3>
@@ -726,23 +835,18 @@
             console.log('Instale o app pela página pública (ícone de casa)');
         });
         
-        // Se estiver em modo standalone (instalado), redirecionar para index
         if (window.matchMedia('(display-mode: standalone)').matches) {
             window.location.href = '/um-de-nos/';
         }
+        
+        document.getElementById('btnRefresh')?.addEventListener('click', () => {
+            window.location.reload();
+        });
         
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/um-de-nos/sw.js')
                 .then(registration => console.log('Service Worker registrado:', registration))
                 .catch(error => console.log('Falha no Service Worker:', error));
-        }
-        
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(registrations => {
-                for (let registration of registrations) {
-                    registration.update();
-                }
-            });
         }
     </script>
     <script type="module" src="firebase-config.js"></script>
