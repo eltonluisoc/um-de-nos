@@ -1,11 +1,10 @@
-const CACHE_NAME = 'umdenos-v10';
+const CACHE_NAME = 'umdenos-admin-v10';
 const urlsToCache = [
-  '/um-de-nos/',
-  '/um-de-nos/index.html',
+  '/um-de-nos/admin.html',
+  '/um-de-nos/admin.js',
   '/um-de-nos/style.css',
   '/um-de-nos/firebase-config.js',
-  '/um-de-nos/public.js',
-  '/um-de-nos/manifest.json',
+  '/um-de-nos/manifest-admin.json',
   '/um-de-nos/assets/icon-72.png',
   '/um-de-nos/assets/icon-96.png',
   '/um-de-nos/assets/icon-128.png',
@@ -17,11 +16,11 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker Index instalado v10');
+  console.log('Service Worker Admin instalado v10');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
-        console.log('Cache Index aberto');
+        console.log('Cache Admin aberto');
         return cache.addAll(urlsToCache);
       })
   );
@@ -29,7 +28,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker Index ativado v10');
+  console.log('Service Worker Admin ativado v10');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
