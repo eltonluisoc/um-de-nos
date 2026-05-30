@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Admin</title>
     <link rel="manifest" href="manifest.json">
+    <link rel="manifest" href="manifest-admin.json">
     <meta name="theme-color" content="#0b1e19">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
@@ -851,5 +852,52 @@
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
+    <script>
+        // Service Worker específico para o Admin
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/um-de-nos/sw-admin.js')
+                .then(registration => console.log('Service Worker Admin registrado:', registration))
+                .catch(error => console.log('Falha no Service Worker Admin:', error));
+        }
+    </script>
+    <script>
+        // ============================================
+        // FORÇAR ATUALIZAÇÃO DO SERVICE WORKER
+        // ============================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+            
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('🔄 Service Worker Admin atualizado! Recarregando página...');
+                window.location.reload();
+            });
+            
+            navigator.serviceWorker.register('/um-de-nos/sw-admin.js')
+                .then(registration => {
+                    console.log('✅ Service Worker Admin registrado v12');
+                    // Verificar atualizações a cada 30 segundos
+                    setInterval(() => {
+                        registration.update();
+                        console.log('🔄 Verificando atualizações do Service Worker Admin...');
+                    }, 30000);
+                })
+                .catch(error => console.log('❌ Falha no Service Worker Admin:', error));
+        }
+        
+        // Forçar recarregamento da página se houver atualização
+        let lastRefresh = localStorage.getItem('lastRefreshAdmin') || 0;
+        let now = Date.now();
+        if (now - lastRefresh > 3600000) { // A cada 1 hora
+            localStorage.setItem('lastRefreshAdmin', now);
+            console.log('🔄 Recarregamento programado do Admin para garantir dados atualizados');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+        
+        console.log('🚀 Um de Nós Admin - Versão 12 - ' + new Date().toLocaleString());
+    </script>
 </body>
 </html>

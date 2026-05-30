@@ -8,6 +8,7 @@
     <meta name="theme-color" content="#0b1e19">
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b1e19'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='%23f1c40f'%3E🎯%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="manifest" href="manifest.json">
     <style>
         * {
             margin: 0;
@@ -914,5 +915,51 @@
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/um-de-nos/sw.js')
+                .then(registration => console.log('Service Worker Index registrado:', registration))
+                .catch(error => console.log('Falha no Service Worker Index:', error));
+        }
+    </script>
+    <script>
+        // ============================================
+        // FORÇAR ATUALIZAÇÃO DO SERVICE WORKER
+        // ============================================
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(registrations => {
+                for (let registration of registrations) {
+                    registration.update();
+                }
+            });
+            
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                console.log('🔄 Service Worker atualizado! Recarregando página...');
+                window.location.reload();
+            });
+            
+            navigator.serviceWorker.register('/um-de-nos/sw.js')
+                .then(registration => {
+                    console.log('✅ Service Worker Index registrado v12');
+                    // Verificar atualizações a cada 30 segundos
+                    setInterval(() => {
+                        registration.update();
+                        console.log('🔄 Verificando atualizações do Service Worker...');
+                    }, 30000);
+                })
+                .catch(error => console.log('❌ Falha no Service Worker:', error));
+        }
+        
+        // Forçar recarregamento da página se houver atualização
+        let lastRefresh = localStorage.getItem('lastRefresh') || 0;
+        let now = Date.now();
+        if (now - lastRefresh > 3600000) { // A cada 1 hora
+            localStorage.setItem('lastRefresh', now);
+            console.log('🔄 Recarregamento programado para garantir dados atualizados');
+            setTimeout(() => window.location.reload(), 1000);
+        }
+        
+        console.log('🚀 Um de Nós Index - Versão 12 - ' + new Date().toLocaleString());
+    </script>
 </body>
 </html>
