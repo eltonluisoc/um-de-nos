@@ -103,7 +103,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const targetContent = document.getElementById(tabId);
             if (targetContent) targetContent.classList.add('ativo');
             
-            // Recarregar dados específicos ao abrir cada tab
             if (tabId === 'lista') {
                 carregarSelectCompeticaoLista();
             }
@@ -289,18 +288,6 @@ async function carregarJogoAtivo() {
         const partSnapshot = await getDocs(partQ);
         const totalParticipantesReal = partSnapshot.size;
         
-        const statusDiv = document.getElementById('statusAdmin');
-        if (statusDiv) {
-            statusDiv.innerHTML = `
-                <p>✅ Competição ATIVA: ${jogoData.nome || 'Edição atual'}</p>
-                <p>📅 Criado em: ${jogoData.createdAt?.toDate()?.toLocaleString('pt-BR') || 'Nova'}</p>
-                <p>🎲 Status: 🟢 ATIVO (buscando sorteios)</p>
-                <p>🎲 Último sorteio: ${jogoData.ultimoConcursoImportado || 'Nenhum ainda'}</p>
-                <p>💰 Valor inscrição: R$ ${jogoData.valorInscricao || 50},00</p>
-                <p>👥 Participantes: ${totalParticipantesReal}</p>
-            `;
-        }
-        
         jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
         await atualizarStatusGame();
         
@@ -309,15 +296,6 @@ async function carregarJogoAtivo() {
         const preparandoSnapshot = await getDocs(preparandoQuery);
         
         if (!preparandoSnapshot.empty) {
-            const jogoDoc = preparandoSnapshot.docs[0];
-            const statusDiv = document.getElementById('statusAdmin');
-            if (statusDiv) {
-                statusDiv.innerHTML = `
-                    <p>🟡 Nenhuma competição ATIVA no momento.</p>
-                    <p>📋 Competição em PREPARAÇÃO: ${jogoDoc.data().nome}</p>
-                    <p>💡 Para iniciar, vá em Configurações e clique em "Ativar Competição".</p>
-                `;
-            }
             jogoAtualId = null;
             jogoAtualStatus = null;
             await atualizarStatusGame();
