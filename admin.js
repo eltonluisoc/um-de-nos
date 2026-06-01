@@ -20,6 +20,8 @@ let jogoAtualStatus = null;
 let intervaloBusca = null;
 let jogoBloqueado = false;
 let sorteioEncontradoHoje = false;
+let competicaoPreparandoId = null;
+let competicaoPreparandoValor = 20;
 
 // MÚLTIPLAS APIs DA QUINA
 const QUINA_APIS = [
@@ -111,10 +113,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             if (tabId === 'cadastro') {
                 carregarSelectCompeticoesCadastro();
+                carregarCompeticaoPreparandoValor();
+            }
+            if (tabId === 'parametros') {
+                carregarCompeticaoPreparandoValor();
             }
             if (tabId === 'config') {
                 carregarSelectCompeticoes();
                 carregarSelectExcluirCompeticao();
+                carregarCompeticaoPreparandoValor();
             }
             if (tabId === 'dashboard') {
                 atualizarStatusGame();
@@ -183,11 +190,53 @@ async function carregarDados() {
     await carregarRanking();
     await carregarTodosParticipantes();
     await carregarParametros();
+    await carregarCompeticaoPreparandoValor();
     await carregarHistoricoSorteios();
     await carregarNumerosSorteadosAdmin();
     await verificarBloqueio();
     await atualizarStatusGame();
     iniciarBuscaAutomaticaMelhorada();
+}
+
+async function carregarCompeticaoPreparandoValor() {
+    // Buscar competição em PREPARAÇÃO
+    const preparandoRef = collection(db, 'jogos');
+    const preparandoQuery = query(preparandoRef, where('status', '==', 'preparando'), limit(1));
+    const preparandoSnapshot = await getDocs(preparandoQuery);
+    
+    const inputValor = document.getElementById('valorInscricao');
+    
+    if (!preparandoSnapshot.empty) {
+        const jogoDoc = preparandoSnapshot.docs[0];
+        const jogoData = jogoDoc.data();
+        competicaoPreparandoId = jogoDoc.id;
+        competicaoPreparandoValor = jogoData.valorInscricao || 20;
+        
+        if (inputValor) {
+            inputValor.value = competicaoPreparandoValor;
+            inputValor.disabled = false;
+            document.getElementById('btnSalvarParametros').disabled = false;
+        }
+        
+        // Atualizar preview da premiação
+        const totalParticipantes = await contarParticipantesPorCompeticao(competicaoPreparandoId);
+        atualizarPreviewPremiacao(competicaoPreparandoValor, totalParticipantes);
+    } else {
+        // Se não tem competição em preparação, desabilitar o campo
+        if (inputValor) {
+            inputValor.value = 20;
+            inputValor.disabled = true;
+            document.getElementById('btnSalvarParametros').disabled = true;
+        }
+        competicaoPreparandoId = null;
+    }
+}
+
+async function contarParticipantesPorCompeticao(competicaoId) {
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', competicaoId));
+    const snapshot = await getDocs(q);
+    return snapshot.size;
 }
 
 async function atualizarStatusGame() {
@@ -211,10 +260,7 @@ async function atualizarStatusGame() {
         const jogoDoc = ativosSnapshot.docs[0];
         const jogoData = jogoDoc.data();
         
-        const participantesRef = collection(db, 'participantes');
-        const partQ = query(participantesRef, where('jogoId', '==', jogoDoc.id));
-        const partSnapshot = await getDocs(partQ);
-        const totalParticipantes = partSnapshot.size;
+        const totalParticipantes = await contarParticipantesPorCompeticao(jogoDoc.id);
         
         html += `
             <div class="status-game" style="border-left: 4px solid #28a745;">
@@ -237,7 +283,7 @@ async function atualizarStatusGame() {
                     </div>
                     <div class="status-item">
                         <span class="status-label">Valor Inscrição</span>
-                        <span class="status-value">R$ ${jogoData.valorInscricao || 50},00</span>
+                        <span class="status-value">R$ ${jogoData.valorInscricao || 20},00</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Data Criação</span>
@@ -253,10 +299,7 @@ async function atualizarStatusGame() {
         const jogoDoc = preparandoSnapshot.docs[0];
         const jogoData = jogoDoc.data();
         
-        const participantesRef = collection(db, 'participantes');
-        const partQ = query(participantesRef, where('jogoId', '==', jogoDoc.id));
-        const partSnapshot = await getDocs(partQ);
-        const totalParticipantes = partSnapshot.size;
+        const totalParticipantes = await contarParticipantesPorCompeticao(jogoDoc.id);
         
         const statusText = totalParticipantes >= 3 ? 'Pronto para iniciar' : `Faltam ${3 - totalParticipantes} participantes`;
         const statusColor = totalParticipantes >= 3 ? '#28a745' : '#f1c40f';
@@ -282,7 +325,7 @@ async function atualizarStatusGame() {
                     </div>
                     <div class="status-item">
                         <span class="status-label">Valor Inscrição</span>
-                        <span class="status-value">R$ ${jogoData.valorInscricao || 50},00</span>
+                        <span class="status-value">R$ ${jogoData.valorInscricao || 20},00</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Data Criação</span>
@@ -385,6 +428,7 @@ async function excluirCompeticaoHandler() {
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
         await carregarSelectCompeticaoLista();
+        await carregarCompeticaoPreparandoValor();
     }
 }
 
@@ -402,11 +446,6 @@ async function carregarJogoAtivo() {
         jogoAtualId = jogoDoc.id;
         jogoAtualStatus = jogoDoc.data().status;
         const jogoData = jogoDoc.data();
-        
-        const participantesRef = collection(db, 'participantes');
-        const partQ = query(participantesRef, where('jogoId', '==', jogoAtualId));
-        const partSnapshot = await getDocs(partQ);
-        const totalParticipantesReal = partSnapshot.size;
         
         jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
         
@@ -456,7 +495,7 @@ async function carregarSelectCompeticoesCadastro() {
         document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
         for (const doc of querySnapshot.docs) {
             const jogo = doc.data();
-            select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes</option>`;
+            select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes (R$ ${jogo.valorInscricao || 20})</option>`;
         }
     }
 }
@@ -485,7 +524,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
     const tbody = document.getElementById('corpoTabela');
     if (!tbody || !competicaoId) {
         if (tbody && !competicaoId) {
-            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Selecione uma competição</td><tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
         }
         return;
     }
@@ -533,6 +572,10 @@ async function criarNovaCompeticaoPreparando() {
     const nomeJogo = prompt('Nome da nova competição:', `Um de Nós - ${new Date().toLocaleDateString('pt-BR')}`);
     if (!nomeJogo) return;
     
+    const valor = prompt('Valor da inscrição (R$):', '20');
+    const valorNumerico = parseFloat(valor);
+    const valorFinal = isNaN(valorNumerico) || valorNumerico <= 0 ? 20 : valorNumerico;
+    
     await addDoc(collection(db, 'jogos'), {
         nome: nomeJogo,
         status: 'preparando',
@@ -540,15 +583,16 @@ async function criarNovaCompeticaoPreparando() {
         ultimoConcursoImportado: null,
         ultimosNumerosSorteados: null,
         totalParticipantes: 0,
-        valorInscricao: 20, // VALOR CORRETO R$ 20,00
+        valorInscricao: valorFinal,
         primeiraConferenciaRealizada: false
     });
     
-    alert(`✅ Competição "${nomeJogo}" criada em modo PREPARAÇÃO!`);
+    alert(`✅ Competição "${nomeJogo}" criada em modo PREPARAÇÃO com valor R$ ${valorFinal},00!`);
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
     await carregarSelectCompeticaoLista();
     await carregarSelectExcluirCompeticao();
+    await carregarCompeticaoPreparandoValor();
     await atualizarStatusGame();
 }
 
@@ -606,7 +650,7 @@ async function mostrarCompeticoes() {
         const jogo = doc.data();
         const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
         const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
-        msg += `${statusIcon} ${jogo.nome} - ${statusText} - ${jogo.totalParticipantes || 0} participantes\n`;
+        msg += `${statusIcon} ${jogo.nome} - ${statusText} - R$ ${jogo.valorInscricao || 20} - ${jogo.totalParticipantes || 0} participantes\n`;
     }
     alert(msg);
 }
@@ -710,6 +754,7 @@ async function salvarParticipante() {
         await carregarSelectCompeticoesCadastro();
         await carregarSelectCompeticaoLista();
         await carregarRanking();
+        await carregarCompeticaoPreparandoValor();
         await atualizarStatusGame();
         
     } catch (error) {
@@ -723,22 +768,13 @@ async function salvarParticipante() {
 // ============================================
 
 async function carregarParametros() {
-    if (!jogoAtualId) return;
-    
-    const jogoRef = doc(db, 'jogos', jogoAtualId);
-    const jogoDoc = await getDoc(jogoRef);
-    const jogoData = jogoDoc.data();
-    
-    const valorInscricao = jogoData.valorInscricao || 20;
-    document.getElementById('valorInscricao').value = valorInscricao;
-    
-    const totalParticipantes = jogoData.totalParticipantes || 0;
-    atualizarPreviewPremiacao(valorInscricao, totalParticipantes);
+    // Agora os parâmetros são carregados pela função carregarCompeticaoPreparandoValor
+    // Mantido para compatibilidade
 }
 
 async function salvarParametros() {
-    if (!jogoAtualId) {
-        alert('Nenhuma competição ativa!');
+    if (!competicaoPreparandoId) {
+        alert('Nenhuma competição em PREPARAÇÃO encontrada!');
         return;
     }
     
@@ -748,10 +784,18 @@ async function salvarParametros() {
         return;
     }
     
-    const jogoRef = doc(db, 'jogos', jogoAtualId);
+    const jogoRef = doc(db, 'jogos', competicaoPreparandoId);
     await updateDoc(jogoRef, { valorInscricao: valorInscricao });
-    alert('Parâmetros salvos!');
-    await carregarParametros();
+    
+    competicaoPreparandoValor = valorInscricao;
+    
+    alert(`✅ Valor da inscrição atualizado para R$ ${valorInscricao},00!`);
+    
+    // Atualizar preview da premiação
+    const totalParticipantes = await contarParticipantesPorCompeticao(competicaoPreparandoId);
+    atualizarPreviewPremiacao(valorInscricao, totalParticipantes);
+    
+    await carregarSelectCompeticoesCadastro();
     await atualizarStatusGame();
 }
 
@@ -769,7 +813,7 @@ function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
 }
 
 // ============================================
-// RANKING - Mostra TODOS os participantes da competição ativa
+// RANKING
 // ============================================
 
 async function carregarRanking() {
@@ -817,18 +861,10 @@ async function carregarRanking() {
         }
     } 
     // Se tem competição em preparação, mostra seus participantes
-    else {
-        // Buscar competição em preparação
-        const preparandoRef = collection(db, 'jogos');
-        const preparandoQuery = query(preparandoRef, where('status', '==', 'preparando'), limit(1));
-        const preparandoSnapshot = await getDocs(preparandoQuery);
-        
-        if (!preparandoSnapshot.empty) {
-            const jogoDoc = preparandoSnapshot.docs[0];
-            const jogoIdPreparando = jogoDoc.id;
-            
+    else if (competicaoPreparandoId) {
+        try {
             const participantesRef = collection(db, 'participantes');
-            const q = query(participantesRef, where('jogoId', '==', jogoIdPreparando));
+            const q = query(participantesRef, where('jogoId', '==', competicaoPreparandoId));
             const querySnapshot = await getDocs(q);
             
             if (querySnapshot.empty) {
@@ -858,9 +894,12 @@ async function carregarRanking() {
                 `;
             }
             container.innerHTML = html;
-        } else {
-            container.innerHTML = '<div>Nenhuma competição ativa ou em preparação.</div>';
+        } catch (error) {
+            console.error('Erro ranking:', error);
+            container.innerHTML = '<div>Erro ao carregar ranking</div>';
         }
+    } else {
+        container.innerHTML = '<div>Nenhuma competição ativa ou em preparação.</div>';
     }
 }
 
@@ -990,6 +1029,7 @@ async function encerrarJogo() {
         await carregarSelectCompeticoesCadastro();
         await atualizarStatusGame();
         await carregarRanking();
+        await carregarCompeticaoPreparandoValor();
     }
 }
 
@@ -1071,6 +1111,7 @@ window.excluirParticipante = async function(id) {
         await carregarSelectCompeticaoLista();
         await carregarRanking();
         await atualizarStatusGame();
+        await carregarCompeticaoPreparandoValor();
         alert('Participante excluído!');
     }
 };
