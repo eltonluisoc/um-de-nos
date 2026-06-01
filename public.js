@@ -27,6 +27,7 @@ async function carregarDados() {
         await carregarPremiacao();
         await carregarSorteios();
         await carregarNumerosSorteados();
+        await carregarParticipantes();
         escutarParticipantes();
         await atualizarStatusSorteio();
     }
@@ -40,6 +41,7 @@ async function carregarJogoAtivo() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
+            console.log('Nenhum jogo ativo');
             document.getElementById('listaParticipantes').innerHTML = `
                 <div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>
             `;
@@ -54,7 +56,8 @@ async function carregarJogoAtivo() {
         jogoAtual = jogoDoc.data();
         jogoId = jogoDoc.id;
         
-        console.log('Jogo ativo:', jogoId, jogoAtual);
+        console.log('Jogo ativo encontrado:', jogoId, jogoAtual.nome);
+        console.log('Participantes no jogo:', jogoAtual.totalParticipantes || 0);
         
         document.getElementById('statusJogo').innerHTML = `
             <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
@@ -84,6 +87,36 @@ async function carregarPremiacao() {
     document.getElementById('premio2').innerHTML = `R$ ${premio2.toFixed(2)}`;
     document.getElementById('premio3').innerHTML = `R$ ${premio3.toFixed(2)}`;
     document.getElementById('premiacao').style.display = 'grid';
+}
+
+async function carregarParticipantes() {
+    if (!jogoId) return;
+    
+    console.log('Carregando participantes da competição:', jogoId);
+    
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoId));
+    const querySnapshot = await getDocs(q);
+    
+    participantes = [];
+    querySnapshot.forEach((doc) => {
+        participantes.push({
+            id: doc.id,
+            ...doc.data()
+        });
+    });
+    
+    console.log(`${participantes.length} participantes encontrados`);
+    atualizarRanking(participantes);
+    
+    // Atualizar estatísticas
+    const totalSpan = document.getElementById('totalParticipantes');
+    const maiorSpan = document.getElementById('maiorPontuacao');
+    if (totalSpan) totalSpan.textContent = participantes.length;
+    if (maiorSpan && participantes.length > 0) {
+        const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+        maiorSpan.textContent = `${maiorAcertos}`;
+    }
 }
 
 async function carregarSorteios() {
@@ -140,10 +173,13 @@ async function carregarNumerosSorteados() {
 }
 
 function escutarParticipantes() {
+    if (!jogoId) return;
+    
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoId));
     
     onSnapshot(q, (snapshot) => {
+        console.log('Atualização em tempo real dos participantes');
         participantes = [];
         snapshot.forEach((doc) => {
             participantes.push({
@@ -155,6 +191,15 @@ function escutarParticipantes() {
         atualizarRanking(participantes);
         verificarVencedor(participantes);
         
+        // Atualizar estatísticas
+        const totalSpan = document.getElementById('totalParticipantes');
+        const maiorSpan = document.getElementById('maiorPontuacao');
+        if (totalSpan) totalSpan.textContent = participantes.length;
+        if (maiorSpan && participantes.length > 0) {
+            const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+            maiorSpan.textContent = `${maiorAcertos}`;
+        }
+        
     }, (error) => {
         console.error('Erro ao escutar participantes:', error);
     });
@@ -162,22 +207,15 @@ function escutarParticipantes() {
 
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
-    const totalSpan = document.getElementById('totalParticipantes');
-    const maiorSpan = document.getElementById('maiorPontuacao');
     
     if (participantes.length === 0) {
         container.innerHTML = '<div class="loading">📋 Nenhum participante cadastrado ainda...</div>';
-        if (totalSpan) totalSpan.textContent = '0';
-        if (maiorSpan) maiorSpan.textContent = '0';
         return;
     }
     
     const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
     const maiorAcertos = ordenados[0]?.acertos || 0;
     const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
-    
-    if (totalSpan) totalSpan.textContent = participantes.length;
-    if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
     const posicoes = [];
     let posicaoAtual = 1;
