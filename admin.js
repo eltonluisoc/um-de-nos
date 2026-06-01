@@ -131,6 +131,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     criarGridNumeros();
+    
+    // Forçar carregamento do dashboard imediatamente
+    setTimeout(() => {
+        if (document.getElementById('dashboard') && document.getElementById('dashboard').classList.contains('ativo')) {
+            atualizarStatusGame();
+            carregarRanking();
+            console.log('✅ Dashboard atualizado automaticamente');
+        }
+    }, 500);
 });
 
 function verificarSenha() {
@@ -255,6 +264,13 @@ async function atualizarStatusGame() {
         const jogoData = jogoDoc.data();
         const totalParticipantes = await contarParticipantesPorCompeticao(jogoDoc.id);
         
+        // Verificar se já tem sorteio
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', jogoDoc.id));
+        const sorteiosSnapshot = await getDocs(sorteiosQuery);
+        const temSorteio = !sorteiosSnapshot.empty;
+        const ultimoSorteio = jogoData.ultimoConcursoImportado || 'Nenhum ainda';
+        
         html += `
             <div class="status-game" style="border-left: 4px solid #28a745;">
                 <div class="status-game-header">
@@ -270,10 +286,10 @@ async function atualizarStatusGame() {
                         <span class="status-label">Participantes</span>
                         <span class="status-value">${totalParticipantes}</span>
                     </div>
-                    <div class="status-item">
+                    ${temSorteio ? `<div class="status-item">
                         <span class="status-label">Último Sorteio</span>
-                        <span class="status-value">${jogoData.ultimoConcursoImportado || 'Nenhum ainda'}</span>
-                    </div>
+                        <span class="status-value">${ultimoSorteio}</span>
+                    </div>` : ''}
                     <div class="status-item">
                         <span class="status-label">Valor Inscrição</span>
                         <span class="status-value">R$ ${jogoData.valorInscricao || 20},00</span>
@@ -527,7 +543,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></table>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
             return;
         }
         

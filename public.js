@@ -60,7 +60,7 @@ async function carregarJogoAtivo() {
             <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
         `;
         
-        if (jogoAtual.ultimosNumerosSorteados) {
+        if (jogoAtual.ultimosNumerosSorteados && jogoAtual.ultimosNumerosSorteados.length > 0) {
             mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
         }
         
@@ -292,7 +292,7 @@ window.mostrarDetalhes = function(participanteId) {
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
     if (!numeros || numeros.length === 0) {
-        container.innerHTML = '<span>⏳ Aguardando primeiro sorteio...</span>';
+        container.innerHTML = '<span>⏳ Aguardando primeiro sorteio da competição...</span>';
         return;
     }
     
