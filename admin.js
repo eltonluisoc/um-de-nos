@@ -510,7 +510,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
     const tbody = document.getElementById('corpoTabela');
     if (!tbody || !competicaoId) {
         if (tbody && !competicaoId) {
-            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
         }
         return;
     }
@@ -983,10 +983,11 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
+        // SALVAR SORTEIO VINCULADO À COMPETIÇÃO ATUAL
         await addDoc(collection(db, 'sorteios_quina'), {
-            concurso, 
-            numeros, 
-            data: dataSorteioObj, 
+            concurso: concurso,
+            numeros: numeros,
+            data: dataSorteioObj,
             importadoEm: new Date(),
             competicaoId: jogoAtualId
         });
@@ -1066,13 +1067,19 @@ async function encerrarJogo() {
 // ============================================
 
 async function carregarHistoricoSorteios() {
+    if (!jogoAtualId) {
+        const container = document.getElementById('historicoSorteios');
+        if (container) container.innerHTML = '<div>Selecione uma competição ativa</div>';
+        return;
+    }
+    
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, orderBy('concurso', 'desc'));
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoAtualId), orderBy('concurso', 'desc'));
     const querySnapshot = await getDocs(q);
     const container = document.getElementById('historicoSorteios');
     
     if (querySnapshot.empty) {
-        container.innerHTML = '<div>Nenhum sorteio importado</div>';
+        container.innerHTML = '<div>Nenhum sorteio importado para esta competição</div>';
         return;
     }
     
@@ -1087,13 +1094,22 @@ async function carregarHistoricoSorteios() {
 }
 
 async function carregarNumerosSorteadosAdmin() {
+    if (!jogoAtualId) {
+        const container = document.getElementById('gridNumerosSorteadosAdmin');
+        if (container) container.innerHTML = '<div>Nenhuma competição ativa</div>';
+        return;
+    }
+    
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const querySnapshot = await getDocs(sorteiosRef);
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
+    const querySnapshot = await getDocs(q);
     
     const numerosSorteados = [];
     querySnapshot.forEach(doc => {
         const s = doc.data();
-        s.numeros.forEach(num => { if (!numerosSorteados.includes(num)) numerosSorteados.push(num); });
+        s.numeros.forEach(num => { 
+            if (!numerosSorteados.includes(num)) numerosSorteados.push(num); 
+        });
     });
     
     const container = document.getElementById('gridNumerosSorteadosAdmin');

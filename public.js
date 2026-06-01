@@ -87,8 +87,10 @@ async function carregarPremiacao() {
 }
 
 async function carregarSorteios() {
+    if (!jogoId) return;
+    
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, orderBy('concurso', 'desc'));
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoId), orderBy('concurso', 'desc'));
     
     const querySnapshot = await getDocs(q);
     sorteiosRealizados = [];
