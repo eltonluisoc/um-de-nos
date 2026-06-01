@@ -632,17 +632,17 @@
 <body>
     <div id="loginScreen" class="senha-login">
         <div class="senha-box">
-                <div class="logo">
-                    <h1>🎯 UM DE NÓS</h1>
-                    <h2>⚡ O Desafio dos 17 ⚡</h2>
-                </div>
-                <p class="subtitulo">Painel Administrativo</p>
-                <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input">
-                <button class="btn-login" id="btnEntrarAdmin">🔐 ENTRAR</button>
-                <div id="msgErro" class="msg-erro"></div>
-                <div id="msgLoading" class="msg-loading" style="display: none;">Verificando acesso...</div>
-                <div style="margin-top: 20px; font-size: 0.7em; opacity: 0.5;">Versão v2.0</div>
+            <div class="logo">
+                <h1>🎯 UM DE NÓS</h1>
+                <h2>⚡ O Desafio dos 17 ⚡</h2>
             </div>
+            <p class="subtitulo">Painel Administrativo</p>
+            <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input">
+            <button class="btn-login" id="btnEntrarAdmin">🔐 ENTRAR</button>
+            <div id="msgErro" class="msg-erro"></div>
+            <div id="msgLoading" class="msg-loading" style="display: none;">Verificando acesso...</div>
+            <div style="margin-top: 20px; font-size: 0.7em; opacity: 0.5;">Versão v2.0</div>
+        </div>
     </div>
 
     <div id="adminContent" style="display: none;">
@@ -668,7 +668,6 @@
                 <div class="tab" data-tab="config">⚙️ Configurações</div>
             </div>
 
-            <!-- DASHBOARD -->
             <div id="dashboard" class="tab-content ativo">
                 <div class="card">
                     <h3>🏆 Ranking Atual</h3>
@@ -683,20 +682,7 @@
                     </div>
                 </div>
                 
-                <!-- STATUS GAME - Mostra competição ATIVA se existir -->
-                <div id="statusGameContainer">
-                    <!-- Será preenchido dinamicamente pelo JS -->
-                </div>
-                
-                <!-- ÁREA DE PREPARAÇÃO - Mostra quando não há competição ATIVA -->
-                <div id="preparingContainer" style="display: none;">
-                    <div class="info-box preparing" style="text-align: center; margin-bottom: 20px;">
-                        <div style="font-size: 2em; margin-bottom: 10px;">🟡</div>
-                        <h3 style="color: #f1c40f;">Modo PREPARAÇÃO</h3>
-                        <p id="preparingMessage">Carregando...</p>
-                        <button class="btn btn-warning" id="btnGoToConfig" style="margin-top: 15px;">⚙️ Ir para Configurações</button>
-                    </div>
-                </div>
+                <div id="statusGameContainer"></div>
                 
                 <div class="card">
                     <h3>🎯 Ações Rápidas</h3>
@@ -708,7 +694,6 @@
                 </div>
             </div>
 
-            <!-- PARÂMETROS -->
             <div id="parametros" class="tab-content">
                 <div class="card">
                     <h3>💰 Configuração da Competição</h3>
@@ -739,7 +724,6 @@
                 </div>
             </div>
 
-            <!-- CADASTRO DE PARTICIPANTE -->
             <div id="cadastro" class="tab-content">
                 <div class="card">
                     <h3>➕ Novo Participante</h3>
@@ -771,7 +755,6 @@
                 </div>
             </div>
 
-            <!-- LISTA DE PARTICIPANTES -->
             <div id="lista" class="tab-content">
                 <div class="card">
                     <h3>📋 Lista de Participantes</h3>
@@ -795,7 +778,6 @@
                 </div>
             </div>
 
-            <!-- SORTEIOS -->
             <div id="sorteios" class="tab-content">
                 <div class="card">
                     <h3>📜 Histórico de Sorteios Importados</h3>
@@ -807,7 +789,6 @@
                 </div>
             </div>
 
-            <!-- CONFIGURAÇÕES -->
             <div id="config" class="tab-content">
                 <div class="card">
                     <h3>🎮 Gerenciar Competições</h3>
@@ -862,6 +843,57 @@
                 .then(registration => console.log('✅ Service Worker Admin registrado'))
                 .catch(error => console.log('❌ Falha no Service Worker Admin:', error));
         }
+        
+        // SCRIPT DE LIMPEZA - Execute no console: limparSorteiosAntigos()
+        window.limparSorteiosAntigos = async function() {
+            const module = await import('./firebase-config.js');
+            const { collection, getDocs, deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+            const db = module.db;
+            
+            console.log('🗑️ Iniciando limpeza de sorteios antigos...');
+            const sorteiosRef = collection(db, 'sorteios_quina');
+            const snapshot = await getDocs(sorteiosRef);
+            
+            let deletados = 0;
+            for (const docSnap of snapshot.docs) {
+                const data = docSnap.data();
+                if (!data.competicaoId) {
+                    await deleteDoc(doc(db, 'sorteios_quina', docSnap.id));
+                    console.log(`🗑️ Sorteio antigo deletado: ${docSnap.id}`);
+                    deletados++;
+                }
+            }
+            console.log(`✅ Total de sorteios antigos deletados: ${deletados}`);
+            alert(`Limpeza concluída! ${deletados} sorteios antigos removidos.`);
+            window.location.reload();
+        };
+        
+        window.limparSorteiosDaCompeticao = async function(competicaoId) {
+            if (!competicaoId) {
+                alert('Informe o ID da competição');
+                return;
+            }
+            const module = await import('./firebase-config.js');
+            const { collection, getDocs, deleteDoc, doc, query, where } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
+            const db = module.db;
+            
+            const sorteiosRef = collection(db, 'sorteios_quina');
+            const q = query(sorteiosRef, where('competicaoId', '==', competicaoId));
+            const snapshot = await getDocs(q);
+            
+            let deletados = 0;
+            for (const docSnap of snapshot.docs) {
+                await deleteDoc(doc(db, 'sorteios_quina', docSnap.id));
+                deletados++;
+            }
+            console.log(`🗑️ Sorteios da competição ${competicaoId} deletados: ${deletados}`);
+            alert(`Foram removidos ${deletados} sorteios da competição.`);
+            window.location.reload();
+        };
+        
+        console.log('✅ Funções disponíveis no console:');
+        console.log('   - limparSorteiosAntigos()');
+        console.log('   - limparSorteiosDaCompeticao("ID_DA_COMPETICAO")');
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>

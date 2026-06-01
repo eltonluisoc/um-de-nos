@@ -527,7 +527,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></table>';
             return;
         }
         
@@ -624,11 +624,22 @@ async function ativarCompeticaoSelecionada() {
     
     const dataAtivacao = new Date();
     
-    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO:\n- Os acertos serão ZERADOS\n- A competição começará a contar APÓS a ativação (${dataAtivacao.toLocaleString()})\n- NÃO serão aceitos novos participantes após a ativação`)) {
+    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO:\n- Os acertos serão ZERADOS\n- Os sorteios anteriores serão LIMPOS\n- A competição começará a contar APÓS a ativação (${dataAtivacao.toLocaleString()})\n- NÃO serão aceitos novos participantes após a ativação`)) {
         
+        // 1. Limpar sorteios antigos desta competição
+        console.log('🗑️ Limpando sorteios antigos...');
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', selectedId));
+        const sorteiosSnapshot = await getDocs(sorteiosQuery);
+        const batchSorteios = writeBatch(db);
+        sorteiosSnapshot.forEach(docSnap => {
+            batchSorteios.delete(docSnap.ref);
+        });
+        await batchSorteios.commit();
+        
+        // 2. Zerar acertos dos participantes
         console.log('🔄 Zerando acertos dos participantes...');
         const batch = writeBatch(db);
-        
         for (const docSnap of snapshot.docs) {
             batch.update(doc(db, 'participantes', docSnap.id), { 
                 acertos: 0,
@@ -639,6 +650,7 @@ async function ativarCompeticaoSelecionada() {
         await batch.commit();
         console.log('✅ Acertos zerados com sucesso!');
         
+        // 3. Atualizar competição
         await updateDoc(jogoRef, { 
             status: 'aberto', 
             dataInicio: dataAtivacao,
@@ -647,7 +659,7 @@ async function ativarCompeticaoSelecionada() {
             primeiraConferenciaRealizada: false
         });
         
-        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 A página será recarregada.`);
+        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 Os sorteios antigos foram REMOVIDOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 A página será recarregada.`);
         
         setTimeout(() => {
             window.location.reload();
@@ -683,7 +695,6 @@ async function verificarBloqueio() {
         if (bloqueioMsg) bloqueioMsg.style.display = 'block';
         if (infoBloqueio) infoBloqueio.style.display = 'block';
         document.getElementById('btnSalvarParticipante')?.setAttribute('disabled', 'disabled');
-        // Desabilitar também o select de cadastro
         const selectCadastro = document.getElementById('selectCompeticaoCadastro');
         if (selectCadastro) selectCadastro.disabled = true;
     } else {
@@ -732,7 +743,6 @@ function toggleNumero(element) {
 }
 
 async function salvarParticipante() {
-    // Verificar se a competição ainda está em PREPARAÇÃO
     if (jogoAtualStatus === 'aberto') {
         alert('⚠️ Competição já ATIVA! Não é possível adicionar novos participantes.');
         return;
@@ -747,7 +757,6 @@ async function salvarParticipante() {
         return;
     }
     
-    // Verificar se a competição selecionada ainda está em PREPARAÇÃO
     const jogoRef = doc(db, 'jogos', competicaoId);
     const jogoDoc = await getDoc(jogoRef);
     if (jogoDoc.exists() && jogoDoc.data().status !== 'preparando') {
@@ -988,7 +997,6 @@ async function buscarSorteioQuina() {
             }
         }
         
-        // SÓ ACEITA SORTEIOS POSTERIORES À DATA DE ATIVAÇÃO
         if (dataSorteioObj < dataInicio) {
             console.log(`⏸️ Sorteio ${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
             if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
@@ -1101,7 +1109,7 @@ async function carregarHistoricoSorteios() {
     }
     
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, where('competicaoId', '==', jogoAtualId), orderBy('concurso', 'desc'));
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
     const querySnapshot = await getDocs(q);
     const container = document.getElementById('historicoSorteios');
     
@@ -1110,12 +1118,17 @@ async function carregarHistoricoSorteios() {
         return;
     }
     
-    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+    const sorteios = [];
     querySnapshot.forEach(doc => {
-        const s = doc.data();
+        sorteios.push({ id: doc.id, ...doc.data() });
+    });
+    sorteios.sort((a, b) => b.concurso - a.concurso);
+    
+    let html = '<div style="display: flex; flex-wrap: wrap; gap: 10px;">';
+    for (const s of sorteios) {
         html += `<div style="background: rgba(241,196,15,0.08); border-radius: 10px; padding: 8px 12px;">
                     <strong>#${s.concurso}</strong><br>${s.numeros.join(', ')}</div>`;
-    });
+    }
     html += '</div>';
     container.innerHTML = html;
 }
