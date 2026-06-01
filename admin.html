@@ -199,7 +199,6 @@
             padding: 10px;
         }
         
-        /* GRID DE NÚMEROS RESPONSIVO */
         .numeros-input {
             display: grid;
             grid-template-columns: repeat(10, 1fr);
@@ -463,6 +462,11 @@
             border-left: 4px solid #28a745;
         }
         
+        .info-box.preparing {
+            background: rgba(241,196,15,0.15);
+            border-left: 4px solid #f1c40f;
+        }
+        
         .premiacao-preview {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -477,7 +481,6 @@
             text-align: center;
         }
         
-        /* STATUS DO JOGO */
         .status-game {
             background: linear-gradient(135deg, rgba(0,0,0,0.4), rgba(0,0,0,0.2));
             border-radius: 16px;
@@ -546,6 +549,25 @@
             border-radius: 20px;
             font-size: 0.8em;
             font-weight: 600;
+        }
+        
+        .status-badge-inactive {
+            background: rgba(108,117,125,0.2);
+            color: #adb5bd;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .preparing-info {
+            text-align: center;
+            padding: 20px;
+        }
+        
+        .preparing-info h4 {
+            color: #f1c40f;
+            margin-bottom: 15px;
         }
         
         @media (max-width: 768px) {
@@ -660,36 +682,18 @@
                     </div>
                 </div>
                 
-                <div class="status-game" id="statusGame">
-                    <div class="status-game-header">
-                        <div class="status-icon">🎯</div>
-                        <div class="status-title">Status da Competição</div>
-                    </div>
-                    <div class="status-details" id="statusDetails">
-                        <div class="status-item">
-                            <span class="status-label">Competição</span>
-                            <span class="status-value" id="statusNome">Carregando...</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Status</span>
-                            <span class="status-value" id="statusSituacao">Carregando...</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Último Sorteio</span>
-                            <span class="status-value" id="statusUltimoSorteio">-</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Participantes</span>
-                            <span class="status-value" id="statusParticipantes">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Valor Inscrição</span>
-                            <span class="status-value" id="statusValor">R$ 0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Data Criação</span>
-                            <span class="status-value" id="statusData">-</span>
-                        </div>
+                <!-- STATUS GAME - Mostra competição ATIVA se existir -->
+                <div id="statusGameContainer">
+                    <!-- Será preenchido dinamicamente pelo JS -->
+                </div>
+                
+                <!-- ÁREA DE PREPARAÇÃO - Mostra quando não há competição ATIVA -->
+                <div id="preparingContainer" style="display: none;">
+                    <div class="info-box preparing" style="text-align: center; margin-bottom: 20px;">
+                        <div style="font-size: 2em; margin-bottom: 10px;">🟡</div>
+                        <h3 style="color: #f1c40f;">Modo PREPARAÇÃO</h3>
+                        <p id="preparingMessage">Carregando...</p>
+                        <button class="btn btn-warning" id="btnGoToConfig" style="margin-top: 15px;">⚙️ Ir para Configurações</button>
                     </div>
                 </div>
                 
@@ -839,37 +843,24 @@
     </div>
 
     <script>
-        // BLOQUEIO DE INSTALAÇÃO COMO PWA
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            console.log('Instale o app pela página pública (ícone de casa)');
-        });
-        
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            window.location.href = '/um-de-nos/';
-        }
-        
         document.getElementById('btnRefresh')?.addEventListener('click', () => {
             window.location.reload();
         });
         
-        // ============================================
-        // SERVICE WORKER - SEM RECARREGAMENTO AUTOMÁTICO
-        // ============================================
+        document.getElementById('btnGoToConfig')?.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('ativo'));
+            const configTab = document.querySelector('.tab[data-tab="config"]');
+            if (configTab) configTab.classList.add('ativo');
+            const configContent = document.getElementById('config');
+            if (configContent) configContent.classList.add('ativo');
+        });
+        
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('/um-de-nos/sw-admin.js')
-                .then(registration => {
-                    console.log('✅ Service Worker Admin registrado');
-                    // Apenas verificar atualizações, sem recarregar automaticamente
-                    setInterval(() => {
-                        registration.update();
-                        console.log('🔄 Verificando atualizações do Service Worker...');
-                    }, 60000);
-                })
+                .then(registration => console.log('✅ Service Worker Admin registrado'))
                 .catch(error => console.log('❌ Falha no Service Worker Admin:', error));
         }
-        
-        console.log('🚀 Um de Nós Admin - Versão estável - ' + new Date().toLocaleString());
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
