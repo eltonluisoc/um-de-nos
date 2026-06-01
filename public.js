@@ -158,9 +158,6 @@ function escutarParticipantes() {
     });
 }
 
-// ============================================
-// RANKING INTELIGENTE COM SUPORTE A EMPATES
-// ============================================
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
     const totalSpan = document.getElementById('totalParticipantes');
@@ -173,7 +170,6 @@ function atualizarRanking(participantes) {
         return;
     }
     
-    // Ordenar por acertos (decrescente)
     const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
     const maiorAcertos = ordenados[0]?.acertos || 0;
     const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
@@ -181,7 +177,6 @@ function atualizarRanking(participantes) {
     if (totalSpan) totalSpan.textContent = participantes.length;
     if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}`;
     
-    // Calcular posições com EMPATES
     const posicoes = [];
     let posicaoAtual = 1;
     
@@ -194,7 +189,6 @@ function atualizarRanking(participantes) {
         }
     }
     
-    // Verificar se há empate no primeiro lugar
     const primeiroAcerto = ordenados[0]?.acertos || 0;
     const temEmpatePrimeiro = ordenados.filter(p => p.acertos === primeiroAcerto).length > 1;
     
@@ -204,14 +198,11 @@ function atualizarRanking(participantes) {
         const posicao = posicoes[index];
         const progressoPercent = ((p.acertos || 0) / 17) * 100;
         const isChampion = p.acertouTodos === true;
-        
-        // Todos com menor pontuação ficam vermelhos
         const isLastPlace = p.acertos === menorAcertos;
         
         let rowClass = '';
         let medalhaIcon = '';
         
-        // Lógica de destaque com suporte a empates
         if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
             rowClass = 'first-place';
             medalhaIcon = '👑';
@@ -228,9 +219,6 @@ function atualizarRanking(participantes) {
         
         if (isChampion) rowClass += ' champion';
         
-        // ============================================
-        // TEXTO DA POSIÇÃO - SEM "(X empatados)"
-        // ============================================
         let posText = '';
         if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
             posText = `👑 ${posicao}º`;
@@ -244,7 +232,6 @@ function atualizarRanking(participantes) {
             posText = `${posicao}º`;
         }
         
-        // Gerar números do participante
         let numerosHtml = '<div class="player-numbers">';
         if (p.numeros && Array.isArray(p.numeros)) {
             for (const num of p.numeros) {
@@ -254,7 +241,6 @@ function atualizarRanking(participantes) {
         }
         numerosHtml += '</div>';
         
-        // Badge de menos acertos (para todos que estão na menor pontuação)
         let lastBadge = '';
         if (isLastPlace && ordenados.length > 2 && !temEmpatePrimeiro) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
@@ -284,6 +270,22 @@ function atualizarRanking(participantes) {
     
     container.innerHTML = html;
 }
+
+window.mostrarDetalhes = function(participanteId) {
+    const participante = participantes.find(p => p.id === participanteId);
+    if (participante) {
+        let acertos = 0;
+        let msg = `📋 ${participante.nome}\n\n🎯 Números Selecionados:\n`;
+        for (const num of participante.numeros) {
+            const acertou = numerosSorteadosAcumulados.includes(num);
+            if (acertou) acertos++;
+            msg += `${num} ${acertou ? '✅' : '❌'}  `;
+        }
+        msg += `\n\n✅ Acertos: ${acertos}/17`;
+        msg += `\n📊 Progresso: ${Math.round((acertos/17)*100)}%`;
+        alert(msg);
+    }
+};
 
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
@@ -329,10 +331,6 @@ async function carregarUltimoVencedor() {
         console.error('Erro ao carregar histórico:', error);
     }
 }
-
-// ============================================
-// INDICADOR DE STATUS - Busca APENAS UMA VEZ AO ABRIR
-// ============================================
 
 async function atualizarStatusSorteio() {
     const statusSpan = document.getElementById('statusSorteio');
