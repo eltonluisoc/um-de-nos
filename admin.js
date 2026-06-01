@@ -70,7 +70,7 @@ async function buscarSorteioMultiplasAPIs() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Admin carregado');
+    console.log('Admin carregado - Versão 2.0');
     const btnEntrar = document.getElementById('btnEntrarAdmin');
     const senhaInput = document.getElementById('senhaInput');
     
@@ -281,6 +281,10 @@ async function atualizarStatusGame() {
                     <div class="status-item">
                         <span class="status-label">Data Criação</span>
                         <span class="status-value">${jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Ativação</span>
+                        <span class="status-value">${jogoData.dataInicio?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
                     </div>
                 </div>
             </div>
@@ -618,7 +622,9 @@ async function ativarCompeticaoSelecionada() {
         return;
     }
     
-    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO: Os acertos serão ZERADOS. A competição começará APÓS a ativação.`)) {
+    const dataAtivacao = new Date();
+    
+    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO:\n- Os acertos serão ZERADOS\n- A competição começará a contar APÓS a ativação (${dataAtivacao.toLocaleString()})\n- NÃO serão aceitos novos participantes após a ativação`)) {
         
         console.log('🔄 Zerando acertos dos participantes...');
         const batch = writeBatch(db);
@@ -635,17 +641,17 @@ async function ativarCompeticaoSelecionada() {
         
         await updateDoc(jogoRef, { 
             status: 'aberto', 
-            dataInicio: new Date(),
+            dataInicio: dataAtivacao,
             ultimoConcursoImportado: null,
             ultimosNumerosSorteados: null,
             primeiraConferenciaRealizada: false
         });
         
-        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 A página será recarregada para atualizar o ranking.`);
+        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 A página será recarregada.`);
         
         setTimeout(() => {
             window.location.reload();
-        }, 1500);
+        }, 2000);
     }
 }
 
@@ -677,10 +683,15 @@ async function verificarBloqueio() {
         if (bloqueioMsg) bloqueioMsg.style.display = 'block';
         if (infoBloqueio) infoBloqueio.style.display = 'block';
         document.getElementById('btnSalvarParticipante')?.setAttribute('disabled', 'disabled');
+        // Desabilitar também o select de cadastro
+        const selectCadastro = document.getElementById('selectCompeticaoCadastro');
+        if (selectCadastro) selectCadastro.disabled = true;
     } else {
         if (bloqueioMsg) bloqueioMsg.style.display = 'none';
         if (infoBloqueio) infoBloqueio.style.display = 'none';
         document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
+        const selectCadastro = document.getElementById('selectCompeticaoCadastro');
+        if (selectCadastro) selectCadastro.disabled = false;
     }
 }
 
@@ -721,6 +732,12 @@ function toggleNumero(element) {
 }
 
 async function salvarParticipante() {
+    // Verificar se a competição ainda está em PREPARAÇÃO
+    if (jogoAtualStatus === 'aberto') {
+        alert('⚠️ Competição já ATIVA! Não é possível adicionar novos participantes.');
+        return;
+    }
+    
     const selectCompeticao = document.getElementById('selectCompeticaoCadastro');
     const competicaoId = selectCompeticao.value;
     const nome = document.getElementById('nomeParticipante').value;
@@ -729,6 +746,16 @@ async function salvarParticipante() {
         alert('Selecione uma competição em PREPARAÇÃO!');
         return;
     }
+    
+    // Verificar se a competição selecionada ainda está em PREPARAÇÃO
+    const jogoRef = doc(db, 'jogos', competicaoId);
+    const jogoDoc = await getDoc(jogoRef);
+    if (jogoDoc.exists() && jogoDoc.data().status !== 'preparando') {
+        alert('⚠️ Esta competição não está mais em PREPARAÇÃO. Não é possível adicionar participantes.');
+        await carregarSelectCompeticoesCadastro();
+        return;
+    }
+    
     if (!nome) {
         alert('Digite o nome do participante!');
         return;
@@ -752,8 +779,8 @@ async function salvarParticipante() {
         const participantesRef = collection(db, 'participantes');
         const q = query(participantesRef, where('jogoId', '==', competicaoId));
         const querySnapshot = await getDocs(q);
-        const jogoRef = doc(db, 'jogos', competicaoId);
-        await updateDoc(jogoRef, { totalParticipantes: querySnapshot.size });
+        const jogoRef2 = doc(db, 'jogos', competicaoId);
+        await updateDoc(jogoRef2, { totalParticipantes: querySnapshot.size });
         
         alert('Participante cadastrado com sucesso!');
         
@@ -961,6 +988,7 @@ async function buscarSorteioQuina() {
             }
         }
         
+        // SÓ ACEITA SORTEIOS POSTERIORES À DATA DE ATIVAÇÃO
         if (dataSorteioObj < dataInicio) {
             console.log(`⏸️ Sorteio ${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
             if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
@@ -983,7 +1011,6 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
-        // SALVAR SORTEIO VINCULADO À COMPETIÇÃO ATUAL
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numeros,
