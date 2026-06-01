@@ -20,8 +20,6 @@ let jogoAtualStatus = null;
 let intervaloBusca = null;
 let jogoBloqueado = false;
 let sorteioEncontradoHoje = false;
-let competicaoPreparandoId = null;
-let competicaoPreparandoNome = null;
 
 // MÚLTIPLAS APIs DA QUINA
 const QUINA_APIS = [
@@ -174,7 +172,6 @@ function logout() {
 
 async function carregarDados() {
     await carregarJogoAtivo();
-    await carregarPreparandoInfo();
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
     await carregarSelectCompeticaoLista();
@@ -185,142 +182,157 @@ async function carregarDados() {
     await carregarHistoricoSorteios();
     await carregarNumerosSorteadosAdmin();
     await verificarBloqueio();
-    await atualizarDashboardDisplay();
+    await atualizarStatusGame();
     iniciarBuscaAutomaticaMelhorada();
 }
 
-async function carregarPreparandoInfo() {
-    const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'preparando'), limit(1));
-    const querySnapshot = await getDocs(q);
+async function atualizarStatusGame() {
+    const statusGameContainer = document.getElementById('statusGameContainer');
+    if (!statusGameContainer) return;
     
-    if (!querySnapshot.empty) {
-        const jogoDoc = querySnapshot.docs[0];
-        competicaoPreparandoId = jogoDoc.id;
-        competicaoPreparandoNome = jogoDoc.data().nome;
+    // Buscar competição ATIVA
+    const jogosAtivosRef = collection(db, 'jogos');
+    const ativosQuery = query(jogosAtivosRef, where('status', '==', 'aberto'), limit(1));
+    const ativosSnapshot = await getDocs(ativosQuery);
+    
+    // Buscar competição em PREPARAÇÃO
+    const preparandoRef = collection(db, 'jogos');
+    const preparandoQuery = query(preparandoRef, where('status', '==', 'preparando'), limit(1));
+    const preparandoSnapshot = await getDocs(preparandoQuery);
+    
+    let html = '';
+    
+    // Mostrar competição ATIVA se existir
+    if (!ativosSnapshot.empty) {
+        const jogoDoc = ativosSnapshot.docs[0];
+        const jogoData = jogoDoc.data();
         
         const participantesRef = collection(db, 'participantes');
-        const partQ = query(participantesRef, where('jogoId', '==', competicaoPreparandoId));
+        const partQ = query(participantesRef, where('jogoId', '==', jogoDoc.id));
         const partSnapshot = await getDocs(partQ);
         const totalParticipantes = partSnapshot.size;
         
-        const preparingMsg = document.getElementById('preparingMessage');
-        if (preparingMsg) {
-            preparingMsg.innerHTML = `
-                <strong>${competicaoPreparandoNome}</strong> está em fase de cadastro.<br>
-                👥 Participantes cadastrados: ${totalParticipantes} (mínimo 3 para iniciar)<br>
-                ⚡ Após cadastrar todos, vá em <strong>Configurações</strong> e clique em "Ativar Competição".
-            `;
-        }
-    } else {
-        competicaoPreparandoId = null;
-        competicaoPreparandoNome = null;
-        const preparingMsg = document.getElementById('preparingMessage');
-        if (preparingMsg) {
-            preparingMsg.innerHTML = 'Nenhuma competição em PREPARAÇÃO no momento. Clique em "Preparar Nova Competição" para começar.';
-        }
-    }
-}
-
-async function atualizarDashboardDisplay() {
-    const statusGameContainer = document.getElementById('statusGameContainer');
-    const preparingContainer = document.getElementById('preparingContainer');
-    
-    if (jogoAtualId && jogoAtualStatus === 'aberto') {
-        // Mostra status da competição ativa
-        if (statusGameContainer) {
-            statusGameContainer.innerHTML = `
-                <div class="status-game" id="statusGame">
-                    <div class="status-game-header">
-                        <div class="status-icon">🎯</div>
-                        <div class="status-title">Status da Competição Ativa</div>
+        html += `
+            <div class="status-game" style="border-left: 4px solid #28a745;">
+                <div class="status-game-header">
+                    <div class="status-icon">🟢</div>
+                    <div class="status-title">Competição ATIVA</div>
+                </div>
+                <div class="status-details">
+                    <div class="status-item">
+                        <span class="status-label">Nome</span>
+                        <span class="status-value">${jogoData.nome || 'Edição atual'}</span>
                     </div>
-                    <div class="status-details" id="statusDetails">
-                        <div class="status-item">
-                            <span class="status-label">Competição</span>
-                            <span class="status-value" id="statusNome">Carregando...</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Status</span>
-                            <span class="status-value" id="statusSituacao">Carregando...</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Último Sorteio</span>
-                            <span class="status-value" id="statusUltimoSorteio">-</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Participantes</span>
-                            <span class="status-value" id="statusParticipantes">0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Valor Inscrição</span>
-                            <span class="status-value" id="statusValor">R$ 0</span>
-                        </div>
-                        <div class="status-item">
-                            <span class="status-label">Data Criação</span>
-                            <span class="status-value" id="statusData">-</span>
-                        </div>
+                    <div class="status-item">
+                        <span class="status-label">Participantes</span>
+                        <span class="status-value">${totalParticipantes}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Último Sorteio</span>
+                        <span class="status-value">${jogoData.ultimoConcursoImportado || 'Nenhum ainda'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Valor Inscrição</span>
+                        <span class="status-value">R$ ${jogoData.valorInscricao || 50},00</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Criação</span>
+                        <span class="status-value">${jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
                     </div>
                 </div>
-            `;
-            statusGameContainer.style.display = 'block';
-            preparingContainer.style.display = 'none';
-            await atualizarStatusGame();
-        }
-    } else if (competicaoPreparandoId) {
-        // Mostra informações da competição em preparação
-        statusGameContainer.style.display = 'none';
-        preparingContainer.style.display = 'block';
-        
-        // Atualizar contador de participantes em tempo real
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', competicaoPreparandoId));
-        const snapshot = await getDocs(q);
-        const totalParticipantes = snapshot.size;
-        
-        const preparingMsg = document.getElementById('preparingMessage');
-        if (preparingMsg) {
-            preparingMsg.innerHTML = `
-                <strong>${competicaoPreparandoNome}</strong> está em fase de cadastro.<br>
-                👥 Participantes cadastrados: ${totalParticipantes} (mínimo 3 para iniciar)<br>
-                ⚡ Após cadastrar todos, vá em <strong>Configurações</strong> e clique em "Ativar Competição".
-            `;
-        }
-    } else {
-        statusGameContainer.style.display = 'none';
-        preparingContainer.style.display = 'block';
-        const preparingMsg = document.getElementById('preparingMessage');
-        if (preparingMsg) {
-            preparingMsg.innerHTML = 'Nenhuma competição em PREPARAÇÃO no momento. Clique em "Preparar Nova Competição" para começar.';
-        }
+            </div>
+        `;
     }
-}
-
-async function atualizarStatusGame() {
-    const nomeSpan = document.getElementById('statusNome');
-    const situacaoSpan = document.getElementById('statusSituacao');
-    const ultimoSorteioSpan = document.getElementById('statusUltimoSorteio');
-    const participantesSpan = document.getElementById('statusParticipantes');
-    const valorSpan = document.getElementById('statusValor');
-    const dataSpan = document.getElementById('statusData');
     
-    if (!jogoAtualId) return;
+    // Mostrar competição em PREPARAÇÃO se existir (adicional)
+    if (!preparandoSnapshot.empty) {
+        const jogoDoc = preparandoSnapshot.docs[0];
+        const jogoData = jogoDoc.data();
+        
+        const participantesRef = collection(db, 'participantes');
+        const partQ = query(participantesRef, where('jogoId', '==', jogoDoc.id));
+        const partSnapshot = await getDocs(partQ);
+        const totalParticipantes = partSnapshot.size;
+        
+        const statusText = totalParticipantes >= 3 ? 'Pronto para iniciar' : `Faltam ${3 - totalParticipantes} participantes`;
+        const statusColor = totalParticipantes >= 3 ? '#28a745' : '#f1c40f';
+        
+        html += `
+            <div class="status-game" style="border-left: 4px solid #f1c40f;">
+                <div class="status-game-header">
+                    <div class="status-icon">🟡</div>
+                    <div class="status-title">Competição em PREPARAÇÃO</div>
+                </div>
+                <div class="status-details">
+                    <div class="status-item">
+                        <span class="status-label">Nome</span>
+                        <span class="status-value">${jogoData.nome || 'Edição atual'}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Participantes</span>
+                        <span class="status-value">${totalParticipantes} / 3 (mínimo)</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Status</span>
+                        <span class="status-value" style="color: ${statusColor};">${statusText}</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Valor Inscrição</span>
+                        <span class="status-value">R$ ${jogoData.valorInscricao || 50},00</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Data Criação</span>
+                        <span class="status-value">${jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn btn-warning" id="btnGoToConfigFromStatus" style="background:#17a2b8;">⚙️ Ir para Configurações para Ativar</button>
+                </div>
+            </div>
+        `;
+    }
     
-    const jogoRef = doc(db, 'jogos', jogoAtualId);
-    const jogoDoc = await getDoc(jogoRef);
-    const jogoData = jogoDoc.data();
+    // Se não houver nenhuma competição
+    if (ativosSnapshot.empty && preparandoSnapshot.empty) {
+        html = `
+            <div class="status-game" style="border-left: 4px solid #6c757d;">
+                <div class="status-game-header">
+                    <div class="status-icon">⚪</div>
+                    <div class="status-title">Nenhuma Competição</div>
+                </div>
+                <div class="status-details">
+                    <div class="status-item" style="justify-content: center;">
+                        <span class="status-value">Clique em "Preparar Nova Competição" para começar</span>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; text-align: center;">
+                    <button class="btn btn-success" id="btnGoToPreparar">📋 Preparar Nova Competição</button>
+                </div>
+            </div>
+        `;
+    }
     
-    if (nomeSpan) nomeSpan.textContent = jogoData.nome || 'Edição atual';
-    if (situacaoSpan) situacaoSpan.innerHTML = '<span class="status-badge-active">ATIVO</span>';
-    if (ultimoSorteioSpan) ultimoSorteioSpan.textContent = jogoData.ultimoConcursoImportado || 'Nenhum ainda';
+    statusGameContainer.innerHTML = html;
     
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    const snapshot = await getDocs(q);
-    if (participantesSpan) participantesSpan.textContent = snapshot.size;
+    // Adicionar eventos dos botões dinâmicos
+    const btnGoToConfig = document.getElementById('btnGoToConfigFromStatus');
+    if (btnGoToConfig) {
+        btnGoToConfig.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('ativo'));
+            const configTab = document.querySelector('.tab[data-tab="config"]');
+            if (configTab) configTab.classList.add('ativo');
+            const configContent = document.getElementById('config');
+            if (configContent) configContent.classList.add('ativo');
+        });
+    }
     
-    if (valorSpan) valorSpan.textContent = `R$ ${jogoData.valorInscricao || 50},00`;
-    if (dataSpan) dataSpan.textContent = jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-';
+    const btnGoToPreparar = document.getElementById('btnGoToPreparar');
+    if (btnGoToPreparar) {
+        btnGoToPreparar.addEventListener('click', () => {
+            criarNovaCompeticaoPreparando();
+        });
+    }
 }
 
 async function carregarSelectExcluirCompeticao() {
@@ -365,9 +377,10 @@ async function excluirCompeticaoHandler() {
         await deleteDoc(doc(db, 'jogos', competicaoId));
         alert(`✅ Competição "${competicaoNome}" excluída!`);
         await carregarSelectExcluirCompeticao();
-        await carregarJogoAtivo();
-        await carregarPreparandoInfo();
-        await atualizarDashboardDisplay();
+        await atualizarStatusGame();
+        await carregarSelectCompeticoes();
+        await carregarSelectCompeticoesCadastro();
+        await carregarSelectCompeticaoLista();
     }
 }
 
@@ -532,8 +545,7 @@ async function criarNovaCompeticaoPreparando() {
     await carregarSelectCompeticoesCadastro();
     await carregarSelectCompeticaoLista();
     await carregarSelectExcluirCompeticao();
-    await carregarPreparandoInfo();
-    await atualizarDashboardDisplay();
+    await atualizarStatusGame();
 }
 
 async function ativarCompeticaoSelecionada() {
@@ -570,8 +582,7 @@ async function ativarCompeticaoSelecionada() {
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
         await carregarRanking();
-        await carregarPreparandoInfo();
-        await atualizarDashboardDisplay();
+        await atualizarStatusGame();
         if (intervaloBusca) clearInterval(intervaloBusca);
         iniciarBuscaAutomaticaMelhorada();
     }
@@ -695,8 +706,7 @@ async function salvarParticipante() {
         await carregarSelectCompeticoesCadastro();
         await carregarSelectCompeticaoLista();
         await carregarRanking();
-        await carregarPreparandoInfo();
-        await atualizarDashboardDisplay();
+        await atualizarStatusGame();
         
     } catch (error) {
         console.error('Erro ao salvar:', error);
@@ -929,8 +939,7 @@ async function encerrarJogo() {
         await carregarJogoAtivo();
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
-        await carregarPreparandoInfo();
-        await atualizarDashboardDisplay();
+        await atualizarStatusGame();
     }
 }
 
@@ -1011,8 +1020,7 @@ window.excluirParticipante = async function(id) {
         await deleteDoc(doc(db, 'participantes', id));
         await carregarSelectCompeticaoLista();
         await carregarRanking();
-        await carregarPreparandoInfo();
-        await atualizarDashboardDisplay();
+        await atualizarStatusGame();
         alert('Participante excluído!');
     }
 };
