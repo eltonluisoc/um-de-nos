@@ -382,15 +382,24 @@ async function carregarSelectCompeticoes() {
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
-    const querySnapshot = await getDocs(jogosRef);
+    const q = query(jogosRef, where('status', '==', 'preparando'), orderBy('createdAt', 'desc'));
+    const querySnapshot = await getDocs(q);
     
     select.innerHTML = '<option value="">-- Selecione uma competição para ATIVAR --</option>';
+    
+    let primeira = true;
     for (const doc of querySnapshot.docs) {
         const jogo = doc.data();
-        if (jogo.status === 'preparando') {
-            select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} (PREPARANDO) - ${jogo.totalParticipantes || 0} participantes</option>`;
+        const option = document.createElement('option');
+        option.value = doc.id;
+        option.textContent = `🟡 ${jogo.nome} (PREPARANDO) - ${jogo.totalParticipantes || 0} participantes`;
+        if (primeira) {
+            option.selected = true;
+            primeira = false;
         }
+        select.appendChild(option);
     }
+    
     if (select.options.length === 1) {
         select.innerHTML = '<option value="">-- Nenhuma competição em PREPARAÇÃO --</option>';
     }
@@ -401,7 +410,7 @@ async function carregarSelectCompeticoesCadastro() {
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'preparando'));
+    const q = query(jogosRef, where('status', '==', 'preparando'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     
     select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
@@ -414,9 +423,18 @@ async function carregarSelectCompeticoesCadastro() {
     } else {
         if (bloqueioDiv) bloqueioDiv.style.display = 'none';
         document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
+        
+        let primeira = true;
         for (const doc of querySnapshot.docs) {
             const jogo = doc.data();
-            select.innerHTML += `<option value="${doc.id}">🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes (R$ ${jogo.valorInscricao || 20})</option>`;
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = `🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes (R$ ${jogo.valorInscricao || 20})`;
+            if (primeira) {
+                option.selected = true;
+                primeira = false;
+            }
+            select.appendChild(option);
         }
     }
 }
@@ -428,12 +446,40 @@ async function carregarSelectCompeticaoLista() {
     const jogosRef = collection(db, 'jogos');
     const querySnapshot = await getDocs(jogosRef);
     
+    // Ordenar: primeiro ATIVO, depois PREPARANDO, depois ENCERRADO
+    const jogos = [];
+    querySnapshot.forEach(doc => {
+        jogos.push({ id: doc.id, ...doc.data() });
+    });
+    jogos.sort((a, b) => {
+        const ordem = { 'aberto': 1, 'preparando': 2, 'encerrado': 3 };
+        return ordem[a.status] - ordem[b.status];
+    });
+    
     select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
-    for (const doc of querySnapshot.docs) {
-        const jogo = doc.data();
+    
+    let primeira = true;
+    let idSelecionado = null;
+    
+    for (const jogo of jogos) {
         const statusIcon = jogo.status === 'aberto' ? '🟢' : (jogo.status === 'preparando' ? '🟡' : '🔴');
         const statusText = jogo.status === 'aberto' ? 'ATIVO' : (jogo.status === 'preparando' ? 'PREPARANDO' : 'ENCERRADO');
-        select.innerHTML += `<option value="${doc.id}">${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes</option>`;
+        const option = document.createElement('option');
+        option.value = jogo.id;
+        option.textContent = `${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes`;
+        
+        // Selecionar a primeira (que será a ATIVA se existir, senão a PREPARANDO)
+        if (primeira) {
+            option.selected = true;
+            idSelecionado = jogo.id;
+            primeira = false;
+        }
+        select.appendChild(option);
+    }
+    
+    // Carregar participantes da competição selecionada
+    if (idSelecionado) {
+        await carregarParticipantesPorCompeticao(idSelecionado);
     }
     
     select.onchange = async () => {
