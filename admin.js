@@ -537,13 +537,23 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
+            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
             return;
         }
         
+        // Ordenar participantes por nome (ordem alfabética)
+        const participantes = [];
+        querySnapshot.forEach(doc => {
+            participantes.push({ id: doc.id, ...doc.data() });
+        });
+        participantes.sort((a, b) => {
+            const nomeA = a.nome || '';
+            const nomeB = b.nome || '';
+            return nomeA.localeCompare(nomeB, 'pt-BR');
+        });
+        
         tbody.innerHTML = '';
-        for (const docSnap of querySnapshot.docs) {
-            const p = docSnap.data();
+        for (const p of participantes) {
             const tr = document.createElement('tr');
             const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
             tr.innerHTML = `
@@ -551,7 +561,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
                 <td style="font-size:11px;">${p.numeros.join(', ')}</td>
                 <td>${p.acertos || 0}/17</td>
                 <td>${dataCadastro}</td>
-                <td><button class="btn-danger" onclick="window.excluirParticipante('${docSnap.id}')">Excluir</button></td>
+                <td><button class="btn-danger" onclick="window.excluirParticipante('${p.id}')">Excluir</button></td>
             `;
             tbody.appendChild(tr);
         }
