@@ -5,7 +5,6 @@ import {
     where, 
     getDocs, 
     onSnapshot, 
-    orderBy, 
     doc, 
     getDoc 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -109,7 +108,6 @@ async function carregarParticipantes() {
     console.log(`${participantes.length} participantes encontrados`);
     atualizarRanking(participantes);
     
-    // Atualizar estatísticas
     const totalSpan = document.getElementById('totalParticipantes');
     const maiorSpan = document.getElementById('maiorPontuacao');
     if (totalSpan) totalSpan.textContent = participantes.length;
@@ -150,6 +148,7 @@ async function carregarSorteios() {
         `;
     }
     container.innerHTML = html;
+    console.log(`${sorteios.length} sorteios carregados`);
 }
 
 async function carregarNumerosSorteados() {
@@ -196,7 +195,6 @@ function escutarParticipantes() {
         atualizarRanking(participantes);
         verificarVencedor(participantes);
         
-        // Atualizar estatísticas
         const totalSpan = document.getElementById('totalParticipantes');
         const maiorSpan = document.getElementById('maiorPontuacao');
         if (totalSpan) totalSpan.textContent = participantes.length;
@@ -362,18 +360,20 @@ function verificarVencedor(participantes) {
 
 async function carregarUltimoVencedor() {
     const historicoRef = collection(db, 'historico_vencedores');
-    const q = query(historicoRef, orderBy('dataVitoria', 'desc'));
+    const querySnapshot = await getDocs(historicoRef);
     
-    try {
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            const ultimoVencedor = querySnapshot.docs[0].data();
-            document.getElementById('vencedorInfo').style.display = 'block';
-            document.getElementById('vencedorNome').innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
-            document.getElementById('vencedorData').innerHTML = `Vitória em ${new Date(ultimoVencedor.dataVitoria).toLocaleDateString('pt-BR')}`;
-        }
-    } catch (error) {
-        console.error('Erro ao carregar histórico:', error);
+    // Ordenar manualmente
+    const historico = [];
+    querySnapshot.forEach(doc => {
+        historico.push({ id: doc.id, ...doc.data() });
+    });
+    historico.sort((a, b) => b.dataVitoria?.toDate() - a.dataVitoria?.toDate());
+    
+    if (historico.length > 0) {
+        const ultimoVencedor = historico[0];
+        document.getElementById('vencedorInfo').style.display = 'block';
+        document.getElementById('vencedorNome').innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
+        document.getElementById('vencedorData').innerHTML = `Vitória em ${new Date(ultimoVencedor.dataVitoria?.toDate()).toLocaleDateString('pt-BR')}`;
     }
 }
 
