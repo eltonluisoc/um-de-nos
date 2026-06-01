@@ -633,19 +633,55 @@ async function ativarCompeticaoSelecionada() {
         return;
     }
     
-    if (confirm(`Iniciar "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?`)) {
-        await updateDoc(jogoRef, { status: 'aberto', dataInicio: new Date() });
-        alert(`✅ Competição ativada!`);
+    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO: Os sorteios anteriores serão IGNORADOS. A competição começará a contar APÓS a ativação.`)) {
+        
+        // ============================================
+        // 1. Zerar todos os acertos dos participantes
+        // ============================================
+        console.log('🔄 Zerando acertos dos participantes...');
+        for (const docSnap of snapshot.docs) {
+            await updateDoc(doc(db, 'participantes', docSnap.id), { 
+                acertos: 0,
+                acertouTodos: false,
+                ordemVitoria: null
+            });
+        }
+        
+        // ============================================
+        // 2. Limpar sorteios anteriores relacionados a esta competição
+        // ============================================
+        console.log('🗑️ Removendo sorteios anteriores...');
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const sorteiosQuery = query(sorteiosRef);
+        const sorteiosSnapshot = await getDocs(sorteiosQuery);
+        
+        // Opção: Não remover sorteios globais, apenas zerar o contador da competição
+        // Assim mantém o histórico para outras competições
+        
+        // ============================================
+        // 3. Atualizar competição
+        // ============================================
+        await updateDoc(jogoRef, { 
+            status: 'aberto', 
+            dataInicio: new Date(),
+            ultimoConcursoImportado: null,
+            ultimosNumerosSorteados: null,
+            primeiraConferenciaRealizada: false
+        });
+        
+        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram zerados.\n📌 A competição começará a contar APÓS o próximo sorteio da Quina.`);
+        
         await carregarJogoAtivo();
         await carregarSelectCompeticoes();
         await carregarSelectCompeticoesCadastro();
         await carregarRanking();
         await atualizarStatusGame();
+        await carregarCompeticaoPreparandoValor();
+        
         if (intervaloBusca) clearInterval(intervaloBusca);
         iniciarBuscaAutomaticaMelhorada();
     }
 }
-
 async function mostrarCompeticoes() {
     const jogosRef = collection(db, 'jogos');
     const querySnapshot = await getDocs(jogosRef);
@@ -950,27 +986,52 @@ async function buscarSorteioQuina() {
     
     try {
         const { numeros, concurso, data } = await buscarSorteioMultiplasAPIs();
-        console.log(`🎲 Sorteio ${concurso}:`, numeros);
+        console.log(`🎲 Sorteio encontrado: ${concurso}`, numeros);
         
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         const jogoDoc = await getDoc(jogoRef);
+        const jogoData = jogoDoc.data();
         
-        if (jogoDoc.data().ultimoConcursoImportado === concurso) return;
+        // Verificar se o sorteio é POSTERIOR à data de início da competição
+        const dataInicio = jogoData.dataInicio?.toDate() || new Date();
+        let dataSorteioObj = new Date();
+        if (data) {
+            const partes = data.split('/');
+            if (partes.length === 3) {
+                dataSorteioObj = new Date(partes[2], partes[1] - 1, partes[0]);
+            }
+        }
         
-        if (!jogoDoc.data().primeiraConferenciaRealizada) {
-            await updateDoc(jogoRef, { primeiraConferenciaRealizada: true, dataPrimeiraConferencia: new Date() });
+        // Se o sorteio é anterior à ativação, IGNORAR
+        if (dataSorteioObj < dataInicio) {
+            console.log(`⏸️ Sorteio ${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
+            if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
+            return;
+        }
+        
+        if (jogoData.ultimoConcursoImportado === concurso) {
+            console.log(`⚠️ Sorteio ${concurso} já foi importado`);
+            if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
+            return;
+        }
+        
+        // Verificar se é o primeiro sorteio após ativação
+        if (!jogoData.primeiraConferenciaRealizada) {
+            console.log('🔒 PRIMEIRA CONFERÊNCIA - Este é o PRIMEIRO sorteio após ativação');
+            await updateDoc(jogoRef, { 
+                primeiraConferenciaRealizada: true, 
+                dataPrimeiraConferencia: new Date()
+            });
             jogoBloqueado = true;
             await verificarBloqueio();
         }
         
-        let dataSorteio = new Date();
-        if (data) {
-            const partes = data.split('/');
-            if (partes.length === 3) dataSorteio = new Date(partes[2], partes[1]-1, partes[0]);
-        }
-        
         await addDoc(collection(db, 'sorteios_quina'), {
-            concurso, numeros, data: dataSorteio, importadoEm: new Date()
+            concurso, 
+            numeros, 
+            data: dataSorteioObj, 
+            importadoEm: new Date(),
+            competicaoId: jogoAtualId  // Associar sorteio à competição
         });
         
         await updateDoc(jogoRef, {
@@ -988,7 +1049,7 @@ async function buscarSorteioQuina() {
         
     } catch (error) {
         console.error('❌ Erro:', error);
-        alert('Erro ao buscar sorteio');
+        if (btn) alert('Erro ao buscar sorteio');
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
     }
