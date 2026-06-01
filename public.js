@@ -123,8 +123,7 @@ async function carregarSorteios() {
     if (!jogoId) return;
     
     const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, where('competicaoId', '==', jogoId), orderBy('concurso', 'desc'));
-    
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
     const querySnapshot = await getDocs(q);
     sorteiosRealizados = [];
     
@@ -134,16 +133,22 @@ async function carregarSorteios() {
         return;
     }
     
-    let html = '';
+    // Ordenar manualmente por concurso (decrescente)
+    const sorteios = [];
     querySnapshot.forEach(doc => {
-        const s = doc.data();
+        sorteios.push({ id: doc.id, ...doc.data() });
+    });
+    sorteios.sort((a, b) => b.concurso - a.concurso);
+    
+    let html = '';
+    for (const s of sorteios) {
         sorteiosRealizados.push(s);
         html += `
             <div class="sorteio-item">
                 <span>#${s.concurso}</span> ${s.numeros.join(', ')}
             </div>
         `;
-    });
+    }
     container.innerHTML = html;
 }
 
