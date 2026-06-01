@@ -105,6 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (targetContent) targetContent.classList.add('ativo');
             
             if (tabId === 'dashboard') {
+                await carregarJogoAtivo();
                 await atualizarStatusGame();
                 await carregarRanking();
             }
@@ -113,9 +114,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     criarGridNumeros();
     
-    // Forçar carregamento do dashboard após login
     setTimeout(async () => {
         if (document.getElementById('dashboard') && document.getElementById('dashboard').classList.contains('ativo')) {
+            await carregarJogoAtivo();
             await atualizarStatusGame();
             await carregarRanking();
             console.log('✅ Dashboard atualizado automaticamente');
@@ -247,6 +248,7 @@ async function atualizarStatusGame() {
         const sorteiosSnapshot = await getDocs(sorteiosQuery);
         const temSorteio = !sorteiosSnapshot.empty;
         const ultimoSorteio = jogoData.ultimoConcursoImportado || 'Nenhum ainda';
+        const primeiraConferencia = jogoData.primeiraConferenciaRealizada || false;
         
         html += `
             <div class="status-game" style="border-left: 4px solid #28a745;">
@@ -267,6 +269,10 @@ async function atualizarStatusGame() {
                         <span class="status-label">Último Sorteio</span>
                         <span class="status-value">${ultimoSorteio}</span>
                     </div>` : ''}
+                    <div class="status-item">
+                        <span class="status-label">Status Conferência</span>
+                        <span class="status-value">${primeiraConferencia ? '🔒 Bloqueado' : '✅ Aberto'}</span>
+                    </div>
                     <div class="status-item">
                         <span class="status-label">Valor Inscrição</span>
                         <span class="status-value">R$ ${jogoData.valorInscricao || 20},00</span>
@@ -367,11 +373,14 @@ async function carregarJogoAtivo() {
         jogoAtualId = jogoDoc.id;
         jogoAtualStatus = jogoDoc.data().status;
         const jogoData = jogoDoc.data();
+        // Apenas bloqueia se realmente já teve primeira conferência (sorteio importado)
         jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
         console.log('🏆 Competição ativa carregada:', jogoAtualId, jogoData.nome);
+        console.log('📌 Primeira conferência:', jogoData.primeiraConferenciaRealizada);
     } else {
         jogoAtualId = null;
         jogoAtualStatus = null;
+        jogoBloqueado = false;
         if (intervaloBusca) clearInterval(intervaloBusca);
         console.log('⚠️ Nenhuma competição ativa');
     }
@@ -413,7 +422,7 @@ async function carregarSelectCompeticoesCadastro() {
     const q = query(jogosRef, where('status', '==', 'preparando'), orderBy('createdAt', 'desc'));
     const querySnapshot = await getDocs(q);
     
-    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    select.innerHTML = '';
     const bloqueioDiv = document.getElementById('bloqueioCadastro');
     
     if (querySnapshot.empty) {
@@ -456,7 +465,7 @@ async function carregarSelectCompeticaoLista() {
         return ordem[a.status] - ordem[b.status];
     });
     
-    select.innerHTML = '<option value="">-- Selecione uma competição --</option>';
+    select.innerHTML = '';
     
     let primeira = true;
     let idSelecionado = null;
@@ -468,7 +477,6 @@ async function carregarSelectCompeticaoLista() {
         option.value = jogo.id;
         option.textContent = `${statusIcon} ${jogo.nome} (${statusText}) - ${jogo.totalParticipantes || 0} participantes`;
         
-        // Selecionar a primeira (que será a ATIVA se existir, senão a PREPARANDO)
         if (primeira) {
             option.selected = true;
             idSelecionado = jogo.id;
@@ -491,7 +499,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
     const tbody = document.getElementById('corpoTabela');
     if (!tbody || !competicaoId) {
         if (tbody && !competicaoId) {
-            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>';
         }
         return;
     }
@@ -504,7 +512,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
+            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
             return;
         }
         
@@ -627,20 +635,29 @@ async function ativarCompeticaoSelecionada() {
         await batch.commit();
         console.log('✅ Acertos zerados com sucesso!');
         
-        // 3. Atualizar competição
+        // 3. Atualizar competição - NÃO marcar primeiraConferenciaRealizada ainda
         await updateDoc(jogoRef, { 
             status: 'aberto', 
             dataInicio: dataAtivacao,
             ultimoConcursoImportado: null,
             ultimosNumerosSorteados: null,
-            primeiraConferenciaRealizada: false
+            primeiraConferenciaRealizada: false  // Mantém false até o primeiro sorteio
         });
         
-        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 Os sorteios antigos foram REMOVIDOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 A página será recarregada.`);
+        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 Os sorteios antigos foram REMOVIDOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 Clique em OK para continuar.`);
         
-        setTimeout(() => {
-            window.location.reload();
-        }, 2000);
+        // Recarregar os dados sem recarregar a página inteira
+        await carregarJogoAtivo();
+        await carregarSelectCompeticoes();
+        await carregarSelectCompeticoesCadastro();
+        await carregarSelectCompeticaoLista();
+        await carregarRanking();
+        await atualizarStatusGame();
+        await verificarBloqueio();
+        
+        // Iniciar busca automática
+        iniciarBuscaAutomaticaMelhorada();
+        
     }
 }
 
@@ -664,11 +681,12 @@ async function mostrarCompeticoes() {
 }
 
 async function verificarBloqueio() {
-    const bloqueado = jogoBloqueado || jogoAtualStatus === 'aberto';
+    // Só bloqueia se realmente já teve primeira conferência (sorteio importado)
+    const bloqueado = jogoBloqueado === true;
     const bloqueioMsg = document.getElementById('bloqueioCadastro');
     const infoBloqueio = document.getElementById('infoBloqueio');
     
-    if (bloqueado && jogoAtualStatus === 'aberto') {
+    if (bloqueado) {
         if (bloqueioMsg) bloqueioMsg.style.display = 'block';
         if (infoBloqueio) infoBloqueio.style.display = 'block';
         document.getElementById('btnSalvarParticipante')?.setAttribute('disabled', 'disabled');
@@ -716,8 +734,9 @@ function toggleNumero(element) {
 }
 
 async function salvarParticipante() {
-    if (jogoAtualStatus === 'aberto') {
-        alert('⚠️ Competição já ATIVA! Não é possível adicionar novos participantes.');
+    // Verifica se está bloqueado (apenas se já teve primeira conferência)
+    if (jogoBloqueado === true) {
+        alert('⚠️ Competição já começou! Primeira conferência já realizada. Não é possível adicionar novos participantes.');
         return;
     }
     
@@ -831,7 +850,7 @@ function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
 }
 
 // ============================================
-// RANKING - MOSTRA APENAS PARTICIPANTES DA COMPETIÇÃO ATIVA
+// RANKING
 // ============================================
 
 async function carregarRanking() {
@@ -937,6 +956,7 @@ async function buscarSorteioQuina() {
             }
         }
         
+        // ⚠️ SÓ ACEITA SORTEIOS POSTERIORES À DATA DE ATIVAÇÃO
         if (dataSorteioObj < dataInicio) {
             console.log(`⏸️ Sorteio ${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
             if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
@@ -949,7 +969,10 @@ async function buscarSorteioQuina() {
             return;
         }
         
-        if (!jogoData.primeiraConferenciaRealizada) {
+        // PRIMEIRA CONFERÊNCIA: só marca quando o PRIMEIRO sorteio for importado
+        const isPrimeiraConferencia = !jogoData.primeiraConferenciaRealizada;
+        
+        if (isPrimeiraConferencia) {
             console.log('🔒 PRIMEIRA CONFERÊNCIA - Este é o PRIMEIRO sorteio após ativação');
             await updateDoc(jogoRef, { 
                 primeiraConferenciaRealizada: true, 
@@ -973,7 +996,12 @@ async function buscarSorteioQuina() {
         });
         
         await atualizarAcertosParticipantes(numeros);
-        alert(`✅ Sorteio ${concurso} importado! Números: ${numeros.join(', ')}`);
+        
+        const msg = isPrimeiraConferencia ? 
+            `✅ PRIMEIRO SORTEIO ${concurso} importado! Números: ${numeros.join(', ')}\n\n🔒 A partir de agora, NÃO serão aceitos novos participantes.` :
+            `✅ Sorteio ${concurso} importado! Números: ${numeros.join(', ')}`;
+        
+        alert(msg);
         
         await carregarRanking();
         await carregarHistoricoSorteios();
@@ -982,7 +1010,7 @@ async function buscarSorteioQuina() {
         
     } catch (error) {
         console.error('❌ Erro:', error);
-        if (btn) alert('Erro ao buscar sorteio');
+        if (btn) alert('Erro ao buscar sorteio: ' + error.message);
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
     }
