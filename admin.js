@@ -1177,7 +1177,13 @@ window.excluirParticipante = async function(id) {
     }
 };
 
-window.carregarDados = carregarDados;  // <--- ADICIONE ESTA LINHA
+window.carregarJogoAtivo = carregarJogoAtivo;
+window.carregarRanking = carregarRanking;
+window.carregarTodosParticipantes = carregarTodosParticipantes;
+window.carregarHistoricoSorteios = carregarHistoricoSorteios;
+window.carregarNumerosSorteadosAdmin = carregarNumerosSorteadosAdmin;
+window.atualizarStatusGame = atualizarStatusGame;
+window.carregarDados = carregarDados;
 window.buscarSorteioQuina = buscarSorteioQuina;
 window.verificarSenha = verificarSenha;
 window.logout = logout;
