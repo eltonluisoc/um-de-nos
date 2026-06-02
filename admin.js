@@ -956,12 +956,14 @@ async function buscarSorteioQuina() {
             }
         }
         
-        // ⚠️ SÓ ACEITA SORTEIOS POSTERIORES À DATA DE ATIVAÇÃO
+        // 🔧 CORREÇÃO: Aceita sorteios do mesmo dia da ativação (>=)
         if (dataSorteioObj < dataInicio) {
-            console.log(`⏸️ Sorteio ${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
+            console.log(`⏸️ Sorteio ${concurso} (${dataSorteioObj.toLocaleDateString()}) é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
             if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
             return;
         }
+        
+        console.log(`✅ Sorteio ${concurso} é válido! Data sorteio: ${dataSorteioObj.toLocaleDateString()}, Data ativação: ${dataInicio.toLocaleDateString()}`);
         
         if (jogoData.ultimoConcursoImportado === concurso) {
             console.log(`⚠️ Sorteio ${concurso} já foi importado`);
