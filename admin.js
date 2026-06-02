@@ -1177,5 +1177,6 @@ window.excluirParticipante = async function(id) {
     }
 };
 
+window.buscarSorteioQuina = buscarSorteioQuina;  // <--- ESTA LINHA É CRUCIAL
 window.verificarSenha = verificarSenha;
 window.logout = logout;
