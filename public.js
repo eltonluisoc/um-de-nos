@@ -26,8 +26,8 @@ async function carregarDados() {
         await carregarPremiacao();
         await carregarSorteios();
         await carregarNumerosSorteados();
-        await carregarParticipantes();
-        escutarParticipantes();
+        await carregarParticipantes();  // Carrega participantes IMEDIATAMENTE
+        escutarParticipantes();          // Escuta mudanças em tempo real
         await atualizarStatusSorteio();
     }
 }
@@ -56,7 +56,6 @@ async function carregarJogoAtivo() {
         jogoId = jogoDoc.id;
         
         console.log('Jogo ativo encontrado:', jogoId, jogoAtual.nome);
-        console.log('Participantes no jogo:', jogoAtual.totalParticipantes || 0);
         
         document.getElementById('statusJogo').innerHTML = `
             <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
@@ -88,32 +87,45 @@ async function carregarPremiacao() {
     document.getElementById('premiacao').style.display = 'grid';
 }
 
+// FUNÇÃO PRINCIPAL - CARREGA PARTICIPANTES
 async function carregarParticipantes() {
-    if (!jogoId) return;
+    if (!jogoId) {
+        console.log('Sem jogoId, participantes não carregados');
+        return;
+    }
     
-    console.log('Carregando participantes da competição:', jogoId);
+    console.log('🔍 Carregando participantes da competição:', jogoId);
     
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoId));
-    const querySnapshot = await getDocs(q);
-    
-    participantes = [];
-    querySnapshot.forEach((doc) => {
-        participantes.push({
-            id: doc.id,
-            ...doc.data()
+    try {
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', jogoId));
+        const querySnapshot = await getDocs(q);
+        
+        participantes = [];
+        querySnapshot.forEach((doc) => {
+            participantes.push({
+                id: doc.id,
+                ...doc.data()
+            });
         });
-    });
-    
-    console.log(`${participantes.length} participantes encontrados`);
-    atualizarRanking(participantes);
-    
-    const totalSpan = document.getElementById('totalParticipantes');
-    const maiorSpan = document.getElementById('maiorPontuacao');
-    if (totalSpan) totalSpan.textContent = participantes.length;
-    if (maiorSpan && participantes.length > 0) {
-        const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
-        maiorSpan.textContent = `${maiorAcertos}`;
+        
+        console.log(`✅ ${participantes.length} participantes encontrados`);
+        
+        // Atualizar estatísticas
+        const totalSpan = document.getElementById('totalParticipantes');
+        const maiorSpan = document.getElementById('maiorPontuacao');
+        if (totalSpan) totalSpan.textContent = participantes.length;
+        if (maiorSpan && participantes.length > 0) {
+            const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+            maiorSpan.textContent = `${maiorAcertos}`;
+        }
+        
+        // Atualizar ranking
+        atualizarRanking(participantes);
+        
+    } catch (error) {
+        console.error('Erro ao carregar participantes:', error);
+        document.getElementById('listaParticipantes').innerHTML = '<div class="loading">❌ Erro ao carregar participantes</div>';
     }
 }
 
@@ -131,7 +143,6 @@ async function carregarSorteios() {
         return;
     }
     
-    // Ordenar manualmente por concurso (decrescente)
     const sorteios = [];
     querySnapshot.forEach(doc => {
         sorteios.push({ id: doc.id, ...doc.data() });
@@ -183,7 +194,7 @@ function escutarParticipantes() {
     const q = query(participantesRef, where('jogoId', '==', jogoId));
     
     onSnapshot(q, (snapshot) => {
-        console.log('Atualização em tempo real dos participantes');
+        console.log('🔄 Atualização em tempo real dos participantes');
         participantes = [];
         snapshot.forEach((doc) => {
             participantes.push({
@@ -333,7 +344,7 @@ window.mostrarDetalhes = function(participanteId) {
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
     if (!numeros || numeros.length === 0) {
-        container.innerHTML = '<span>⏳ Aguardando primeiro sorteio da competição...</span>';
+        container.innerHTML = '<span>⏳ Aguardando primeiro sorteio...</span>';
         return;
     }
     
@@ -362,7 +373,6 @@ async function carregarUltimoVencedor() {
     const historicoRef = collection(db, 'historico_vencedores');
     const querySnapshot = await getDocs(historicoRef);
     
-    // Ordenar manualmente
     const historico = [];
     querySnapshot.forEach(doc => {
         historico.push({ id: doc.id, ...doc.data() });

@@ -654,7 +654,7 @@
                     <div class="challenge-badge-admin">⚡ O Desafio dos 17 ⚡</div>
                 </div>
                 <div>
-                    <button class="btn" id="btnRefresh">🔄 Atualizar</button>
+                    <button class="btn" id="btnRefresh">🔄 Atualizar Dados</button>
                     <button class="btn btn-danger" id="btnLogout">🚪 Sair</button>
                 </div>
             </div>
@@ -825,8 +825,26 @@
     </div>
 
     <script>
-        document.getElementById('btnRefresh')?.addEventListener('click', () => {
-            window.location.reload();
+        // BLOQUEIO DE INSTALAÇÃO COMO PWA
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            console.log('Instale o app pela página pública (ícone de casa)');
+        });
+        
+        if (window.matchMedia('(display-mode: standalone)').matches) {
+            window.location.href = '/um-de-nos/';
+        }
+        
+        // BOTÃO ATUALIZAR - SEM RECARREGAR PÁGINA
+        document.getElementById('btnRefresh')?.addEventListener('click', async () => {
+            console.log('🔄 Atualizando dados sem recarregar página...');
+            if (typeof carregarDados === 'function') {
+                await carregarDados();
+                alert('✅ Dados atualizados!');
+            } else {
+                console.log('Função carregarDados não disponível, recarregando página...');
+                window.location.reload();
+            }
         });
         
         document.getElementById('btnGoToConfig')?.addEventListener('click', () => {
@@ -844,7 +862,7 @@
                 .catch(error => console.log('❌ Falha no Service Worker Admin:', error));
         }
         
-        // SCRIPT DE LIMPEZA - Execute no console: limparSorteiosAntigos()
+        // Funções de limpeza
         window.limparSorteiosAntigos = async function() {
             const module = await import('./firebase-config.js');
             const { collection, getDocs, deleteDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js");
