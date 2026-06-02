@@ -826,28 +826,38 @@
 
         <script>
         // BOTÃO ATUALIZAR - NÃO RECARREGA A PÁGINA
-        document.getElementById('btnRefresh')?.addEventListener('click', async () => {
-            console.log('🔄 Atualizando dados sem recarregar página...');
-            const btn = document.getElementById('btnRefresh');
-            const textoOriginal = btn.textContent;
-            btn.textContent = '⏳ Atualizando...';
-            btn.disabled = true;
-            
-            try {
-                if (typeof carregarDados === 'function') {
-                    await carregarDados();
-                    alert('✅ Dados atualizados com sucesso!');
-                } else {
-                    window.location.reload();
+        const refreshBtn = document.getElementById('btnRefresh');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                console.log('🔄 Atualizando dados...');
+                const textoOriginal = refreshBtn.textContent;
+                refreshBtn.textContent = '⏳ Atualizando...';
+                refreshBtn.disabled = true;
+                
+                try {
+                    // Aguardar a função carregarDados estar disponível
+                    let tentativas = 0;
+                    while (typeof window.carregarDados !== 'function' && tentativas < 20) {
+                        await new Promise(r => setTimeout(r, 100));
+                        tentativas++;
+                    }
+                    
+                    if (typeof window.carregarDados === 'function') {
+                        await window.carregarDados();
+                        alert('✅ Dados atualizados com sucesso!');
+                    } else {
+                        console.error('Função carregarDados não encontrada');
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    console.error('Erro ao atualizar:', error);
+                    alert('Erro ao atualizar dados: ' + error.message);
+                } finally {
+                    refreshBtn.textContent = textoOriginal;
+                    refreshBtn.disabled = false;
                 }
-            } catch (error) {
-                console.error('Erro:', error);
-                alert('Erro ao atualizar dados');
-            } finally {
-                btn.textContent = textoOriginal;
-                btn.disabled = false;
-            }
-        });
+            });
+        }
         
         document.getElementById('btnGoToConfig')?.addEventListener('click', () => {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('ativo'));
