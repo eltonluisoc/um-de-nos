@@ -824,26 +824,28 @@
         </div>
     </div>
 
-    <script>
-        // BLOQUEIO DE INSTALAÇÃO COMO PWA
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            console.log('Instale o app pela página pública (ícone de casa)');
-        });
-        
-        if (window.matchMedia('(display-mode: standalone)').matches) {
-            window.location.href = '/um-de-nos/';
-        }
-        
-        // BOTÃO ATUALIZAR - SEM RECARREGAR PÁGINA
+        <script>
+        // BOTÃO ATUALIZAR - NÃO RECARREGA A PÁGINA
         document.getElementById('btnRefresh')?.addEventListener('click', async () => {
             console.log('🔄 Atualizando dados sem recarregar página...');
-            if (typeof carregarDados === 'function') {
-                await carregarDados();
-                alert('✅ Dados atualizados!');
-            } else {
-                console.log('Função carregarDados não disponível, recarregando página...');
-                window.location.reload();
+            const btn = document.getElementById('btnRefresh');
+            const textoOriginal = btn.textContent;
+            btn.textContent = '⏳ Atualizando...';
+            btn.disabled = true;
+            
+            try {
+                if (typeof carregarDados === 'function') {
+                    await carregarDados();
+                    alert('✅ Dados atualizados com sucesso!');
+                } else {
+                    window.location.reload();
+                }
+            } catch (error) {
+                console.error('Erro:', error);
+                alert('Erro ao atualizar dados');
+            } finally {
+                btn.textContent = textoOriginal;
+                btn.disabled = false;
             }
         });
         
@@ -909,11 +911,10 @@
             window.location.reload();
         };
         
-        console.log('✅ Funções disponíveis no console:');
-        console.log('   - limparSorteiosAntigos()');
-        console.log('   - limparSorteiosDaCompeticao("ID_DA_COMPETICAO")');
+        console.log('✅ Admin carregado - Botão Atualizar sem reload');
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
+    
 </body>
 </html>
