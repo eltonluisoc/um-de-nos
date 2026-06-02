@@ -956,14 +956,19 @@ async function buscarSorteioQuina() {
             }
         }
         
-        // 🔧 CORREÇÃO: Aceita sorteios do mesmo dia da ativação (>=)
-        if (dataSorteioObj < dataInicio) {
-            console.log(`⏸️ Sorteio ${concurso} (${dataSorteioObj.toLocaleDateString()}) é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`);
+        // 🔧 CORREÇÃO: Comparar APENAS a data (sem hora)
+        const dataSorteioStr = dataSorteioObj.toISOString().split('T')[0];
+        const dataInicioStr = dataInicio.toISOString().split('T')[0];
+        
+        console.log(`📅 Data sorteio: ${dataSorteioStr}, Data ativação: ${dataInicioStr}`);
+        
+        if (dataSorteioStr < dataInicioStr) {
+            console.log(`⏸️ Sorteio ${concurso} (${dataSorteioStr}) é anterior à ativação (${dataInicioStr}). IGNORADO.`);
             if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
             return;
         }
         
-        console.log(`✅ Sorteio ${concurso} é válido! Data sorteio: ${dataSorteioObj.toLocaleDateString()}, Data ativação: ${dataInicio.toLocaleDateString()}`);
+        console.log(`✅ Sorteio ${concurso} é válido! (${dataSorteioStr} >= ${dataInicioStr})`);
         
         if (jogoData.ultimoConcursoImportado === concurso) {
             console.log(`⚠️ Sorteio ${concurso} já foi importado`);
@@ -971,7 +976,6 @@ async function buscarSorteioQuina() {
             return;
         }
         
-        // PRIMEIRA CONFERÊNCIA: só marca quando o PRIMEIRO sorteio for importado
         const isPrimeiraConferencia = !jogoData.primeiraConferenciaRealizada;
         
         if (isPrimeiraConferencia) {
@@ -1009,6 +1013,9 @@ async function buscarSorteioQuina() {
         await carregarHistoricoSorteios();
         await carregarNumerosSorteadosAdmin();
         await atualizarStatusGame();
+        
+        // Marcar que o sorteio de hoje foi encontrado
+        sorteioEncontradoHoje = true;
         
     } catch (error) {
         console.error('❌ Erro:', error);
