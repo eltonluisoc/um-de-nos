@@ -1026,26 +1026,75 @@ async function buscarSorteioQuina() {
 }
 
 async function atualizarAcertosParticipantes(novosNumeros) {
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    const querySnapshot = await getDocs(q);
+    console.log('🔄 RECALCULANDO ACERTOS DO ZERO...');
     
-    let vencedores = [];
-    for (const docSnap of querySnapshot.docs) {
-        const p = docSnap.data();
-        if (p.acertouTodos) continue;
-        
-        let novosAcertos = 0;
-        for (const num of novosNumeros) {
-            if (p.numeros.includes(num)) novosAcertos++;
+    // 1. Buscar TODOS os sorteios da competição
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
+    const sorteiosSnapshot = await getDocs(sorteiosQuery);
+    
+    // 2. Criar um SET com TODOS os números sorteados (sem duplicatas)
+    const numerosSorteadosSet = new Set();
+    for (const sorteioDoc of sorteiosSnapshot.docs) {
+        const numeros = sorteioDoc.data().numeros;
+        for (const num of numeros) {
+            numerosSorteadosSet.add(num);
         }
-        const novoTotal = (p.acertos || 0) + novosAcertos;
-        await updateDoc(doc(db, 'participantes', docSnap.id), { acertos: novoTotal });
-        if (novoTotal >= 17) vencedores.push({ id: docSnap.id, nome: p.nome });
     }
     
-    if (vencedores.length > 0) await declararVencedores(vencedores);
+    const numerosSorteados = Array.from(numerosSorteadosSet).sort((a,b) => a-b);
+    console.log(`📊 Números sorteados únicos (${numerosSorteados.length}):`, numerosSorteados);
+    
+    // 3. Buscar todos os participantes
+    const participantesRef = collection(db, 'participantes');
+    const participantesQuery = query(participantesRef, where('jogoId', '==', jogoAtualId));
+    const participantesSnapshot = await getDocs(participantesQuery);
+    
+    let vencedores = [];
+    let relatorio = '\n========== RELATÓRIO DE ACERTOS ==========\n';
+    
+    // 4. Calcular acertos de cada participante
+    for (const participanteDoc of participantesSnapshot.docs) {
+        const p = participanteDoc.data();
+        if (p.acertouTodos) continue;
+        
+        // Contar quantos números do participante estão no SET
+        let acertos = 0;
+        const acertados = [];
+        
+        for (const num of p.numeros) {
+            if (numerosSorteadosSet.has(num)) {
+                acertos++;
+                acertados.push(num);
+            }
+        }
+        
+        relatorio += `\n📌 ${p.nome}:\n`;
+        relatorio += `   Números do participante: ${p.numeros.join(', ')}\n`;
+        relatorio += `   Números acertados: ${acertados.join(', ')}\n`;
+        relatorio += `   Total acertos: ${acertos}/17 (anterior: ${p.acertos || 0})\n`;
+        
+        // Atualizar no Firestore apenas se mudou
+        if (acertos !== (p.acertos || 0)) {
+            await updateDoc(doc(db, 'participantes', participanteDoc.id), { 
+                acertos: acertos
+            });
+            console.log(`✏️ Atualizando ${p.nome}: ${p.acertos || 0} → ${acertos}`);
+        }
+        
+        if (acertos >= 17) {
+            vencedores.push({ id: participanteDoc.id, nome: p.nome, acertos: acertos });
+        }
+    }
+    
+    console.log(relatorio);
+    
+    if (vencedores.length > 0) {
+        await declararVencedores(vencedores);
+    }
+    
     await carregarRanking();
+    console.log('✅ ========== FIM DA ATUALIZAÇÃO ==========');
 }
 
 async function declararVencedores(vencedores) {
