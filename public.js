@@ -16,7 +16,7 @@ let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada');
+    console.log('🚀 Um de Nós - Página Pública iniciada - Versão Final');
     carregarDados();
 });
 
@@ -41,12 +41,10 @@ async function carregarJogoAtivo() {
         
         if (querySnapshot.empty) {
             console.log('Nenhum jogo ativo');
-            document.getElementById('listaParticipantes').innerHTML = `
-                <div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>
-            `;
-            document.getElementById('statusJogo').innerHTML = `
-                <span class="status-badge" style="background:#888;">⏸️ AGUARDANDO PRÓXIMO JOGO</span>
-            `;
+            const listaDiv = document.getElementById('listaParticipantes');
+            const statusDiv = document.getElementById('statusJogo');
+            if (listaDiv) listaDiv.innerHTML = `<div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>`;
+            if (statusDiv) statusDiv.innerHTML = `<span class="status-badge" style="background:#888;">⏸️ AGUARDANDO PRÓXIMO JOGO</span>`;
             await carregarUltimoVencedor();
             return;
         }
@@ -57,9 +55,8 @@ async function carregarJogoAtivo() {
         
         console.log('Jogo ativo encontrado:', jogoId, jogoAtual.nome);
         
-        document.getElementById('statusJogo').innerHTML = `
-            <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
-        `;
+        const statusDiv = document.getElementById('statusJogo');
+        if (statusDiv) statusDiv.innerHTML = `<span class="status-badge">🎯 JOGO EM ANDAMENTO</span>`;
         
         if (jogoAtual.ultimosNumerosSorteados && jogoAtual.ultimosNumerosSorteados.length > 0) {
             mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
@@ -81,19 +78,21 @@ async function carregarPremiacao() {
     const premio2 = premioTotal * 0.20;
     const premio3 = premioTotal * 0.05;
     
-    document.getElementById('premio1').innerHTML = `R$ ${premio1.toFixed(2)}`;
-    document.getElementById('premio2').innerHTML = `R$ ${premio2.toFixed(2)}`;
-    document.getElementById('premio3').innerHTML = `R$ ${premio3.toFixed(2)}`;
-    document.getElementById('premiacao').style.display = 'grid';
+    const premio1El = document.getElementById('premio1');
+    const premio2El = document.getElementById('premio2');
+    const premio3El = document.getElementById('premio3');
+    const premiacaoEl = document.getElementById('premiacao');
+    
+    if (premio1El) premio1El.innerHTML = `R$ ${premio1.toFixed(2)}`;
+    if (premio2El) premio2El.innerHTML = `R$ ${premio2.toFixed(2)}`;
+    if (premio3El) premio3El.innerHTML = `R$ ${premio3.toFixed(2)}`;
+    if (premiacaoEl) premiacaoEl.style.display = 'grid';
 }
 
 async function carregarParticipantes() {
-    if (!jogoId) {
-        console.log('Sem jogoId, participantes não carregados');
-        return;
-    }
+    if (!jogoId) return;
     
-    console.log('🔍 Carregando participantes da competição:', jogoId);
+    console.log('🔍 Carregando participantes:', jogoId);
     
     try {
         const participantesRef = collection(db, 'participantes');
@@ -102,10 +101,7 @@ async function carregarParticipantes() {
         
         participantes = [];
         querySnapshot.forEach((doc) => {
-            participantes.push({
-                id: doc.id,
-                ...doc.data()
-            });
+            participantes.push({ id: doc.id, ...doc.data() });
         });
         
         console.log(`✅ ${participantes.length} participantes encontrados`);
@@ -122,7 +118,8 @@ async function carregarParticipantes() {
         
     } catch (error) {
         console.error('Erro ao carregar participantes:', error);
-        document.getElementById('listaParticipantes').innerHTML = '<div class="loading">❌ Erro ao carregar participantes</div>';
+        const listaDiv = document.getElementById('listaParticipantes');
+        if (listaDiv) listaDiv.innerHTML = '<div class="loading">❌ Erro ao carregar participantes</div>';
     }
 }
 
@@ -135,6 +132,8 @@ async function carregarSorteios() {
     sorteiosRealizados = [];
     
     const container = document.getElementById('listaSorteios');
+    if (!container) return;
+    
     if (querySnapshot.empty) {
         container.innerHTML = '<div>Nenhum sorteio importado ainda.</div>';
         return;
@@ -149,36 +148,14 @@ async function carregarSorteios() {
     let html = '';
     for (const s of sorteios) {
         sorteiosRealizados.push(s);
-        html += `
-            <div class="sorteio-item">
-                <span>#${s.concurso}</span> ${s.numeros.join(', ')}
-            </div>
-        `;
+        html += `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`;
     }
     container.innerHTML = html;
     console.log(`${sorteios.length} sorteios carregados`);
 }
 
-// CARD COM NÚMEROS SORTEADOS E REPETIDOS
 async function carregarNumerosSorteadosGrid() {
-    if (!jogoId) {
-        console.log('Sem jogoId, não carregando números sorteados');
-        return;
-    }
-    
-    const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
-    const querySnapshot = await getDocs(q);
-    
-    // Contar frequência de cada número
-    const frequencia = new Map();
-    
-    for (const doc of querySnapshot.docs) {
-        const s = doc.data();
-        for (const num of s.numeros) {
-            frequencia.set(num, (frequencia.get(num) || 0) + 1);
-        }
-    }
+    if (!jogoId) return;
     
     const container = document.getElementById('numerosSorteadosGrid');
     const totalSpan = document.getElementById('totalSorteados');
@@ -188,13 +165,24 @@ async function carregarNumerosSorteadosGrid() {
         return;
     }
     
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
+    const querySnapshot = await getDocs(q);
+    
+    const frequencia = new Map();
+    for (const doc of querySnapshot.docs) {
+        const s = doc.data();
+        for (const num of s.numeros) {
+            frequencia.set(num, (frequencia.get(num) || 0) + 1);
+        }
+    }
+    
     if (frequencia.size === 0) {
         container.innerHTML = '<div style="text-align: center;">Nenhum número sorteado ainda</div>';
         if (totalSpan) totalSpan.innerHTML = '';
         return;
     }
     
-    // Criar grid de 1 a 80
     let html = '<div class="numeros-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-top: 10px;">';
     for (let i = 1; i <= 80; i++) {
         const qtd = frequencia.get(i) || 0;
@@ -229,13 +217,10 @@ function escutarParticipantes() {
     const q = query(participantesRef, where('jogoId', '==', jogoId));
     
     onSnapshot(q, (snapshot) => {
-        console.log('🔄 Atualização em tempo real dos participantes');
+        console.log('🔄 Atualização em tempo real');
         participantes = [];
         snapshot.forEach((doc) => {
-            participantes.push({
-                id: doc.id,
-                ...doc.data()
-            });
+            participantes.push({ id: doc.id, ...doc.data() });
         });
         
         atualizarRanking(participantes);
@@ -256,6 +241,7 @@ function escutarParticipantes() {
 
 function atualizarRanking(participantes) {
     const container = document.getElementById('listaParticipantes');
+    if (!container) return;
     
     if (participantes.length === 0) {
         container.innerHTML = '<div class="loading">📋 Nenhum participante cadastrado ainda...</div>';
@@ -268,7 +254,6 @@ function atualizarRanking(participantes) {
     
     const posicoes = [];
     let posicaoAtual = 1;
-    
     for (let i = 0; i < ordenados.length; i++) {
         if (i > 0 && ordenados[i].acertos === ordenados[i-1].acertos) {
             posicoes.push(posicaoAtual);
@@ -335,26 +320,22 @@ function atualizarRanking(participantes) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
         }
         
-        html += `
-            <div class="ranking-row ${rowClass}" onclick="window.mostrarDetalhes('${p.id}')">
-                <div class="ranking-pos">${posText}</div>
-                <div class="ranking-player">
-                    <div class="player-name">${p.nome} ${lastBadge}</div>
-                    ${numerosHtml}
-                </div>
-                <div class="ranking-score">
-                    ${p.acertos || 0}<small>/17</small>
-                </div>
-                <div class="ranking-progress">
-                    <div class="progress-wrapper">
-                        <div class="progress-bar-container">
-                            <div class="progress-fill" style="width: ${progressoPercent}%"></div>
-                        </div>
-                        <div class="progress-percent">${Math.round(progressoPercent)}%</div>
+        html += `<div class="ranking-row ${rowClass}" onclick="window.mostrarDetalhes('${p.id}')">
+                    <div class="ranking-pos">${posText}</div>
+                    <div class="ranking-player">
+                        <div class="player-name">${p.nome} ${lastBadge}</div>
+                        ${numerosHtml}
                     </div>
-                </div>
-            </div>
-        `;
+                    <div class="ranking-score">${p.acertos || 0}<small>/17</small></div>
+                    <div class="ranking-progress">
+                        <div class="progress-wrapper">
+                            <div class="progress-bar-container">
+                                <div class="progress-fill" style="width: ${progressoPercent}%"></div>
+                            </div>
+                            <div class="progress-percent">${Math.round(progressoPercent)}%</div>
+                        </div>
+                    </div>
+                </div>`;
     });
     
     container.innerHTML = html;
@@ -378,6 +359,8 @@ window.mostrarDetalhes = function(participanteId) {
 
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
+    if (!container) return;
+    
     if (!numeros || numeros.length === 0) {
         container.innerHTML = '<span>⏳ Aguardando primeiro sorteio...</span>';
         return;
@@ -394,13 +377,15 @@ function verificarVencedor(participantes) {
     const vencedor = participantes.find(p => p.acertouTodos === true);
     
     if (vencedor) {
-        document.getElementById('statusJogo').innerHTML = `
-            <span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>
-        `;
+        const statusDiv = document.getElementById('statusJogo');
+        const vencedorDiv = document.getElementById('vencedorInfo');
+        const vencedorNome = document.getElementById('vencedorNome');
+        const vencedorData = document.getElementById('vencedorData');
         
-        document.getElementById('vencedorInfo').style.display = 'block';
-        document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedor.nome} 🎉`;
-        document.getElementById('vencedorData').innerHTML = `Acertou 17 números primeiro!`;
+        if (statusDiv) statusDiv.innerHTML = `<span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>`;
+        if (vencedorDiv) vencedorDiv.style.display = 'block';
+        if (vencedorNome) vencedorNome.innerHTML = `🎉 ${vencedor.nome} 🎉`;
+        if (vencedorData) vencedorData.innerHTML = `Acertou 17 números primeiro!`;
     }
 }
 
@@ -416,9 +401,13 @@ async function carregarUltimoVencedor() {
     
     if (historico.length > 0) {
         const ultimoVencedor = historico[0];
-        document.getElementById('vencedorInfo').style.display = 'block';
-        document.getElementById('vencedorNome').innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
-        document.getElementById('vencedorData').innerHTML = `Vitória em ${new Date(ultimoVencedor.dataVitoria?.toDate()).toLocaleDateString('pt-BR')}`;
+        const vencedorDiv = document.getElementById('vencedorInfo');
+        const vencedorNome = document.getElementById('vencedorNome');
+        const vencedorData = document.getElementById('vencedorData');
+        
+        if (vencedorDiv) vencedorDiv.style.display = 'block';
+        if (vencedorNome) vencedorNome.innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
+        if (vencedorData) vencedorData.innerHTML = `Vitória em ${new Date(ultimoVencedor.dataVitoria?.toDate()).toLocaleDateString('pt-BR')}`;
     }
 }
 
