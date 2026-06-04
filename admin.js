@@ -1001,7 +1001,7 @@ async function buscarSorteioQuina() {
             ultimoConcursoImportado: concurso
         });
         
-        await atualizarAcertosParticipantes(numeros);
+        await atualizarAcertosParticipantes();
         
         const msg = isPrimeiraConferencia ? 
             `✅ PRIMEIRO SORTEIO ${concurso} importado! Números: ${numeros.join(', ')}\n\n🔒 A partir de agora, NÃO serão aceitos novos participantes.` :

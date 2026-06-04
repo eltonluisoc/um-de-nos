@@ -26,8 +26,9 @@ async function carregarDados() {
         await carregarPremiacao();
         await carregarSorteios();
         await carregarNumerosSorteados();
-        await carregarParticipantes();  // Carrega participantes IMEDIATAMENTE
-        escutarParticipantes();          // Escuta mudanças em tempo real
+        await carregarNumerosSorteadosGrid();  // NOVO CARD COM REPETIDOS
+        await carregarParticipantes();
+        escutarParticipantes();
         await atualizarStatusSorteio();
     }
 }
@@ -87,7 +88,71 @@ async function carregarPremiacao() {
     document.getElementById('premiacao').style.display = 'grid';
 }
 
-// FUNÇÃO PRINCIPAL - CARREGA PARTICIPANTES
+// ============================================
+// CARD COM NÚMEROS SORTEADOS E REPETIDOS
+// ============================================
+async function carregarNumerosSorteadosGrid() {
+    if (!jogoId) {
+        console.log('Sem jogoId, não carregando números sorteados');
+        return;
+    }
+    
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
+    const querySnapshot = await getDocs(q);
+    
+    // Contar frequência de cada número
+    const frequencia = new Map();
+    
+    for (const doc of querySnapshot.docs) {
+        const s = doc.data();
+        for (const num of s.numeros) {
+            frequencia.set(num, (frequencia.get(num) || 0) + 1);
+        }
+    }
+    
+    const container = document.getElementById('numerosSorteadosGrid');
+    const totalSpan = document.getElementById('totalSorteados');
+    
+    if (!container) {
+        console.log('Elemento numerosSorteadosGrid não encontrado');
+        return;
+    }
+    
+    if (frequencia.size === 0) {
+        container.innerHTML = '<div style="text-align: center;">Nenhum número sorteado ainda</div>';
+        if (totalSpan) totalSpan.innerHTML = '';
+        return;
+    }
+    
+    // Criar grid de 1 a 80
+    let html = '<div class="numeros-grid" style="display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; margin-top: 10px;">';
+    for (let i = 1; i <= 80; i++) {
+        const qtd = frequencia.get(i) || 0;
+        let classe = 'grid-numero';
+        let estrela = '';
+        
+        if (qtd > 0) {
+            classe += ' sorteados';
+            if (qtd >= 2) {
+                classe += ' repetido';
+                estrela = ' ★';
+            }
+        }
+        
+        html += `<div class="${classe}" title="Saiu ${qtd} vez(es)">${i}${estrela}</div>`;
+    }
+    html += '</div>';
+    
+    container.innerHTML = html;
+    
+    const totalUnicos = frequencia.size;
+    const totalRepetidos = Array.from(frequencia.values()).filter(v => v > 1).length;
+    if (totalSpan) {
+        totalSpan.innerHTML = `📊 ${totalUnicos} números sorteados | ${totalRepetidos} números repetidos`;
+    }
+}
+
 async function carregarParticipantes() {
     if (!jogoId) {
         console.log('Sem jogoId, participantes não carregados');
@@ -111,7 +176,6 @@ async function carregarParticipantes() {
         
         console.log(`✅ ${participantes.length} participantes encontrados`);
         
-        // Atualizar estatísticas
         const totalSpan = document.getElementById('totalParticipantes');
         const maiorSpan = document.getElementById('maiorPontuacao');
         if (totalSpan) totalSpan.textContent = participantes.length;
@@ -120,7 +184,6 @@ async function carregarParticipantes() {
             maiorSpan.textContent = `${maiorAcertos}`;
         }
         
-        // Atualizar ranking
         atualizarRanking(participantes);
         
     } catch (error) {

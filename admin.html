@@ -648,16 +648,16 @@
     <div id="adminContent" style="display: none;">
         <div class="admin-container">
             <div class="admin-header">
-    <div>
-        <div class="title-top-admin">OFICIAL</div>
-        <h1 class="main-title-admin">UM DE NÓS</h1>
-        <div class="challenge-badge-admin">⚡ O Desafio dos 17 ⚡</div>
-    </div>
-    <div>
-        <button class="btn" id="btnRefreshData">🔄 Atualizar Dados</button>
-        <button class="btn btn-danger" id="btnLogout">🚪 Sair</button>
-    </div>
-</div>
+                <div>
+                    <div class="title-top-admin">OFICIAL</div>
+                    <h1 class="main-title-admin">UM DE NÓS</h1>
+                    <div class="challenge-badge-admin">⚡ O Desafio dos 17 ⚡</div>
+                </div>
+                <div>
+                    <button class="btn" id="btnRefreshData">🔄 Atualizar Dados</button>
+                    <button class="btn btn-danger" id="btnLogout">🚪 Sair</button>
+                </div>
+            </div>
 
             <div class="tabs" id="tabsContainer">
                 <div class="tab ativo" data-tab="dashboard">📊 Dashboard</div>
@@ -771,7 +771,7 @@
                                 <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
                             </thead>
                             <tbody id="corpoTabela">
-                                <tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>
+                                <tr><td colspan="5" style="text-align: center;">Selecione uma competição</td>
                             </tbody>
                         </table>
                     </div>
@@ -824,9 +824,9 @@
         </div>
     </div>
 
-        <script>
+    <script>
         // BOTÃO ATUALIZAR - NÃO RECARREGA A PÁGINA
-        const refreshBtn = document.getElementById('btnRefresh');
+        const refreshBtn = document.getElementById('btnRefreshData');
         if (refreshBtn) {
             refreshBtn.addEventListener('click', async () => {
                 console.log('🔄 Atualizando dados...');
@@ -835,7 +835,6 @@
                 refreshBtn.disabled = true;
                 
                 try {
-                    // Aguardar a função carregarDados estar disponível
                     let tentativas = 0;
                     while (typeof window.carregarDados !== 'function' && tentativas < 20) {
                         await new Promise(r => setTimeout(r, 100));
@@ -925,35 +924,5 @@
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
-    
-
-    <script>
-        // Botão Atualizar Dados - Sem recarregar página
-        document.getElementById('btnRefreshData')?.addEventListener('click', async function() {
-            console.log('🔄 Atualizando dados...');
-            const btn = this;
-            const textoOriginal = btn.textContent;
-            btn.textContent = '⏳ Atualizando...';
-            btn.disabled = true;
-            
-            try {
-                // Recarregar dados principais
-                if (typeof window.carregarJogoAtivo === 'function') await window.carregarJogoAtivo();
-                if (typeof window.carregarRanking === 'function') await window.carregarRanking();
-                if (typeof window.carregarTodosParticipantes === 'function') await window.carregarTodosParticipantes();
-                if (typeof window.carregarHistoricoSorteios === 'function') await window.carregarHistoricoSorteios();
-                if (typeof window.carregarNumerosSorteadosAdmin === 'function') await window.carregarNumerosSorteadosAdmin();
-                if (typeof window.atualizarStatusGame === 'function') await window.atualizarStatusGame();
-                
-                alert('✅ Dados atualizados com sucesso!');
-            } catch (error) {
-                console.error('Erro ao atualizar:', error);
-                alert('Erro ao atualizar dados: ' + error.message);
-            } finally {
-                btn.textContent = textoOriginal;
-                btn.disabled = false;
-            }
-        });
-    </script>
 </body>
 </html>
