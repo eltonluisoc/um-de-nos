@@ -15,8 +15,12 @@ let participantes = [];
 let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
 
+// ============================================
+// INICIALIZAÇÃO - USANDO APENAS FUNÇÕES CORRETAS
+// ============================================
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - Versão Final');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v3');
     carregarDados();
 });
 
@@ -149,11 +153,13 @@ async function carregarSorteios() {
     for (const s of sorteios) {
         sorteiosRealizados.push(s);
         html += `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`;
+        numerosSorteadosAcumulados.push(...s.numeros);
     }
     container.innerHTML = html;
     console.log(`${sorteios.length} sorteios carregados`);
 }
 
+// FUNÇÃO CORRETA - SEM ERRO
 async function carregarNumerosSorteadosGrid() {
     if (!jogoId) return;
     
@@ -161,7 +167,7 @@ async function carregarNumerosSorteadosGrid() {
     const totalSpan = document.getElementById('totalSorteados');
     
     if (!container) {
-        console.log('Elemento numerosSorteadosGrid não encontrado');
+        console.log('Elemento numerosSorteadosGrid não encontrado - ignorando');
         return;
     }
     
@@ -309,7 +315,7 @@ function atualizarRanking(participantes) {
         let numerosHtml = '<div class="player-numbers">';
         if (p.numeros && Array.isArray(p.numeros)) {
             for (const num of p.numeros) {
-                const acertou = numerosSorteadosAcumulados && numerosSorteadosAcumulados.includes(num);
+                const acertou = numerosSorteadosAcumulados.includes(num);
                 numerosHtml += `<span class="number-badge ${acertou ? 'hit' : ''}">${num}</span>`;
             }
         }
