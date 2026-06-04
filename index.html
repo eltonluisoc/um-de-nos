@@ -348,42 +348,6 @@
             color: rgba(255,255,255,0.4);
         }
         
-        .numeros-sorteados {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .numeros-sorteados h3 {
-            font-size: 0.85em;
-            margin-bottom: 15px;
-            color: rgba(255,255,255,0.5);
-            text-align: center;
-        }
-        
-        .grid-numeros {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 6px;
-        }
-        
-        .grid-numero {
-            background: rgba(255,255,255,0.04);
-            padding: 8px 4px;
-            text-align: center;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.75em;
-        }
-        
-        .grid-numero.sorteados {
-            background: rgba(241,196,15,0.15);
-            color: #f1c40f;
-            font-weight: 700;
-        }
-        
         /* CARD DE NÚMEROS SORTEADOS COM REPETIDOS */
         .numeros-sorteados-card {
             background: rgba(0,0,0,0.3);
@@ -407,6 +371,21 @@
             grid-template-columns: repeat(10, 1fr);
             gap: 6px;
             margin-top: 10px;
+        }
+        
+        .grid-numero {
+            background: rgba(255,255,255,0.04);
+            padding: 8px 4px;
+            text-align: center;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.75em;
+        }
+        
+        .grid-numero.sorteados {
+            background: rgba(241,196,15,0.15);
+            color: #f1c40f;
+            font-weight: 700;
         }
         
         .grid-numero.repetido {
@@ -728,8 +707,6 @@
             .player-name { font-size: 0.85em; }
             .number-badge { font-size: 0.55em; padding: 1px 4px; }
             .ranking-score { font-size: 0.9em; }
-            .grid-numeros { gap: 4px; }
-            .grid-numero { font-size: 0.65em; padding: 5px 2px; }
             .premiacao { gap: 8px; padding: 12px; }
             .premio-item .valor { font-size: 1em; }
             .numeros-sorteio span { width: 40px; height: 40px; font-size: 1em; }
@@ -887,7 +864,6 @@
             <div id="totalSorteados" class="total-sorteados"></div>
         </div>
 
-        
         <div class="lista-sorteios">
             <h3>📜 HISTÓRICO DE SORTEIOS</h3>
             <div class="sorteios-container" id="listaSorteios">
