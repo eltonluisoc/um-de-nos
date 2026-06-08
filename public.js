@@ -15,12 +15,8 @@ let participantes = [];
 let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
 
-// ============================================
-// INICIALIZAÇÃO - USANDO APENAS FUNÇÕES CORRETAS
-// ============================================
-
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - v3');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v4 (sem onclick automático)');
     carregarDados();
 });
 
@@ -159,7 +155,6 @@ async function carregarSorteios() {
     console.log(`${sorteios.length} sorteios carregados`);
 }
 
-// FUNÇÃO CORRETA - SEM ERRO
 async function carregarNumerosSorteadosGrid() {
     if (!jogoId) return;
     
@@ -326,7 +321,8 @@ function atualizarRanking(participantes) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
         }
         
-        html += `<div class="ranking-row ${rowClass}" onclick="window.mostrarDetalhes('${p.id}')">
+        // REMOVIDO onclick para evitar mensagem automática
+        html += `<div class="ranking-row ${rowClass}">
                     <div class="ranking-pos">${posText}</div>
                     <div class="ranking-player">
                         <div class="player-name">${p.nome} ${lastBadge}</div>
@@ -347,6 +343,7 @@ function atualizarRanking(participantes) {
     container.innerHTML = html;
 }
 
+// Função mantida mas NÃO é chamada automaticamente
 window.mostrarDetalhes = function(participanteId) {
     const participante = participantes.find(p => p.id === participanteId);
     if (participante) {
