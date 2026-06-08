@@ -857,10 +857,8 @@ async function carregarRanking() {
     const container = document.getElementById('listaRankingAdmin');
     if (!container) return;
     
-    console.log('🔄 Carregando ranking para competição:', jogoAtualId);
-    
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
-        container.innerHTML = '<div>Nenhuma competição ativa no momento. Vá em Configurações para ativar uma competição.</div>';
+        container.innerHTML = '<div>Nenhuma competição ativa.</div>';
         return;
     }
     
@@ -870,7 +868,7 @@ async function carregarRanking() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = '<div>Nenhum participante cadastrado para esta competição.</div>';
+            container.innerHTML = '<div>Nenhum participante.</div>';
             return;
         }
         
@@ -880,23 +878,27 @@ async function carregarRanking() {
         });
         participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
         
-        let html = '';
+        // Usar DocumentFragment para melhor performance
+        const fragment = document.createDocumentFragment();
         let pos = 1;
+        
         for (const p of participantes) {
             const progresso = ((p.acertos || 0) / 17) * 100;
-            html += `
-                <div class="linha-participante">
-                    <span>${pos++}º</span>
-                    <span><strong>${p.nome}</strong></span>
-                    <span>${p.acertos || 0}/17</span>
-                    <div class="barra-progresso">
-                        <div class="barra-progresso-fill" style="width: ${progresso}%"></div>
-                    </div>
+            const div = document.createElement('div');
+            div.className = 'linha-participante';
+            div.innerHTML = `
+                <span>${pos++}º</span>
+                <span><strong>${p.nome}</strong></span>
+                <span>${p.acertos || 0}/17</span>
+                <div class="barra-progresso">
+                    <div class="barra-progresso-fill" style="width: ${progresso}%"></div>
                 </div>
             `;
+            fragment.appendChild(div);
         }
-        container.innerHTML = html;
-        console.log(`✅ Ranking carregado com ${participantes.length} participantes`);
+        
+        container.innerHTML = '';
+        container.appendChild(fragment);
         
     } catch (error) {
         console.error('Erro ranking:', error);
@@ -1225,7 +1227,7 @@ window.excluirParticipante = async function(id) {
         alert('Participante excluído!');
     }
 };
-
+window.atualizarAcertosParticipantes = atualizarAcertosParticipantes;
 window.carregarJogoAtivo = carregarJogoAtivo;
 window.carregarRanking = carregarRanking;
 window.carregarTodosParticipantes = carregarTodosParticipantes;
