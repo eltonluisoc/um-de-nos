@@ -4,19 +4,8 @@
     <title>Um de Nós - Cron Job</title>
     <meta charset="UTF-8">
     <style>
-        body {
-            font-family: monospace;
-            background: #0b1e19;
-            color: #f1c40f;
-            padding: 20px;
-        }
-        pre {
-            background: #050d0b;
-            padding: 15px;
-            border-radius: 10px;
-            color: #fff;
-            overflow-x: auto;
-        }
+        body { font-family: monospace; background: #0b1e19; color: #f1c40f; padding: 20px; }
+        pre { background: #050d0b; padding: 15px; border-radius: 10px; color: #fff; overflow-x: auto; }
         .success { color: #28a745; }
         .error { color: #dc3545; }
         .info { color: #17a2b8; }
@@ -26,30 +15,16 @@
 <body>
     <h1>🤖 Um de Nós - Cron Job (Busca Automática)</h1>
     <h2>📧 Notificações por Email ativadas</h2>
-    <pre id="status" style="background:#050d0b; padding:15px; border-radius:10px;">⏳ Iniciando...</pre>
+    <pre id="status">⏳ Iniciando...</pre>
 
     <script type="module">
-        // Importar Firebase diretamente (sem depender de config externo)
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getFirestore, 
-            collection, 
-            getDocs, 
-            query, 
-            where, 
-            limit,
-            updateDoc,
-            doc,
-            addDoc,
-            getDoc,
-            writeBatch
+            getFirestore, collection, getDocs, query, where, limit,
+            updateDoc, doc, addDoc, writeBatch
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // ============================================
-        // CONFIGURAÇÃO DO E-MAIL (SUBSTITUA AQUI)
-        // ============================================
-        const EMAIL_DESTINO = 'seu-email@gmail.com'; // ⚠️ SUBSTITUA PELO SEU E-MAIL ⚠️
-
+        const EMAIL_DESTINO = 'eltonluisoc@gmail.com';
         const statusDiv = document.getElementById('status');
         
         async function log(msg, type = 'info') {
@@ -58,80 +33,28 @@
             if (type === 'error') prefix = '❌';
             else if (type === 'success') prefix = '✅';
             else if (type === 'email') prefix = '📧';
-            console.log(`${prefix} ${msg}`);
             statusDiv.innerHTML += `\n${timestamp} - ${prefix} ${msg}`;
-            statusDiv.scrollTop = statusDiv.scrollHeight;
         }
         
-        // ============================================
-        // ENVIAR E-MAIL (FormSubmit - grátis)
-        // ============================================
         async function enviarEmail(assunto, mensagem) {
             try {
                 const formData = new FormData();
                 formData.append('email', EMAIL_DESTINO);
                 formData.append('subject', assunto);
                 formData.append('message', mensagem);
-                
-                const response = await fetch('https://formsubmit.co/ajax/' + EMAIL_DESTINO, {
-                    method: 'POST',
-                    body: formData
-                });
-                
+                const response = await fetch('https://formsubmit.co/ajax/' + EMAIL_DESTINO, { method: 'POST', body: formData });
                 if (response.ok) {
-                    await log(`📧 Email enviado: ${assunto}`, 'email');
+                    await log(`📧 ${assunto}`, 'email');
                     return true;
-                } else {
-                    await log(`⚠️ Email falhou: status ${response.status}`, 'error');
-                    return false;
                 }
-            } catch (error) {
-                await log(`⚠️ Erro email: ${error.message}`, 'error');
-                return false;
-            }
+            } catch(e) { await log(`Erro email: ${e.message}`, 'error'); }
+            return false;
         }
         
-        // ============================================
-        // NOTIFICAR NOVO SORTEIO
-        // ============================================
-        async function notificarEmailSorteio(concurso, numeros, totalParticipantes) {
-            const assunto = `🔔 NOVO SORTEIO #${concurso} - Um de Nós`;
-            const mensagem = `
-🎲 Sorteio #${concurso}
-📊 Números: ${numeros.join(', ')}
-👥 Participantes: ${totalParticipantes}
-🕐 Data: ${new Date().toLocaleString('pt-BR')}
-
-🔗 Acompanhe: https://eltonluisoc.github.io/um-de-nos/
-            `;
-            await enviarEmail(assunto, mensagem);
-        }
-        
-        // ============================================
-        // NOTIFICAR VENCEDOR
-        // ============================================
-        async function notificarEmailVencedor(concurso, vencedorNome, acertos) {
-            const assunto = `🏆🏆🏆 VENCEDOR ENCONTRADO! - Um de Nós 🏆🏆🏆`;
-            const mensagem = `
-🎯 ${vencedorNome} acertou ${acertos}/17 números!
-🎲 Último sorteio: #${concurso}
-
-👑 Parabéns! A competição foi encerrada!
-
-🔗 Acesse: https://eltonluisoc.github.io/um-de-nos/
-            `;
-            await enviarEmail(assunto, mensagem);
-        }
-        
-        // ============================================
-        // BUSCAR SORTEIO PRINCIPAL
-        // ============================================
         async function buscarSorteio() {
             try {
-                await log('🔍 Iniciando busca automática...', 'info');
+                await log('🔍 Iniciando busca...');
                 
-                // Configuração direta do Firebase
-                await log('📡 Conectando ao Firebase...', 'info');
                 const firebaseConfig = {
                     apiKey: "AIzaSyCdpcRDc1mAZUA2lpumLammGi8W8Ao5Xgw",
                     authDomain: "um-de-nos.firebaseapp.com",
@@ -140,189 +63,119 @@
                     messagingSenderId: "489192587083",
                     appId: "1:489192587083:web:71c8e6660585f020b0b2ce"
                 };
-                
                 const app = initializeApp(firebaseConfig);
                 const db = getFirestore(app);
-                await log('✅ Firebase conectado com sucesso!', 'success');
                 
                 // Buscar jogo ativo
-                await log('📡 Buscando jogo ativo...', 'info');
                 const jogosRef = collection(db, 'jogos');
                 const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
                 const querySnapshot = await getDocs(q);
-                
                 if (querySnapshot.empty) {
-                    await log('⚠️ Nenhum jogo ativo encontrado', 'error');
+                    await log('⚠️ Nenhum jogo ativo');
                     return;
                 }
                 
                 const jogoDoc = querySnapshot.docs[0];
                 const jogoAtualId = jogoDoc.id;
                 const jogoData = jogoDoc.data();
+                await log(`✅ Jogo ativo: ${jogoData.nome}`);
                 
-                await log(`✅ Jogo ativo: ${jogoData.nome || 'Edição atual'} (ID: ${jogoAtualId})`, 'success');
-                await log(`📅 Data ativação: ${jogoData.dataInicio?.toDate()?.toLocaleString() || 'Não definida'}`, 'info');
-                
-                // Buscar API da Quina
-                await log('📡 Buscando último sorteio na API da Quina...', 'info');
+                // Buscar API
                 const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
-                
-                if (!response.ok) {
-                    throw new Error(`API retornou status ${response.status}`);
-                }
-                
                 const dados = await response.json();
-                
-                if (!dados || !dados.dezenas) {
-                    throw new Error('API não retornou dados válidos');
-                }
+                if (!dados || !dados.dezenas) throw new Error('API sem dados');
                 
                 const numerosSorteados = dados.dezenas.map(Number);
                 const concurso = dados.concurso;
-                const dataSorteio = dados.data;
+                await log(`🎲 Sorteio #${concurso}: ${numerosSorteados.join(', ')}`);
                 
-                await log(`🎲 Sorteio encontrado: #${concurso} - Números: ${numerosSorteados.join(', ')}`, 'success');
-                await log(`📅 Data sorteio: ${dataSorteio}`, 'info');
-                
-                // Verificar data de ativação
-                const dataInicio = jogoData.dataInicio?.toDate() || new Date(2024, 0, 1);
-                const partesData = dataSorteio.split('/');
-                const dataSorteioObj = new Date(partesData[2], partesData[1] - 1, partesData[0]);
-                
-                if (dataSorteioObj < dataInicio) {
-                    await log(`⏸️ Sorteio #${concurso} é anterior à ativação (${dataInicio.toLocaleDateString()}). IGNORADO.`, 'error');
-                    return;
-                }
-                
-                // Verificar se já foi importado
+                // VERIFICAR SE É NOVO (COMPARAÇÃO SIMPLES)
                 if (jogoData.ultimoConcursoImportado === concurso) {
-                    await log(`⚠️ Sorteio #${concurso} já foi importado anteriormente. Nada a fazer.`, 'error');
+                    await log(`⚠️ Sorteio #${concurso} já importado`);
                     return;
                 }
                 
-                // Primeira conferência - bloquear novos cadastros
+                // ============================================
+                // NOVO SORTEIO! IMPORTAR E ENVIAR EMAIL
+                // ============================================
+                await log(`🎉 NOVO SORTEIO #${concurso} DETECTADO!`, 'success');
+                
+                // Primeira conferência
                 if (!jogoData.primeiraConferenciaRealizada) {
-                    await log(`🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros...`, 'info');
                     await updateDoc(doc(db, 'jogos', jogoAtualId), {
                         primeiraConferenciaRealizada: true,
                         dataPrimeiraConferencia: new Date()
                     });
                 }
                 
-                // Salvar sorteio no histórico
-                await log(`💾 Salvando sorteio #${concurso} no histórico...`, 'info');
+                // Salvar sorteio
                 await addDoc(collection(db, 'sorteios_quina'), {
                     concurso: concurso,
                     numeros: numerosSorteados,
-                    data: dataSorteioObj,
+                    data: new Date(),
                     importadoEm: new Date(),
                     competicaoId: jogoAtualId
                 });
-                await log(`✅ Sorteio #${concurso} salvo no histórico!`, 'success');
                 
-                // Atualizar jogo
-                await log(`📝 Atualizando jogo com último sorteio...`, 'info');
                 await updateDoc(doc(db, 'jogos', jogoAtualId), {
                     ultimosNumerosSorteados: numerosSorteados,
                     ultimoConcursoImportado: concurso
                 });
-                await log(`✅ Jogo atualizado!`, 'success');
                 
-                // Atualizar acertos dos participantes
-                await log(`🔄 Recalculando acertos dos participantes...`, 'info');
-                
-                // Buscar todos os sorteios da competição
+                // Atualizar acertos
                 const sorteiosRef = collection(db, 'sorteios_quina');
                 const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
                 const sorteiosSnapshot = await getDocs(sorteiosQuery);
-                
-                // Criar SET com todos os números sorteados
-                const numerosSorteadosSet = new Set();
+                const numerosSet = new Set();
                 for (const doc of sorteiosSnapshot.docs) {
-                    const numeros = doc.data().numeros;
-                    for (const num of numeros) {
-                        numerosSorteadosSet.add(num);
-                    }
+                    for (const num of doc.data().numeros) numerosSet.add(num);
                 }
                 
-                await log(`📊 Total de números sorteados únicos: ${numerosSorteadosSet.size}`, 'info');
-                
-                // Buscar participantes
                 const participantesRef = collection(db, 'participantes');
                 const partQ = query(participantesRef, where('jogoId', '==', jogoAtualId));
                 const participantes = await getDocs(partQ);
                 
-                let totalParticipantes = participantes.size;
-                let vencedorEncontrado = false;
-                let vencedorNome = '';
-                let batch = writeBatch(db);
-                
+                let vencedor = null;
+                const batch = writeBatch(db);
                 for (const docSnap of participantes.docs) {
-                    const participante = docSnap.data();
-                    if (participante.acertouTodos) continue;
-                    
+                    const p = docSnap.data();
+                    if (p.acertouTodos) continue;
                     let acertos = 0;
-                    for (const num of participante.numeros) {
-                        if (numerosSorteadosSet.has(num)) acertos++;
-                    }
-                    
-                    if (acertos !== participante.acertos) {
+                    for (const num of p.numeros) if (numerosSet.has(num)) acertos++;
+                    if (acertos !== p.acertos) {
                         batch.update(doc(db, 'participantes', docSnap.id), { acertos: acertos });
-                        await log(`   📊 ${participante.nome}: ${participante.acertos || 0} → ${acertos}/17 acertos`, 'info');
-                        
-                        if (acertos >= 17 && !vencedorEncontrado) {
-                            vencedorEncontrado = true;
-                            vencedorNome = participante.nome;
-                            await log(`🏆🏆🏆 VENCEDOR! ${participante.nome} chegou a 17 acertos! 🏆🏆🏆`, 'success');
-                            batch.update(doc(db, 'jogos', jogoAtualId), { 
-                                status: 'encerrado',
-                                vencedorNome: participante.nome,
-                                encerradoEm: new Date()
-                            });
-                            
-                            await addDoc(collection(db, 'historico_vencedores'), {
-                                jogoId: jogoAtualId,
-                                participanteId: docSnap.id,
-                                participanteNome: participante.nome,
-                                dataVitoria: new Date(),
-                                concurso: concurso
-                            });
+                        if (acertos >= 17 && !vencedor) {
+                            vencedor = p.nome;
+                            batch.update(doc(db, 'jogos', jogoAtualId), { status: 'encerrado', vencedorNome: p.nome, encerradoEm: new Date() });
                         }
                     }
                 }
-                
                 await batch.commit();
                 
                 // ============================================
-                // ENVIAR NOTIFICAÇÕES POR E-MAIL
+                // ENVIAR E-MAIL (SIMPLES E GARANTIDO)
                 // ============================================
+                const assunto = `🔔 NOVO SORTEIO #${concurso} - Um de Nós`;
+                const mensagem = `
+🎲 SORTEIO #${concurso}
+📊 NÚMEROS: ${numerosSorteados.join(', ')}
+👥 PARTICIPANTES: ${participantes.size}
+🕐 DATA: ${new Date().toLocaleString('pt-BR')}
+
+${vencedor ? `🏆 VENCEDOR: ${vencedor} 🏆` : '⏳ Ninguém atingiu 17 acertos ainda'}
+
+🔗 https://eltonluisoc.github.io/um-de-nos/
+                `;
+                await enviarEmail(assunto, mensagem);
                 
-                // Notificar novo sorteio
-                await notificarEmailSorteio(concurso, numerosSorteados, totalParticipantes);
-                
-                // Notificar vencedor se houver
-                if (vencedorEncontrado) {
-                    await notificarEmailVencedor(concurso, vencedorNome, 17);
-                }
-                
-                await log(`\n✅ RESULTADO FINAL:`, 'success');
-                await log(`   📊 Total de participantes: ${totalParticipantes}`, 'info');
-                await log(`   🎲 Sorteio #${concurso} importado: ${numerosSorteados.join(', ')}`, 'success');
-                if (vencedorEncontrado) {
-                    await log(`   🏆 VENCEDOR: ${vencedorNome}`, 'success');
-                    await log(`   🏆 JOGO ENCERRADO!`, 'success');
-                } else {
-                    await log(`   ⏳ Jogo continua... ninguém atingiu 17 acertos ainda.`, 'info');
-                }
+                await log(`✅ Sorteio #${concurso} importado!`, 'success');
+                if (vencedor) await log(`🏆 VENCEDOR: ${vencedor}`, 'success');
                 
             } catch (error) {
-                await log(`❌ ERRO CRÍTICO: ${error.message}`, 'error');
-                console.error(error);
-                statusDiv.innerHTML += `\n\n❌ Stack: ${error.stack || 'Não disponível'}`;
+                await log(`❌ ERRO: ${error.message}`, 'error');
             }
         }
         
-        // Executar
         buscarSorteio();
     </script>
 </body>
