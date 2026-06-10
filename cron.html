@@ -37,19 +37,31 @@
         }
         
         async function enviarEmail(assunto, mensagem) {
-            try {
-                const formData = new FormData();
-                formData.append('email', EMAIL_DESTINO);
-                formData.append('subject', assunto);
-                formData.append('message', mensagem);
-                const response = await fetch('https://formsubmit.co/ajax/' + EMAIL_DESTINO, { method: 'POST', body: formData });
-                if (response.ok) {
-                    await log(`📧 ${assunto}`, 'email');
-                    return true;
-                }
-            } catch(e) { await log(`Erro email: ${e.message}`, 'error'); }
+    try {
+        const formData = new FormData();
+        formData.append('email', EMAIL_DESTINO);
+        formData.append('subject', assunto);
+        formData.append('message', mensagem);
+        
+        // USANDO A CHAVE DE ATIVAÇÃO (SUBSTITUA O EMAIL PELA CHAVE)
+        const response = await fetch('https://formsubmit.co/ajax/7323b499eb65357bcf8f13bdb5ac55bf', { 
+            method: 'POST', 
+            body: formData 
+        });
+        
+        if (response.ok) {
+            await log(`📧 ${assunto}`, 'email');
+            return true;
+        } else {
+            const erro = await response.json();
+            await log(`Erro email: ${erro.message}`, 'error');
             return false;
         }
+    } catch(e) { 
+        await log(`Erro email: ${e.message}`, 'error');
+        return false;
+    }
+}
         
         async function buscarSorteio() {
             try {
