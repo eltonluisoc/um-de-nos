@@ -173,6 +173,12 @@ function logout() {
 // ============================================
 
 async function carregarDados() {
+    // Mostrar status de carregamento
+    const statusDiv = document.getElementById('statusAdmin');
+    if (statusDiv) {
+        statusDiv.innerHTML = '<p>🔄 Carregando dados da competição...</p>';
+    }
+    
     await carregarJogoAtivo();
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
@@ -186,7 +192,42 @@ async function carregarDados() {
     await carregarNumerosSorteadosAdmin();
     await verificarBloqueio();
     await atualizarStatusGame();
+    
+    // Buscar sorteio IMEDIATAMENTE ao carregar
+    if (jogoAtualId && jogoAtualStatus === 'aberto') {
+        await verificarSorteioRecente();
+    }
+    
     iniciarBuscaAutomaticaMelhorada();
+}
+
+// Nova função: Verificar sorteio recente
+async function verificarSorteioRecente() {
+    const statusDiv = document.getElementById('statusAdmin');
+    if (statusDiv) {
+        statusDiv.innerHTML += '<p>🔍 Verificando último sorteio da Quina...</p>';
+    }
+    
+    try {
+        const { numeros, concurso, data } = await buscarSorteioMultiplasAPIs();
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        const jogoDoc = await getDoc(jogoRef);
+        
+        if (jogoDoc.data().ultimoConcursoImportado === concurso) {
+            if (statusDiv) {
+                statusDiv.innerHTML += `<p>✅ Sorteio #${concurso} já está atualizado! Números: ${numeros.join(', ')}</p>`;
+            }
+        } else {
+            if (statusDiv) {
+                statusDiv.innerHTML += `<p>🆕 Novo sorteio #${concurso} disponível! Importando...</p>`;
+            }
+            await buscarSorteioQuina();
+        }
+    } catch (error) {
+        if (statusDiv) {
+            statusDiv.innerHTML += `<p>⚠️ Sorteio de hoje ainda não disponível. Aguardando...</p>`;
+        }
+    }
 }
 
 async function carregarCompeticaoPreparandoValor() {
@@ -237,6 +278,26 @@ async function atualizarStatusGame() {
     
     let html = '';
     
+    // Verificar status do sorteio (hoje)
+    const hoje = new Date();
+    const diaSemana = hoje.getDay(); // 0=Domingo, 1=Segunda, ...
+    const hora = hoje.getHours();
+    const temSorteioHoje = (diaSemana >= 1 && diaSemana <= 6); // Segunda a Sábado
+    
+    let statusSorteioMsg = '';
+    let statusSorteioCor = '#6c757d';
+    
+    if (!temSorteioHoje) {
+        statusSorteioMsg = '📌 Hoje não há sorteio (domingo)';
+        statusSorteioCor = '#6c757d';
+    } else if (hora < 20) {
+        statusSorteioMsg = '⏳ Aguardando sorteio (20h)';
+        statusSorteioCor = '#ff8c00';
+    } else {
+        statusSorteioMsg = '🔄 Buscando sorteio de hoje...';
+        statusSorteioCor = '#f1c40f';
+    }
+    
     if (!ativosSnapshot.empty) {
         const jogoDoc = ativosSnapshot.docs[0];
         const jogoData = jogoDoc.data();
@@ -249,6 +310,17 @@ async function atualizarStatusGame() {
         const temSorteio = !sorteiosSnapshot.empty;
         const ultimoSorteio = jogoData.ultimoConcursoImportado || 'Nenhum ainda';
         const primeiraConferencia = jogoData.primeiraConferenciaRealizada || false;
+        
+        // Se já tem sorteio, atualizar a mensagem
+        if (temSorteio && jogoData.ultimoConcursoImportado) {
+            const hojeStr = hoje.toISOString().split('T')[0];
+            // Verificar se o último sorteio é de hoje
+            const dataUltimoSorteio = jogoData.dataUltimoSorteio?.toDate?.()?.toISOString().split('T')[0];
+            if (dataUltimoSorteio === hojeStr) {
+                statusSorteioMsg = '✅ Sorteio de hoje já importado!';
+                statusSorteioCor = '#28a745';
+            }
+        }
         
         html += `
             <div class="status-game" style="border-left: 4px solid #28a745;">
@@ -269,6 +341,10 @@ async function atualizarStatusGame() {
                         <span class="status-label">Último Sorteio</span>
                         <span class="status-value">${ultimoSorteio}</span>
                     </div>` : ''}
+                    <div class="status-item">
+                        <span class="status-label">Status Sorteio</span>
+                        <span class="status-value" style="color: ${statusSorteioCor};">${statusSorteioMsg}</span>
+                    </div>
                     <div class="status-item">
                         <span class="status-label">Status Conferência</span>
                         <span class="status-value">${primeiraConferencia ? '🔒 Bloqueado' : '✅ Aberto'}</span>
@@ -298,6 +374,10 @@ async function atualizarStatusGame() {
                 <div class="status-details">
                     <div class="status-item" style="justify-content: center;">
                         <span class="status-value">Vá em Configurações para criar ou ativar uma competição</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-label">Status Sorteio</span>
+                        <span class="status-value" style="color: ${statusSorteioCor};">${statusSorteioMsg}</span>
                     </div>
                 </div>
             </div>
@@ -913,25 +993,35 @@ async function carregarRanking() {
 function iniciarBuscaAutomaticaMelhorada() {
     if (intervaloBusca) clearInterval(intervaloBusca);
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
-        console.log('⏸️ Busca automática desativada - nenhuma competição ativa');
+        console.log('⏸️ Busca automática desativada');
         return;
     }
     
-    console.log('🔄 Busca automática ativada para competição:', jogoAtualId);
+    console.log('🔄 Busca automática ativada');
+    
+    // Buscar imediatamente
     setTimeout(() => {
         if (jogoAtualId && jogoAtualStatus === 'aberto') buscarSorteioQuina();
-    }, 3000);
+    }, 2000);
     
+    // Intervalo: 1 minuto se não tem sorteio, 5 minutos se já tem
     intervaloBusca = setInterval(async () => {
-        const agora = new Date();
-        const hora = agora.getHours();
-        const minutos = agora.getMinutes();
-        const isHorarioBusca = (hora >= 20) || (hora === 0 && minutos <= 30);
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        const jogoDoc = await getDoc(jogoRef);
+        const temSorteio = jogoDoc.data()?.ultimoConcursoImportado !== null;
+        const intervalo = temSorteio ? 300000 : 60000; // 5 min ou 1 min
         
-        if (jogoAtualId && jogoAtualStatus === 'aberto' && isHorarioBusca && !sorteioEncontradoHoje) {
-            await buscarSorteioQuina();
-        }
-    }, 300000);
+        clearInterval(intervaloBusca);
+        intervaloBusca = setInterval(async () => {
+            const agora = new Date();
+            const hora = agora.getHours();
+            const isHorarioBusca = (hora >= 20) || (hora === 0 && agora.getMinutes() <= 30);
+            
+            if (jogoAtualId && jogoAtualStatus === 'aberto' && isHorarioBusca) {
+                await buscarSorteioQuina();
+            }
+        }, intervalo);
+    }, 1000);
 }
 
 async function buscarSorteioQuina() {
