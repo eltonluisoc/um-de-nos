@@ -1,74 +1,206 @@
-// ============================================
-// LÓGICA PROFISSIONAL DE BUSCA
-// ============================================
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Um de Nós - Cron Job</title>
+    <meta charset="UTF-8">
+    <style>
+        body { font-family: monospace; background: #0b1e19; color: #f1c40f; padding: 20px; }
+        pre { background: #050d0b; padding: 15px; border-radius: 10px; color: #fff; overflow-x: auto; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .email { color: #ff9800; }
+    </style>
+</head>
+<body>
+    <h1>🤖 Um de Nós - Cron Job (Busca Automática)</h1>
+    <h2>📧 Notificações por Email ativadas</h2>
+    <pre id="status">⏳ Iniciando...</pre>
 
-const hoje = new Date();
-const dataAtual = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, collection, getDocs, query, where, limit,
+            updateDoc, doc, addDoc, writeBatch
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-async function buscarSorteio() {
-    try {
-        await log('🔍 Iniciando busca automática...');
+        const EMAIL_DESTINO = 'eltonluisoc@gmail.com';
+        const statusDiv = document.getElementById('status');
         
-        // 1. Conectar Firebase
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        
-        // 2. Buscar jogo ativo
-        const jogosRef = collection(db, 'jogos');
-        const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
-        const querySnapshot = await getDocs(q);
-        
-        if (querySnapshot.empty) {
-            await log('⚠️ Nenhum jogo ativo');
-            return;
+        async function log(msg, type = 'info') {
+            const timestamp = new Date().toLocaleString('pt-BR');
+            let prefix = '📌';
+            if (type === 'error') prefix = '❌';
+            else if (type === 'success') prefix = '✅';
+            else if (type === 'email') prefix = '📧';
+            statusDiv.innerHTML += `\n${timestamp} - ${prefix} ${msg}`;
         }
         
-        const jogoDoc = querySnapshot.docs[0];
-        const jogoAtualId = jogoDoc.id;
-        const jogoData = jogoDoc.data();
-        
-        // 3. Buscar API da Quina
-        const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
-        const dados = await response.json();
-        
-        if (!dados || !dados.dezenas) {
-            throw new Error('API sem dados');
+        async function enviarEmail(assunto, mensagem) {
+            try {
+                const formData = new FormData();
+                formData.append('email', EMAIL_DESTINO);
+                formData.append('subject', assunto);
+                formData.append('message', mensagem);
+                const response = await fetch('https://formsubmit.co/ajax/7323b499eb65357bcf8f13bdb5ac55bf', { 
+                    method: 'POST', 
+                    body: formData 
+                });
+                if (response.ok) {
+                    await log(`📧 ${assunto}`, 'email');
+                    return true;
+                } else {
+                    const erro = await response.json();
+                    await log(`Erro email: ${erro.message}`, 'error');
+                    return false;
+                }
+            } catch(e) { 
+                await log(`Erro email: ${e.message}`, 'error');
+                return false;
+            }
         }
         
-        const numerosSorteados = dados.dezenas.map(Number);
-        const concurso = dados.concurso;
-        const dataSorteio = dados.data; // "DD/MM/YYYY"
-        
-        // 4. Converter data do sorteio para YYYY-MM-DD
-        const partes = dataSorteio.split('/');
-        const dataSorteioFormatada = `${partes[2]}-${partes[1]}-${partes[0]}`;
-        
-        await log(`📅 Sorteio #${concurso} - Data: ${dataSorteioFormatada}`);
-        await log(`📅 Hoje: ${dataAtual}`);
-        
-        // 5. VERIFICAR SE O SORTEIO É DE HOJE
-        if (dataSorteioFormatada !== dataAtual) {
-            await log(`⏸️ Sorteio #${concurso} não é de hoje. Aguardando...`);
-            return; // Não importa sorteio de outro dia
+        async function buscarSorteio() {
+            try {
+                await log('🔍 Iniciando busca...');
+                
+                const firebaseConfig = {
+                    apiKey: "AIzaSyCdpcRDc1mAZUA2lpumLammGi8W8Ao5Xgw",
+                    authDomain: "um-de-nos.firebaseapp.com",
+                    projectId: "um-de-nos",
+                    storageBucket: "um-de-nos.firebasestorage.app",
+                    messagingSenderId: "489192587083",
+                    appId: "1:489192587083:web:71c8e6660585f020b0b2ce"
+                };
+                const app = initializeApp(firebaseConfig);
+                const db = getFirestore(app);
+                
+                // Buscar jogo ativo
+                const jogosRef = collection(db, 'jogos');
+                const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
+                const querySnapshot = await getDocs(q);
+                if (querySnapshot.empty) {
+                    await log('⚠️ Nenhum jogo ativo');
+                    return;
+                }
+                
+                const jogoDoc = querySnapshot.docs[0];
+                const jogoAtualId = jogoDoc.id;
+                const jogoData = jogoDoc.data();
+                await log(`✅ Jogo ativo: ${jogoData.nome}`);
+                
+                // Buscar API
+                const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
+                const dados = await response.json();
+                if (!dados || !dados.dezenas) throw new Error('API sem dados');
+                
+                const numerosSorteados = dados.dezenas.map(Number);
+                const concurso = dados.concurso;
+                const dataSorteio = dados.data;
+                
+                // Verificar data
+                const hoje = new Date();
+                const dataAtual = hoje.toISOString().split('T')[0];
+                const partes = dataSorteio.split('/');
+                const dataSorteioFormatada = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                
+                await log(`📅 Sorteio #${concurso} - Data: ${dataSorteioFormatada}`);
+                await log(`📅 Hoje: ${dataAtual}`);
+                
+                // VERIFICAR SE É DE HOJE
+                if (dataSorteioFormatada !== dataAtual) {
+                    await log(`⏸️ Sorteio #${concurso} não é de hoje. Aguardando...`);
+                    return;
+                }
+                
+                // VERIFICAR SE JÁ FOI IMPORTADO
+                if (jogoData.ultimoConcursoImportado === concurso) {
+                    await log(`✅ Sorteio #${concurso} já foi importado.`);
+                    await log(`🛑 Busca finalizada para hoje.`);
+                    return;
+                }
+                
+                // ============================================
+                // NOVO SORTEIO! IMPORTAR E ENVIAR EMAIL
+                // ============================================
+                await log(`🎉 NOVO SORTEIO #${concurso} DETECTADO!`, 'success');
+                await log(`📊 Números: ${numerosSorteados.join(', ')}`, 'success');
+                
+                // Primeira conferência
+                if (!jogoData.primeiraConferenciaRealizada) {
+                    await updateDoc(doc(db, 'jogos', jogoAtualId), {
+                        primeiraConferenciaRealizada: true,
+                        dataPrimeiraConferencia: new Date()
+                    });
+                }
+                
+                // Salvar sorteio
+                await addDoc(collection(db, 'sorteios_quina'), {
+                    concurso: concurso,
+                    numeros: numerosSorteados,
+                    data: new Date(),
+                    importadoEm: new Date(),
+                    competicaoId: jogoAtualId
+                });
+                
+                await updateDoc(doc(db, 'jogos', jogoAtualId), {
+                    ultimosNumerosSorteados: numerosSorteados,
+                    ultimoConcursoImportado: concurso
+                });
+                
+                // Atualizar acertos
+                const sorteiosRef = collection(db, 'sorteios_quina');
+                const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
+                const sorteiosSnapshot = await getDocs(sorteiosQuery);
+                const numerosSet = new Set();
+                for (const doc of sorteiosSnapshot.docs) {
+                    for (const num of doc.data().numeros) numerosSet.add(num);
+                }
+                
+                const participantesRef = collection(db, 'participantes');
+                const partQ = query(participantesRef, where('jogoId', '==', jogoAtualId));
+                const participantes = await getDocs(partQ);
+                
+                let vencedor = null;
+                const batch = writeBatch(db);
+                for (const docSnap of participantes.docs) {
+                    const p = docSnap.data();
+                    if (p.acertouTodos) continue;
+                    let acertos = 0;
+                    for (const num of p.numeros) if (numerosSet.has(num)) acertos++;
+                    if (acertos !== p.acertos) {
+                        batch.update(doc(db, 'participantes', docSnap.id), { acertos: acertos });
+                        if (acertos >= 17 && !vencedor) {
+                            vencedor = p.nome;
+                            batch.update(doc(db, 'jogos', jogoAtualId), { status: 'encerrado', vencedorNome: p.nome, encerradoEm: new Date() });
+                        }
+                    }
+                }
+                await batch.commit();
+                
+                // ENVIAR E-MAIL
+                const assunto = `🔔 NOVO SORTEIO #${concurso} - Um de Nós`;
+                const mensagem = `
+🎲 SORTEIO #${concurso}
+📊 NÚMEROS: ${numerosSorteados.join(', ')}
+👥 PARTICIPANTES: ${participantes.size}
+🕐 DATA: ${new Date().toLocaleString('pt-BR')}
+
+${vencedor ? `🏆 VENCEDOR: ${vencedor} 🏆` : '⏳ Ninguém atingiu 17 acertos ainda'}
+
+🔗 https://eltonluisoc.github.io/um-de-nos/
+                `;
+                await enviarEmail(assunto, mensagem);
+                
+                await log(`✅ Sorteio #${concurso} importado!`, 'success');
+                if (vencedor) await log(`🏆 VENCEDOR: ${vencedor}`, 'success');
+                
+            } catch (error) {
+                await log(`❌ ERRO: ${error.message}`, 'error');
+            }
         }
         
-        // 6. VERIFICAR SE JÁ FOI IMPORTADO
-        if (jogoData.ultimoConcursoImportado === concurso) {
-            await log(`✅ Sorteio #${concurso} já foi importado.`);
-            await log(`🛑 Busca finalizada para hoje.`);
-            return; // Para a busca do dia
-        }
-        
-        // 7. SORTEIO NOVO DETECTADO!
-        await log(`🎉 SORTEIO #${concurso} DETECTADO!`);
-        await log(`📊 Números: ${numerosSorteados.join(', ')}`);
-        
-        // ... (importar, salvar, atualizar acertos, enviar e-mail)
-        
-        await log(`✅ Sorteio #${concurso} importado com sucesso!`);
-        await log(`🛑 Busca finalizada para hoje.`);
-        
-    } catch (error) {
-        await log(`❌ ERRO: ${error.message}`);
-    }
-}
+        buscarSorteio();
+    </script>
+</body>
+</html>
