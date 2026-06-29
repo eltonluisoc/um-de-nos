@@ -933,5 +933,16 @@
             }
         });
     </script>
+    <script>
+        // Foco automático no campo de senha
+        document.addEventListener('DOMContentLoaded', function() {
+            const senhaInput = document.getElementById('senhaInput');
+            if (senhaInput) {
+                setTimeout(function() {
+                    senhaInput.focus();
+                }, 300);
+            }
+        });
+    </script>
 </body>
 </html>
