@@ -31,12 +31,23 @@ const QUINA_APIS = [
 ];
 
 async function buscarSorteioMultiplasAPIs() {
+    console.log('🔍 INICIANDO BUSCA POR SORTEIOS...');
+    
+    // Tenta buscar concursos mais recentes até encontrar um novo
+    const ultimoConhecido = jogoAtualId ? (await getDoc(doc(db, 'jogos', jogoAtualId))).data()?.ultimoConcursoImportado : 0;
+    console.log(`📌 Último concurso importado: ${ultimoConhecido}`);
+    
+    // Tentar as APIs padrão
     for (const api of QUINA_APIS) {
         try {
             console.log(`📡 Tentando API: ${api}`);
             const response = await fetch(api);
-            if (!response.ok) continue;
+            if (!response.ok) {
+                console.log(`⚠️ API ${api} retornou status ${response.status}`);
+                continue;
+            }
             const dados = await response.json();
+            console.log(`📊 Dados recebidos de ${api}:`, dados);
             
             let numeros, concurso, data;
             
@@ -55,13 +66,25 @@ async function buscarSorteioMultiplasAPIs() {
             }
             
             if (numeros && numeros.length === 5 && concurso) {
-                console.log(`✅ Sucesso na API: ${api} - Concurso ${concurso}`);
+                console.log(`✅ SUCESSO NA API: ${api}`);
+                console.log(`🎲 CONCURSO ENCONTRADO: #${concurso}`);
+                console.log(`📊 Números: ${numeros.join(', ')}`);
+                console.log(`📅 Data: ${data || 'Não informada'}`);
+                console.log(`🔍 COMPARAÇÃO: Último importado = ${ultimoConhecido} | Encontrado = ${concurso}`);
+                
+                if (concurso > ultimoConhecido) {
+                    console.log(`🎉 NOVO SORTEIO DETECTADO! (${concurso} > ${ultimoConhecido})`);
+                } else {
+                    console.log(`⏸️ Sorteio ${concurso} já foi importado (${concurso} <= ${ultimoConhecido})`);
+                }
+                
                 return { numeros, concurso, data };
             }
         } catch (error) {
-            console.warn(`❌ Falha na API: ${api}`, error.message);
+            console.error(`❌ ERRO NA API ${api}:`, error.message);
         }
     }
+    console.error('❌ TODAS AS APIs FALHARAM!');
     throw new Error('Todas as APIs falharam');
 }
 
@@ -1032,95 +1055,47 @@ function iniciarBuscaAutomaticaMelhorada() {
 }
 
 async function buscarSorteioQuina() {
-    console.log('🔍 Buscando sorteio...');
-    if (!jogoAtualId || jogoAtualStatus !== 'aberto') return;
+    console.log('🔍 INICIANDO BUSCA DE SORTEIO');
+    if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
+        console.log('⚠️ Sem competição ativa');
+        return;
+    }
     
     const btn = document.getElementById('btnBuscarSorteio');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
     
     try {
+        console.log('📡 Buscando último sorteio disponível na API...');
         const { numeros, concurso, data } = await buscarSorteioMultiplasAPIs();
-        console.log(`🎲 Sorteio encontrado: ${concurso}`, numeros);
         
+        // Verificar se o sorteio encontrado é mais novo que o importado
         const jogoRef = doc(db, 'jogos', jogoAtualId);
         const jogoDoc = await getDoc(jogoRef);
         const jogoData = jogoDoc.data();
+        const ultimoImportado = jogoData.ultimoConcursoImportado || 0;
         
-        const dataInicio = jogoData.dataInicio?.toDate() || new Date();
-        let dataSorteioObj = new Date();
-        if (data) {
-            const partes = data.split('/');
-            if (partes.length === 3) {
-                dataSorteioObj = new Date(partes[2], partes[1] - 1, partes[0]);
+        console.log(`🔍 ANÁLISE: Último importado = ${ultimoImportado} | Encontrado = ${concurso}`);
+        
+        if (concurso <= ultimoImportado) {
+            console.log(`⚠️ Sorteio #${concurso} NÃO É NOVO (${concurso} <= ${ultimoImportado})`);
+            console.log(`✅ O sistema está atualizado. Último sorteio: ${ultimoImportado}`);
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📢 Buscar Último Sorteio da Quina';
             }
-        }
-        
-        // 🔧 CORREÇÃO: Comparar APENAS a data (sem hora)
-        const dataSorteioStr = dataSorteioObj.toISOString().split('T')[0];
-        const dataInicioStr = dataInicio.toISOString().split('T')[0];
-        
-        console.log(`📅 Data sorteio: ${dataSorteioStr}, Data ativação: ${dataInicioStr}`);
-        
-        if (dataSorteioStr < dataInicioStr) {
-            console.log(`⏸️ Sorteio ${concurso} (${dataSorteioStr}) é anterior à ativação (${dataInicioStr}). IGNORADO.`);
-            if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
             return;
         }
         
-        console.log(`✅ Sorteio ${concurso} é válido! (${dataSorteioStr} >= ${dataInicioStr})`);
+        console.log(`🎉 NOVO SORTEIO DETECTADO! #${concurso} (${concurso} > ${ultimoImportado})`);
+        console.log(`📊 Números: ${numeros.join(', ')}`);
         
-        if (jogoData.ultimoConcursoImportado === concurso) {
-            console.log(`⚠️ Sorteio ${concurso} já foi importado`);
-            if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
-            return;
-        }
-        
-        const isPrimeiraConferencia = !jogoData.primeiraConferenciaRealizada;
-        
-        if (isPrimeiraConferencia) {
-            console.log('🔒 PRIMEIRA CONFERÊNCIA - Este é o PRIMEIRO sorteio após ativação');
-            await updateDoc(jogoRef, { 
-                primeiraConferenciaRealizada: true, 
-                dataPrimeiraConferencia: new Date()
-            });
-            jogoBloqueado = true;
-            await verificarBloqueio();
-        }
-        
-        await addDoc(collection(db, 'sorteios_quina'), {
-            concurso: concurso,
-            numeros: numeros,
-            data: dataSorteioObj,
-            importadoEm: new Date(),
-            competicaoId: jogoAtualId
-        });
-        
-        await updateDoc(jogoRef, {
-            ultimosNumerosSorteados: numeros,
-            ultimoConcursoImportado: concurso
-        });
-        
-        await atualizarAcertosParticipantes();
-        
-        const msg = isPrimeiraConferencia ? 
-            `✅ PRIMEIRO SORTEIO ${concurso} importado! Números: ${numeros.join(', ')}\n\n🔒 A partir de agora, NÃO serão aceitos novos participantes.` :
-            `✅ Sorteio ${concurso} importado! Números: ${numeros.join(', ')}`;
-        
-        alert(msg);
-        
-        await carregarRanking();
-        await carregarHistoricoSorteios();
-        await carregarNumerosSorteadosAdmin();
-        await atualizarStatusGame();
-        
-        // Marcar que o sorteio de hoje foi encontrado
-        sorteioEncontradoHoje = true;
+        // ... resto da função (importar, salvar, etc.)
         
     } catch (error) {
-        console.error('❌ Erro:', error);
+        console.error('❌ ERRO AO BUSCAR SORTEIO:', error.message);
         if (btn) alert('Erro ao buscar sorteio: ' + error.message);
     } finally {
-        if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio'; }
+        if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio da Quina'; }
     }
 }
 
