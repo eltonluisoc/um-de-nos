@@ -268,19 +268,21 @@ async function contarParticipantesPorCompeticao(competicaoId) {
     return snapshot.size;
 }
 
+// ============================================
+// ATUALIZAR STATUS DO JOGO NO DASHBOARD
+// ============================================
 async function atualizarStatusGame() {
     const statusGameContainer = document.getElementById('statusGameContainer');
     if (!statusGameContainer) return;
     
+    // 1. Buscar competição ATIVA
     const jogosAtivosRef = collection(db, 'jogos');
     const ativosQuery = query(jogosAtivosRef, where('status', '==', 'aberto'), limit(1));
     const ativosSnapshot = await getDocs(ativosQuery);
     
-    let html = '';
-    
-    // Verificar status do sorteio (hoje)
+    // 2. Verificar status do sorteio (hoje)
     const hoje = new Date();
-    const diaSemana = hoje.getDay(); // 0=Domingo, 1=Segunda, ...
+    const diaSemana = hoje.getDay(); // 0 = domingo, 1 = segunda...
     const hora = hoje.getHours();
     const temSorteioHoje = (diaSemana >= 1 && diaSemana <= 6); // Segunda a Sábado
     
@@ -298,6 +300,9 @@ async function atualizarStatusGame() {
         statusSorteioCor = '#f1c40f';
     }
     
+    let html = '';
+    
+    // 3. Montar card da competição ATIVA (se existir)
     if (!ativosSnapshot.empty) {
         const jogoDoc = ativosSnapshot.docs[0];
         const jogoData = jogoDoc.data();
@@ -313,9 +318,9 @@ async function atualizarStatusGame() {
         
         // Se já tem sorteio, atualizar a mensagem
         if (temSorteio && jogoData.ultimoConcursoImportado) {
-            const hojeStr = hoje.toISOString().split('T')[0];
             // Verificar se o último sorteio é de hoje
-            const dataUltimoSorteio = jogoData.dataUltimoSorteio?.toDate?.()?.toISOString().split('T')[0];
+            const hojeStr = hoje.toISOString().split('T')[0];
+            const dataUltimoSorteio = jogoData.ultimosNumerosSorteados?.dataUltimoSorteio?.toDate?.()?.toISOString().split('T')[0];
             if (dataUltimoSorteio === hojeStr) {
                 statusSorteioMsg = '✅ Sorteio de hoje já importado!';
                 statusSorteioCor = '#28a745';
@@ -365,6 +370,7 @@ async function atualizarStatusGame() {
             </div>
         `;
     } else {
+        // 4. Nenhuma competição ativa
         html = `
             <div class="status-game" style="border-left: 4px solid #6c757d;">
                 <div class="status-game-header">
@@ -384,6 +390,7 @@ async function atualizarStatusGame() {
         `;
     }
     
+    // 5. Atualizar o container
     statusGameContainer.innerHTML = html;
 }
 
