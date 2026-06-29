@@ -637,7 +637,7 @@
                 <h2>⚡ O Desafio dos 17 ⚡</h2>
             </div>
             <p class="subtitulo">Painel Administrativo</p>
-            <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input" autofocus>
+            <input type="password" id="senhaInput" placeholder="Digite a senha administrativa" class="senha-input">
             <button class="btn-login" id="btnEntrarAdmin">🔐 ENTRAR</button>
             <div id="msgErro" class="msg-erro"></div>
             <div id="msgLoading" class="msg-loading" style="display: none;">Verificando acesso...</div>
@@ -682,11 +682,13 @@
                     </div>
                 </div>
                 
-                <!-- O statusGameContainer será preenchido pelo JavaScript -->
                 <div id="statusGameContainer"></div>
                 
                 <div class="card">
                     <h3>🎯 Ações Rápidas</h3>
+                    <div id="infoBloqueio" class="info-box warning" style="display: none;">
+                        ⚠️ COMPETIÇÃO ATIVA! Não é possível adicionar novos participantes após o início da competição.
+                    </div>
                     <button class="btn btn-success" id="btnBuscarSorteio">📢 Buscar Último Sorteio da Quina</button>
                     <button class="btn btn-danger" id="btnEncerrarJogo" style="margin-left: 10px;">⛔ Encerrar Jogo</button>
                 </div>
@@ -769,7 +771,7 @@
                                 <tr><th>Nome</th><th>Números</th><th>Acertos</th><th>Data Cadastro</th><th>Ações</th></tr>
                             </thead>
                             <tbody id="corpoTabela">
-                                <tr><td colspan="5" style="text-align: center;">Selecione uma competição</td>
+                                <tr><td colspan="5" style="text-align: center;">Selecione uma competição</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -919,30 +921,20 @@
         };
         
         console.log('✅ Admin carregado - Botão Atualizar sem reload');
+
+        // ============================================
+        // AUTOFOCUS NO CAMPO DE SENHA
+        // ============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            const senhaInput = document.getElementById('senhaInput');
+            if (senhaInput) {
+                setTimeout(function() {
+                    senhaInput.focus();
+                }, 500);
+            }
+        });
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="admin.js"></script>
-    <script>
-        // Foco automático no campo de senha
-        document.addEventListener('DOMContentLoaded', function() {
-            const senhaInput = document.getElementById('senhaInput');
-            if (senhaInput) {
-                setTimeout(function() {
-                    senhaInput.focus();
-                }, 300);
-            }
-        });
-    </script>
-    <script>
-        // Foco automático no campo de senha
-        document.addEventListener('DOMContentLoaded', function() {
-            const senhaInput = document.getElementById('senhaInput');
-            if (senhaInput) {
-                setTimeout(function() {
-                    senhaInput.focus();
-                }, 300);
-            }
-        });
-    </script>
 </body>
 </html>
