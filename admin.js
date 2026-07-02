@@ -196,12 +196,6 @@ function logout() {
 // ============================================
 
 async function carregarDados() {
-    // Mostrar status de carregamento
-    const statusDiv = document.getElementById('statusAdmin');
-    if (statusDiv) {
-        statusDiv.innerHTML = '<p>🔄 Carregando dados da competição...</p>';
-    }
-    
     await carregarJogoAtivo();
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
@@ -216,10 +210,10 @@ async function carregarDados() {
     await verificarBloqueio();
     await atualizarStatusGame();
     
-    // Buscar sorteio IMEDIATAMENTE ao carregar
-    if (jogoAtualId && jogoAtualStatus === 'aberto') {
-        await verificarSorteioRecente();
-    }
+    // ============================================
+    // CORREÇÃO: Verificar e atualizar para o maior concurso disponível
+    // ============================================
+    await verificarMaiorConcurso();
     
     iniciarBuscaAutomaticaMelhorada();
 }
@@ -1286,6 +1280,61 @@ async function resetarTudo() {
             alert('Todos os dados foram apagados!');
             window.location.reload();
         }
+    }
+}
+
+// ============================================
+// VERIFICAR E ATUALIZAR PARA O MAIOR CONCURSO DISPONÍVEL
+// ============================================
+async function verificarMaiorConcurso() {
+    console.log('🔍 Verificando se há concurso mais recente...');
+    
+    if (!jogoAtualId) {
+        console.log('⚠️ Sem jogo ativo');
+        return;
+    }
+    
+    try {
+        // Buscar o MAIOR concurso no Firestore
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const maiorQuery = query(sorteiosRef, orderBy('concurso', 'desc'), limit(1));
+        const maiorSnapshot = await getDocs(maiorQuery);
+        
+        if (maiorSnapshot.empty) {
+            console.log('📌 Nenhum sorteio encontrado no Firestore');
+            return;
+        }
+        
+        const dados = maiorSnapshot.docs[0].data();
+        const maiorConcurso = dados.concurso;
+        const maiorNumeros = dados.numeros;
+        
+        console.log(`📌 Maior concurso no Firestore: ${maiorConcurso}`);
+        
+        // Buscar jogo atual
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        const jogoDoc = await getDoc(jogoRef);
+        const jogoData = jogoDoc.data();
+        const ultimoImportado = jogoData.ultimoConcursoImportado || 0;
+        
+        if (maiorConcurso > ultimoImportado) {
+            console.log(`🎯 Atualizando jogo de ${ultimoImportado} para ${maiorConcurso}...`);
+            await updateDoc(jogoRef, {
+                ultimosNumerosSorteados: maiorNumeros,
+                ultimoConcursoImportado: maiorConcurso
+            });
+            console.log(`✅ Jogo atualizado para ${maiorConcurso}!`);
+            
+            // Recalcular acertos
+            console.log('🔄 Recalculando acertos...');
+            await atualizarAcertosParticipantes();
+            console.log('✅ Acertos recalculados!');
+        } else {
+            console.log(`✅ Jogo já está atualizado com ${ultimoImportado}`);
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao verificar maior concurso:', error.message);
     }
 }
 
