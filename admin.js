@@ -1048,6 +1048,9 @@ function iniciarBuscaAutomaticaMelhorada() {
     }, 1000);
 }
 
+// ============================================
+// BUSCAR SORTEIO (VERSÃO CORRIGIDA - IMPORTA AUTOMATICAMENTE)
+// ============================================
 async function buscarSorteioQuina() {
     console.log('🔍 INICIANDO BUSCA DE SORTEIO');
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
@@ -1082,8 +1085,66 @@ async function buscarSorteioQuina() {
         
         console.log(`🎉 NOVO SORTEIO DETECTADO! #${concurso} (${concurso} > ${ultimoImportado})`);
         console.log(`📊 Números: ${numeros.join(', ')}`);
+        console.log(`📅 Data: ${data || 'Não informada'}`);
+        console.log(`📍 Fonte: ${resultado.fonte || 'Desconhecida'}`);
         
-        // ... resto da função (importar, salvar, etc.)
+        // ============================================
+        // IMPORTAR O NOVO SORTEIO
+        // ============================================
+        
+        // Verificar data de ativação
+        const dataInicio = jogoData.dataInicio?.toDate() || new Date(2024, 0, 1);
+        let dataSorteioObj = new Date();
+        if (data) {
+            const partes = data.split('/');
+            if (partes.length === 3) {
+                dataSorteioObj = new Date(partes[2], partes[1] - 1, partes[0]);
+            }
+        }
+        
+        // Primeira conferência
+        if (!jogoData.primeiraConferenciaRealizada) {
+            console.log('🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros');
+            await updateDoc(jogoRef, { 
+                primeiraConferenciaRealizada: true, 
+                dataPrimeiraConferencia: new Date()
+            });
+            jogoBloqueado = true;
+            await verificarBloqueio();
+        }
+        
+        // Salvar sorteio
+        await addDoc(collection(db, 'sorteios_quina'), {
+            concurso: concurso,
+            numeros: numeros,
+            data: dataSorteioObj,
+            importadoEm: new Date(),
+            competicaoId: jogoAtualId
+        });
+        
+        await updateDoc(jogoRef, {
+            ultimosNumerosSorteados: numeros,
+            ultimoConcursoImportado: concurso
+        });
+        
+        console.log(`✅ Sorteio #${concurso} salvo no Firestore!`);
+        
+        // Atualizar acertos
+        await atualizarAcertosParticipantes();
+        
+        console.log(`✅ Sorteio #${concurso} IMPORTADO COM SUCESSO!`);
+        
+        // Atualizar interface
+        await carregarRanking();
+        await carregarHistoricoSorteios();
+        await carregarNumerosSorteadosAdmin();
+        await atualizarStatusGame();
+        
+        // Marcar como encontrado
+        sorteioEncontradoHoje = true;
+        
+        // Mostrar alerta
+        alert(`✅ SORTEIO ${concurso} IMPORTADO! Números: ${numeros.join(', ')}`);
         
     } catch (error) {
         console.error('❌ ERRO AO BUSCAR SORTEIO:', error.message);
