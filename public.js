@@ -440,18 +440,27 @@ async function atualizarStatusSorteio() {
         const jogoRef = doc(db, 'jogos', jogoId);
         const jogoDoc = await getDoc(jogoRef);
         const concursoImportado = jogoDoc.data()?.ultimoConcursoImportado;
+        const hoje = new Date();
+        const diaSemana = hoje.getDay(); // 0=Domingo, 1=Segunda, ...
+        const hora = hoje.getHours();
+        
+        // Verificar se há sorteio hoje (Segunda a Sábado)
+        const temSorteioHoje = (diaSemana >= 1 && diaSemana <= 6);
         
         if (concursoAPI === concursoImportado) {
             statusSpan.innerHTML = '✅ Atualizado';
             statusSpan.className = 'atualizado';
         } else {
-            const horarioAtual = agora.getHours();
-            if (horarioAtual >= 20 && horarioAtual <= 23) {
-                statusSpan.innerHTML = '⏳ Aguardando sorteio de hoje';
+            if (!temSorteioHoje) {
+                statusSpan.innerHTML = '📌 Hoje não há sorteio (domingo)';
+                statusSpan.className = 'aguardando';
+            } else if (hora < 20) {
+                statusSpan.innerHTML = '⏳ Aguardando sorteio de hoje (20h)';
+                statusSpan.className = 'aguardando';
             } else {
-                statusSpan.innerHTML = '⏳ Aguardando horário (20h)';
+                statusSpan.innerHTML = '🔄 Buscando sorteio de hoje...';
+                statusSpan.className = 'verificando';
             }
-            statusSpan.className = 'aguardando';
         }
     } catch (error) {
         console.error('Erro ao verificar status:', error);

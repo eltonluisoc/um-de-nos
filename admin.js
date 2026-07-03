@@ -1049,7 +1049,7 @@ function iniciarBuscaAutomaticaMelhorada() {
 }
 
 // ============================================
-// BUSCAR SORTEIO (VERSÃO CORRIGIDA - IMPORTA AUTOMATICAMENTE)
+// BUSCAR SORTEIO (VERSÃO COMPLETA E CORRIGIDA)
 // ============================================
 async function buscarSorteioQuina() {
     console.log('🔍 INICIANDO BUSCA DE SORTEIO');
@@ -1063,7 +1063,13 @@ async function buscarSorteioQuina() {
     
     try {
         console.log('📡 Buscando último sorteio disponível na API...');
-        const { numeros, concurso, data } = await buscarSorteioMultiplasAPIs();
+        const resultado = await buscarSorteioMultiplasAPIs();
+        
+        if (!resultado || !resultado.numeros || resultado.numeros.length === 0) {
+            throw new Error('Nenhum sorteio encontrado na API');
+        }
+        
+        const { numeros, concurso, data } = resultado;
         
         // Verificar se o sorteio encontrado é mais novo que o importado
         const jogoRef = doc(db, 'jogos', jogoAtualId);
