@@ -25,14 +25,15 @@ async function carregarDados() {
     await carregarJogoAtivo();
 }
 
+
 // ============================================
-// 🚀 FUNÇÃO CORRIGIDA - SEM ORDERBY
+// 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo
 // ============================================
 async function carregarJogoAtivo() {
     const jogosRef = collection(db, 'jogos');
     
     try {
-        // 1. TENTAR BUSCAR JOGO ATIVO (SEM ORDERBY)
+        // 1. TENTAR BUSCAR JOGO ATIVO
         const qAtivo = query(jogosRef, where('status', '==', 'aberto'), limit(1));
         const ativoSnapshot = await getDocs(qAtivo);
         
@@ -60,15 +61,14 @@ async function carregarJogoAtivo() {
             return;
         }
         
-        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM ORDERBY)
+        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
         console.log('📌 Nenhum jogo ativo. Buscando último encerrado...');
         
-        // 🔥 REMOVIDO orderBy - buscar todos e ordenar manualmente
         const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
         if (!encerradoSnapshot.empty) {
-            // 🔥 ORDENAÇÃO MANUAL - mais recente primeiro
+            // Ordenar manualmente
             const jogos = [];
             encerradoSnapshot.forEach(doc => {
                 const data = doc.data();
@@ -77,6 +77,7 @@ async function carregarJogoAtivo() {
                     nome: data.nome,
                     encerradoEm: data.encerradoEm,
                     vencedorNome: data.vencedorNome,
+                    vencedorId: data.vencedorId,
                     valorInscricao: data.valorInscricao || 50,
                     totalParticipantes: data.totalParticipantes || 0,
                     ultimosNumerosSorteados: data.ultimosNumerosSorteados || [],
@@ -96,7 +97,7 @@ async function carregarJogoAtivo() {
             jogoId = jogoDoc.id;
             
             console.log(`📌 Último jogo encerrado: ${jogoDoc.nome} (${jogoDoc.id})`);
-            console.log(`👑 Vencedor: ${jogoDoc.vencedorNome || 'Nenhum'}`);
+            console.log(`👑 Vencedor no jogo: ${jogoDoc.vencedorNome || 'Nenhum'}`);
             
             // Mostrar status
             document.getElementById('statusJogo').innerHTML = `
@@ -114,17 +115,40 @@ async function carregarJogoAtivo() {
             await carregarNumerosSorteadosGrid();
             await carregarParticipantesPorJogo(jogoId);
             
-            // Mostrar vencedor se houver
-            const vencedorNome = jogoAtual.vencedorNome;
-            if (vencedorNome) {
-                document.getElementById('vencedorInfo').style.display = 'block';
-                document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedorNome} 🎉`;
-                document.getElementById('vencedorData').innerHTML = `Vencedor da competição "${jogoAtual.nome}"!`;
+            // 🔥 CORREÇÃO: Buscar vencedor do histórico se não estiver no jogo
+            let vencedorNome = jogoAtual.vencedorNome;
+            
+            // Se não tem vencedor no jogo, buscar do histórico
+            if (!vencedorNome || vencedorNome === 'Nenhum') {
+                console.log('🔍 Buscando vencedor no histórico...');
+                const vencedorInfo = await buscarVencedorDoHistorico(jogoId);
+                if (vencedorInfo) {
+                    vencedorNome = vencedorInfo.nome;
+                    console.log(`✅ Vencedor encontrado no histórico: ${vencedorNome}`);
+                }
+            }
+            
+            // Mostrar vencedor
+            const vencedorDiv = document.getElementById('vencedorInfo');
+            const vencedorNomeEl = document.getElementById('vencedorNome');
+            const vencedorDataEl = document.getElementById('vencedorData');
+            
+            if (vencedorNome && vencedorNome !== 'Nenhum') {
+                vencedorDiv.style.display = 'block';
+                vencedorNomeEl.innerHTML = `🎉 ${vencedorNome} 🎉`;
+                
+                // Buscar prêmio do vencedor
+                const premio = await buscarPremioVencedor(jogoId, vencedorNome);
+                if (premio) {
+                    vencedorDataEl.innerHTML = `🏆 Vencedor com R$ ${premio.toFixed(2)} de prêmio!`;
+                } else {
+                    vencedorDataEl.innerHTML = `🏆 Vencedor da competição "${jogoAtual.nome}"!`;
+                }
             } else {
-                // Se não houver vencedor, mostrar mensagem
-                document.getElementById('vencedorInfo').style.display = 'block';
-                document.getElementById('vencedorNome').innerHTML = `⚡ Nenhum vencedor`;
-                document.getElementById('vencedorData').innerHTML = `Competição encerrada sem vencedor`;
+                // Se realmente não há vencedor
+                vencedorDiv.style.display = 'block';
+                vencedorNomeEl.innerHTML = `⚡ Sem vencedor`;
+                vencedorDataEl.innerHTML = `Competição encerrada sem vencedor`;
             }
             
             const statusSpan = document.getElementById('statusSorteio');
@@ -152,6 +176,73 @@ async function carregarJogoAtivo() {
         document.getElementById('listaParticipantes').innerHTML = `
             <div class="loading">❌ Erro ao carregar dados: ${error.message}</div>
         `;
+    }
+}
+
+// ============================================
+// 🔥 NOVAS FUNÇÕES PARA BUSCAR VENCEDOR
+// ============================================
+
+async function buscarVencedorDoHistorico(jogoId) {
+    try {
+        const historicoRef = collection(db, 'historico_vencedores');
+        const q = query(historicoRef, where('jogoId', '==', jogoId));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) return null;
+        
+        // Buscar o primeiro vencedor (posição 1)
+        let vencedor = null;
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.posicao === 1 || data.posicao === '1') {
+                vencedor = {
+                    nome: data.participanteNome,
+                    premio: data.premio || 0,
+                    posicao: data.posicao
+                };
+            }
+        });
+        
+        // Se não achou posição 1, pega o primeiro da lista
+        if (!vencedor && !snapshot.empty) {
+            const firstDoc = snapshot.docs[0];
+            const data = firstDoc.data();
+            vencedor = {
+                nome: data.participanteNome,
+                premio: data.premio || 0,
+                posicao: data.posicao
+            };
+        }
+        
+        return vencedor;
+    } catch (error) {
+        console.error('❌ Erro ao buscar vencedor no histórico:', error);
+        return null;
+    }
+}
+
+async function buscarPremioVencedor(jogoId, nomeVencedor) {
+    try {
+        const historicoRef = collection(db, 'historico_vencedores');
+        const q = query(historicoRef, where('jogoId', '==', jogoId));
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) return null;
+        
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            if (data.participanteNome === nomeVencedor && data.premio > 0) {
+                return data.premio;
+            }
+        }
+        
+        // Se não encontrou pelo nome, tenta achar o primeiro da lista
+        const firstDoc = snapshot.docs[0];
+        return firstDoc.data().premio || 0;
+    } catch (error) {
+        console.error('❌ Erro ao buscar prêmio:', error);
+        return null;
     }
 }
 
