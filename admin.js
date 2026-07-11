@@ -211,6 +211,55 @@ async function carregarDados() {
     iniciarBuscaAutomaticaMelhorada();
 }
 
+async function carregarJogoAtivo() {
+    const jogosRef = collection(db, 'jogos');
+    const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
+    
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+        const jogoDoc = querySnapshot.docs[0];
+        jogoAtualId = jogoDoc.id;
+        jogoAtualStatus = jogoDoc.data().status;
+        const jogoData = jogoDoc.data();
+        jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
+        console.log('🏆 Competição ativa carregada:', jogoAtualId, jogoData.nome);
+        console.log('📌 Primeira conferência:', jogoData.primeiraConferenciaRealizada);
+        return;
+    }
+    
+    // Nenhum jogo ativo - buscar último encerrado
+    console.log('⚠️ Nenhuma competição ativa. Buscando último jogo encerrado...');
+    const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+    const encerradoSnapshot = await getDocs(qEncerrado);
+    
+    if (!encerradoSnapshot.empty) {
+        const jogoDoc = encerradoSnapshot.docs[0];
+        jogoAtualId = jogoDoc.id;
+        jogoAtualStatus = 'encerrado';
+        const jogoData = jogoDoc.data();
+        console.log('📌 Último jogo encerrado:', jogoData.nome, 'Vencedor:', jogoData.vencedorNome || 'Nenhum');
+        
+        // Mostrar no dashboard
+        const statusDiv = document.getElementById('statusAdmin');
+        if (statusDiv) {
+            statusDiv.innerHTML = `
+                <p>🏆 Última competição: ${jogoData.nome}</p>
+                <p>👑 Vencedor: ${jogoData.vencedorNome || 'Não houve vencedor'}</p>
+                <p>📅 Encerrada em: ${jogoData.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</p>
+                <p>📊 Último sorteio: ${jogoData.ultimoConcursoImportado || 'Nenhum'}</p>
+            `;
+        }
+        return;
+    }
+    
+    // Nenhum jogo encontrado
+    jogoAtualId = null;
+    jogoAtualStatus = null;
+    jogoBloqueado = false;
+    if (intervaloBusca) clearInterval(intervaloBusca);
+    console.log('⚠️ Nenhuma competição encontrada');
+}
+
 async function carregarCompeticaoPreparandoValor() {
     const preparandoRef = collection(db, 'jogos');
     const preparandoQuery = query(preparandoRef, where('status', '==', 'preparando'), limit(1));
@@ -249,13 +298,12 @@ async function contarParticipantesPorCompeticao(competicaoId) {
     return snapshot.size;
 }
 
+// ============================================
+// ATUALIZAR STATUS DO JOGO NO DASHBOARD
+// ============================================
 async function atualizarStatusGame() {
     const statusGameContainer = document.getElementById('statusGameContainer');
     if (!statusGameContainer) return;
-    
-    const jogosAtivosRef = collection(db, 'jogos');
-    const ativosQuery = query(jogosAtivosRef, where('status', '==', 'aberto'), limit(1));
-    const ativosSnapshot = await getDocs(ativosQuery);
     
     const hoje = new Date();
     const diaSemana = hoje.getDay();
@@ -277,6 +325,11 @@ async function atualizarStatusGame() {
     }
     
     let html = '';
+    
+    // Buscar competição ATIVA
+    const jogosAtivosRef = collection(db, 'jogos');
+    const ativosQuery = query(jogosAtivosRef, where('status', '==', 'aberto'), limit(1));
+    const ativosSnapshot = await getDocs(ativosQuery);
     
     if (!ativosSnapshot.empty) {
         const jogoDoc = ativosSnapshot.docs[0];
@@ -342,23 +395,62 @@ async function atualizarStatusGame() {
             </div>
         `;
     } else {
-        html = `
-            <div class="status-game" style="border-left: 4px solid #6c757d;">
-                <div class="status-game-header">
-                    <div class="status-icon">⚪</div>
-                    <div class="status-title">Nenhuma Competição Ativa</div>
-                </div>
-                <div class="status-details">
-                    <div class="status-item" style="justify-content: center;">
-                        <span class="status-value">Vá em Configurações para criar ou ativar uma competição</span>
+        // Verificar se há jogo encerrado
+        const jogosEncerradosRef = collection(db, 'jogos');
+        const qEncerrado = query(jogosEncerradosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+        const encerradoSnapshot = await getDocs(qEncerrado);
+        
+        if (!encerradoSnapshot.empty) {
+            const jogoDoc = encerradoSnapshot.docs[0];
+            const jogoData = jogoDoc.data();
+            const totalParticipantes = await contarParticipantesPorCompeticao(jogoDoc.id);
+            const vencedorNome = jogoData.vencedorNome || 'Nenhum';
+            
+            html += `
+                <div class="status-game" style="border-left: 4px solid #ff8c00;">
+                    <div class="status-game-header">
+                        <div class="status-icon">🏆</div>
+                        <div class="status-title">Última Competição Encerrada</div>
                     </div>
-                    <div class="status-item">
-                        <span class="status-label">Status Sorteio</span>
-                        <span class="status-value" style="color: ${statusSorteioCor};">${statusSorteioMsg}</span>
+                    <div class="status-details">
+                        <div class="status-item">
+                            <span class="status-label">Nome</span>
+                            <span class="status-value">${jogoData.nome || 'Edição'}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Vencedor</span>
+                            <span class="status-value" style="color: #ffd700;">👑 ${vencedorNome}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Participantes</span>
+                            <span class="status-value">${totalParticipantes}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Último Sorteio</span>
+                            <span class="status-value">${jogoData.ultimoConcursoImportado || 'Nenhum'}</span>
+                        </div>
+                        <div class="status-item">
+                            <span class="status-label">Data Encerramento</span>
+                            <span class="status-value">${jogoData.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
+            `;
+        } else {
+            html = `
+                <div class="status-game" style="border-left: 4px solid #6c757d;">
+                    <div class="status-game-header">
+                        <div class="status-icon">⚪</div>
+                        <div class="status-title">Nenhuma Competição</div>
+                    </div>
+                    <div class="status-details">
+                        <div class="status-item" style="justify-content: center;">
+                            <span class="status-value">Vá em Configurações para criar uma competição</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }
     
     statusGameContainer.innerHTML = html;
@@ -419,28 +511,6 @@ async function excluirCompeticaoHandler() {
 // ============================================
 // GERENCIAMENTO DE COMPETIÇÕES
 // ============================================
-
-async function carregarJogoAtivo() {
-    const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
-    
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        const jogoDoc = querySnapshot.docs[0];
-        jogoAtualId = jogoDoc.id;
-        jogoAtualStatus = jogoDoc.data().status;
-        const jogoData = jogoDoc.data();
-        jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
-        console.log('🏆 Competição ativa carregada:', jogoAtualId, jogoData.nome);
-        console.log('📌 Primeira conferência:', jogoData.primeiraConferenciaRealizada);
-    } else {
-        jogoAtualId = null;
-        jogoAtualStatus = null;
-        jogoBloqueado = false;
-        if (intervaloBusca) clearInterval(intervaloBusca);
-        console.log('⚠️ Nenhuma competição ativa');
-    }
-}
 
 async function carregarSelectCompeticoes() {
     const select = document.getElementById('selectCompeticao');
@@ -566,7 +636,7 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            tbody.innerHTML = '<td><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum participante cadastrado</td></tr>';
             return;
         }
         
@@ -704,9 +774,7 @@ async function ativarCompeticaoSelecionada() {
         await carregarRanking();
         await atualizarStatusGame();
         await verificarBloqueio();
-        
         iniciarBuscaAutomaticaMelhorada();
-        
     }
 }
 
@@ -904,18 +972,35 @@ async function carregarRanking() {
     const container = document.getElementById('listaRankingAdmin');
     if (!container) return;
     
-    if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
-        container.innerHTML = '<div>Nenhuma competição ativa.</div>';
-        return;
+    // Se não há jogo ativo, buscar o último encerrado
+    let jogoIdParaBuscar = jogoAtualId;
+    let jogoStatus = jogoAtualStatus;
+    
+    if (!jogoIdParaBuscar || jogoStatus !== 'aberto') {
+        // Buscar último jogo encerrado
+        const jogosRef = collection(db, 'jogos');
+        const q = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+            const jogoDoc = querySnapshot.docs[0];
+            jogoIdParaBuscar = jogoDoc.id;
+            jogoStatus = 'encerrado';
+            console.log('📌 Mostrando ranking do último jogo encerrado:', jogoDoc.data().nome);
+            container.innerHTML = '<div style="color: #ff8c00; text-align: center; padding: 10px; font-weight: bold;">🏆 ÚLTIMA COMPETIÇÃO ENCERRADA</div>';
+        } else {
+            container.innerHTML = '<div>Nenhuma competição encontrada.</div>';
+            return;
+        }
     }
     
     try {
         const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+        const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = '<div>Nenhum participante.</div>';
+            container.innerHTML = '<div>Nenhum participante encontrado.</div>';
             return;
         }
         
@@ -925,16 +1010,31 @@ async function carregarRanking() {
         });
         participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
         
+        // Usar DocumentFragment para melhor performance
         const fragment = document.createDocumentFragment();
         let pos = 1;
+        const totalParticipantes = participantes.length;
         
         for (const p of participantes) {
             const progresso = ((p.acertos || 0) / 17) * 100;
             const div = document.createElement('div');
             div.className = 'linha-participante';
+            
+            // Destacar vencedor (quem tem acertouTodos = true)
+            if (p.acertouTodos === true) {
+                div.style.background = 'rgba(255,215,0,0.15)';
+                div.style.borderLeft = '4px solid #ffd700';
+            }
+            
+            // Destacar menos acertos (se for o último e não for vencedor)
+            if (pos === totalParticipantes && p.acertouTodos !== true && totalParticipantes > 2) {
+                div.style.background = 'rgba(220,53,69,0.05)';
+                div.style.borderLeft = '4px solid #dc3545';
+            }
+            
             div.innerHTML = `
                 <span>${pos++}º</span>
-                <span><strong>${p.nome}</strong></span>
+                <span><strong>${p.nome} ${p.acertouTodos === true ? '👑' : ''}</strong></span>
                 <span>${p.acertos || 0}/17</span>
                 <div class="barra-progresso">
                     <div class="barra-progresso-fill" style="width: ${progresso}%"></div>
@@ -1031,8 +1131,8 @@ async function buscarSorteioQuina() {
         console.log(`🎉 NOVO SORTEIO DETECTADO! #${concurso} (${concurso} > ${ultimoImportado})`);
         console.log(`📊 Números: ${numeros.join(', ')}`);
         console.log(`📅 Data: ${data || 'Não informada'}`);
+        console.log(`📍 Fonte: ${resultado.fonte || 'Desconhecida'}`);
         
-        // Verificar data de ativação
         const dataInicio = jogoData.dataInicio?.toDate() || new Date(2024, 0, 1);
         let dataSorteioObj = new Date();
         if (data) {
@@ -1042,7 +1142,6 @@ async function buscarSorteioQuina() {
             }
         }
         
-        // Primeira conferência
         if (!jogoData.primeiraConferenciaRealizada) {
             console.log('🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros');
             await updateDoc(jogoRef, { 
@@ -1053,7 +1152,6 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
-        // Salvar sorteio
         await addDoc(collection(db, 'sorteios_quina'), {
             concurso: concurso,
             numeros: numeros,
@@ -1069,7 +1167,6 @@ async function buscarSorteioQuina() {
         
         console.log(`✅ Sorteio #${concurso} salvo no Firestore!`);
         
-        // Atualizar acertos
         await atualizarAcertosParticipantes();
         
         console.log(`✅ Sorteio #${concurso} IMPORTADO COM SUCESSO!`);
@@ -1094,14 +1191,15 @@ async function buscarSorteioQuina() {
 async function atualizarAcertosParticipantes() {
     console.log('🔄 RECALCULANDO ACERTOS DO ZERO...');
     
+    if (!jogoAtualId) return;
+    
     const sorteiosRef = collection(db, 'sorteios_quina');
     const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
     const sorteiosSnapshot = await getDocs(sorteiosQuery);
     
     const numerosSorteadosSet = new Set();
     for (const sorteioDoc of sorteiosSnapshot.docs) {
-        const numeros = sorteioDoc.data().numeros;
-        for (const num of numeros) {
+        for (const num of sorteioDoc.data().numeros) {
             numerosSorteadosSet.add(num);
         }
     }
@@ -1122,7 +1220,6 @@ async function atualizarAcertosParticipantes() {
         
         let acertos = 0;
         const acertados = [];
-        
         for (const num of p.numeros) {
             if (numerosSorteadosSet.has(num)) {
                 acertos++;
@@ -1136,9 +1233,7 @@ async function atualizarAcertosParticipantes() {
         relatorio += `   Total acertos: ${acertos}/17 (anterior: ${p.acertos || 0})\n`;
         
         if (acertos !== (p.acertos || 0)) {
-            await updateDoc(doc(db, 'participantes', participanteDoc.id), { 
-                acertos: acertos
-            });
+            await updateDoc(doc(db, 'participantes', participanteDoc.id), { acertos: acertos });
             console.log(`✏️ Atualizando ${p.nome}: ${p.acertos || 0} → ${acertos}`);
         }
         
@@ -1157,9 +1252,6 @@ async function atualizarAcertosParticipantes() {
     console.log('✅ ========== FIM DA ATUALIZAÇÃO ==========');
 }
 
-// ============================================
-// DECLARAR VENCEDORES (CORRIGIDO - NÃO RECARREGA A PÁGINA)
-// ============================================
 async function declararVencedores(vencedores) {
     const jogoRef = doc(db, 'jogos', jogoAtualId);
     const jogoDoc = await getDoc(jogoRef);
@@ -1247,7 +1339,6 @@ async function declararVencedores(vencedores) {
     msg += '\n📊 Veja o ranking completo na tela!';
     alert(msg);
     
-    // ATUALIZAR RANKING SEM RECARREGAR A PÁGINA
     await carregarRanking();
     await atualizarStatusGame();
 }
