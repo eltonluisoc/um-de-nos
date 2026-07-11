@@ -378,17 +378,25 @@ function mostrarNumerosSorteados(numeros) {
 
 function verificarVencedor(participantes) {
     const vencedor = participantes.find(p => p.acertouTodos === true);
+    const statusDiv = document.getElementById('statusJogo');
+    const vencedorDiv = document.getElementById('vencedorInfo');
+    const vencedorNome = document.getElementById('vencedorNome');
+    const vencedorData = document.getElementById('vencedorData');
     
     if (vencedor) {
-        const statusDiv = document.getElementById('statusJogo');
-        const vencedorDiv = document.getElementById('vencedorInfo');
-        const vencedorNome = document.getElementById('vencedorNome');
-        const vencedorData = document.getElementById('vencedorData');
+        // Atualizar status
+        if (statusDiv) {
+            statusDiv.innerHTML = `<span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>`;
+        }
         
-        if (statusDiv) statusDiv.innerHTML = `<span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>`;
+        // Mostrar card do vencedor
         if (vencedorDiv) vencedorDiv.style.display = 'block';
         if (vencedorNome) vencedorNome.innerHTML = `🎉 ${vencedor.nome} 🎉`;
         if (vencedorData) vencedorData.innerHTML = `Acertou 17 números primeiro!`;
+        
+        // O RANKING CONTINUA SENDO EXIBIDO normalmente
+        // A função atualizarRanking já está sendo chamada pelo onSnapshot
+        // Não escondemos o ranking!
     }
 }
 
