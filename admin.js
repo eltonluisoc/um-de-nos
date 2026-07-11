@@ -996,8 +996,8 @@ async function carregarRanking() {
     let jogoIdParaBuscar = jogoAtualId;
     let jogoStatus = jogoAtualStatus;
     
+    // Se não tem jogo ativo, buscar o último encerrado
     if (!jogoIdParaBuscar || jogoStatus !== 'aberto') {
-        // Buscar último jogo encerrado
         const jogosRef = collection(db, 'jogos');
         const q = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
         const querySnapshot = await getDocs(q);
@@ -1009,7 +1009,7 @@ async function carregarRanking() {
             console.log('📌 Mostrando ranking do último jogo encerrado:', jogoDoc.data().nome);
             container.innerHTML = '<div style="color: #ff8c00; text-align: center; padding: 10px; font-weight: bold;">🏆 ÚLTIMA COMPETIÇÃO ENCERRADA</div>';
         } else {
-            container.innerHTML = '<div>Nenhuma competição encontrada.</div>';
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição encontrada.</div>';
             return;
         }
     }
@@ -1020,7 +1020,10 @@ async function carregarRanking() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = '<div>Nenhum participante encontrado.</div>';
+            const addMsg = document.createElement('div');
+            addMsg.style.cssText = 'text-align: center; padding: 20px; color: rgba(255,255,255,0.5);';
+            addMsg.textContent = 'Nenhum participante cadastrado nesta competição.';
+            container.appendChild(addMsg);
             return;
         }
         
@@ -1030,23 +1033,39 @@ async function carregarRanking() {
         });
         participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
         
+        // Limpar container mantendo o título
+        const titulo = container.querySelector('div:first-child');
+        container.innerHTML = '';
+        if (titulo) container.appendChild(titulo);
+        
         // Usar DocumentFragment para melhor performance
         const fragment = document.createDocumentFragment();
         let pos = 1;
         const totalParticipantes = participantes.length;
+        
+        // Adicionar cabeçalho
+        const header = document.createElement('div');
+        header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
+        header.innerHTML = `
+            <span>Pos</span>
+            <span>Participante</span>
+            <span>Acertos</span>
+            <span>Progresso</span>
+        `;
+        fragment.appendChild(header);
         
         for (const p of participantes) {
             const progresso = ((p.acertos || 0) / 17) * 100;
             const div = document.createElement('div');
             div.className = 'linha-participante';
             
-            // Destacar vencedor (quem tem acertouTodos = true)
+            // Destacar vencedor
             if (p.acertouTodos === true) {
                 div.style.background = 'rgba(255,215,0,0.15)';
                 div.style.borderLeft = '4px solid #ffd700';
             }
             
-            // Destacar menos acertos (se for o último e não for vencedor)
+            // Destacar menos acertos (se não for vencedor)
             if (pos === totalParticipantes && p.acertouTodos !== true && totalParticipantes > 2) {
                 div.style.background = 'rgba(220,53,69,0.05)';
                 div.style.borderLeft = '4px solid #dc3545';
@@ -1063,12 +1082,11 @@ async function carregarRanking() {
             fragment.appendChild(div);
         }
         
-        container.innerHTML = '';
         container.appendChild(fragment);
         
     } catch (error) {
         console.error('Erro ranking:', error);
-        container.innerHTML = '<div>Erro ao carregar ranking</div>';
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc3545;">Erro ao carregar ranking</div>';
     }
 }
 
