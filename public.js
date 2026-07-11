@@ -17,7 +17,7 @@ let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - v6');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v7');
     carregarDados();
 });
 
@@ -26,13 +26,13 @@ async function carregarDados() {
 }
 
 // ============================================
-// 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo
+// 🚀 FUNÇÃO CORRIGIDA - SEM ORDERBY
 // ============================================
 async function carregarJogoAtivo() {
     const jogosRef = collection(db, 'jogos');
     
     try {
-        // 1. TENTAR BUSCAR JOGO ATIVO
+        // 1. TENTAR BUSCAR JOGO ATIVO (SEM ORDERBY)
         const qAtivo = query(jogosRef, where('status', '==', 'aberto'), limit(1));
         const ativoSnapshot = await getDocs(qAtivo);
         
@@ -60,9 +60,10 @@ async function carregarJogoAtivo() {
             return;
         }
         
-        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM orderBy)
+        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM ORDERBY)
         console.log('📌 Nenhum jogo ativo. Buscando último encerrado...');
         
+        // 🔥 REMOVIDO orderBy - buscar todos e ordenar manualmente
         const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
@@ -149,7 +150,7 @@ async function carregarJogoAtivo() {
     } catch (error) {
         console.error('❌ Erro ao carregar jogo:', error);
         document.getElementById('listaParticipantes').innerHTML = `
-            <div class="loading">❌ Erro ao carregar dados</div>
+            <div class="loading">❌ Erro ao carregar dados: ${error.message}</div>
         `;
     }
 }
@@ -210,7 +211,6 @@ function atualizarRanking(participantes) {
         return (b.acertos || 0) - (a.acertos || 0);
     });
     
-    const maiorAcertos = ordenados[0]?.acertos || 0;
     const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
     
     let html = '';
@@ -607,3 +607,5 @@ window.mostrarDetalhes = function(participanteId) {
 // EXPORTAR PARA O CONSOLE
 window.carregarJogoAtivo = carregarJogoAtivo;
 window.atualizarRanking = atualizarRanking;
+window.participantes = participantes;
+window.jogoAtual = jogoAtual;
