@@ -24,8 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function carregarDados() {
     await carregarJogoAtivo();
-    // O carregamento dos dados agora é feito dentro de carregarJogoAtivo
-    // para garantir que funcione tanto para jogo ativo quanto encerrado
 }
 
 async function carregarJogoAtivo() {
@@ -37,7 +35,6 @@ async function carregarJogoAtivo() {
         const ativoSnapshot = await getDocs(qAtivo);
         
         if (!ativoSnapshot.empty) {
-            // TEM JOGO ATIVO - MOSTRAR NORMAL
             const jogoDoc = ativoSnapshot.docs[0];
             jogoAtual = jogoDoc.data();
             jogoId = jogoDoc.id;
@@ -52,7 +49,6 @@ async function carregarJogoAtivo() {
                 mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
             }
             
-            // Carregar dados do jogo ativo
             await carregarPremiacao();
             await carregarSorteios();
             await carregarNumerosSorteadosGrid();
@@ -83,13 +79,11 @@ async function carregarJogoAtivo() {
                 mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
             }
             
-            // Carregar dados do jogo encerrado
             await carregarPremiacao();
             await carregarSorteios();
             await carregarNumerosSorteadosGrid();
             await carregarParticipantesPorJogo(jogoId);
             
-            // Mostrar vencedor se houver
             const vencedorNome = jogoAtual.vencedorNome;
             if (vencedorNome) {
                 document.getElementById('vencedorInfo').style.display = 'block';
@@ -97,7 +91,6 @@ async function carregarJogoAtivo() {
                 document.getElementById('vencedorData').innerHTML = `Vencedor da última competição!`;
             }
             
-            // Atualizar status do sorteio
             const statusSpan = document.getElementById('statusSorteio');
             if (statusSpan) {
                 statusSpan.innerHTML = '🏁 Competição finalizada';
@@ -143,7 +136,6 @@ async function carregarParticipantesPorJogo(jogoId) {
         
         console.log(`📊 ${participantes.length} participantes encontrados`);
         
-        // Atualizar estatísticas
         const totalSpan = document.getElementById('totalParticipantes');
         const maiorSpan = document.getElementById('maiorPontuacao');
         if (totalSpan) totalSpan.textContent = participantes.length;
@@ -152,7 +144,6 @@ async function carregarParticipantesPorJogo(jogoId) {
             maiorSpan.textContent = `${maiorAcertos}`;
         }
         
-        // Atualizar ranking
         atualizarRanking(participantes);
         
     } catch (error) {
@@ -383,7 +374,6 @@ function atualizarRanking(participantes) {
             lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
         }
         
-        // REMOVIDO onclick para evitar mensagem automática
         html += `<div class="ranking-row ${rowClass}">
                     <div class="ranking-pos">${posText}</div>
                     <div class="ranking-player">
