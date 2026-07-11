@@ -1328,7 +1328,9 @@ async function declararVencedores(vencedores) {
     await atualizarStatusGame();
     
     // Não recarregar a página automaticamente
-    // setTimeout(() => window.location.reload(), 2000);
+    // Não recarregar a página - apenas atualizar os dados
+await carregarRanking();
+await atualizarStatusGame();
 }
 
 async function encerrarJogo() {

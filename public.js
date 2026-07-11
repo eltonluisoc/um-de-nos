@@ -40,14 +40,113 @@ async function carregarJogoAtivo() {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            console.log('Nenhum jogo ativo');
-            const listaDiv = document.getElementById('listaParticipantes');
-            const statusDiv = document.getElementById('statusJogo');
-            if (listaDiv) listaDiv.innerHTML = `<div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>`;
-            if (statusDiv) statusDiv.innerHTML = `<span class="status-badge" style="background:#888;">⏸️ AGUARDANDO PRÓXIMO JOGO</span>`;
-            await carregarUltimoVencedor();
+    console.log('Nenhum jogo ativo - verificando histórico...');
+    document.getElementById('statusJogo').innerHTML = `
+        <span class="status-badge" style="background:#888;">⏸️ AGUARDANDO PRÓXIMO JOGO</span>
+    `;
+    
+    // Buscar o ÚLTIMO jogo encerrado para mostrar o ranking final
+    const jogosEncerradosRef = collection(db, 'jogos');
+    const qEncerrados = query(jogosEncerradosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+    const encerradosSnapshot = await getDocs(qEncerrados);
+    
+    if (!encerradosSnapshot.empty) {
+        const ultimoJogo = encerradosSnapshot.docs[0];
+        const ultimoJogoId = ultimoJogo.id;
+        const ultimoJogoData = ultimoJogo.data();
+        
+        console.log('📌 Último jogo encerrado:', ultimoJogoData.nome);
+        document.getElementById('statusJogo').innerHTML = `
+            <span class="status-badge" style="background:#ff8c00;">🏆 COMPETIÇÃO ENCERRADA 🏆</span>
+        `;
+        
+        // Buscar participantes do último jogo
+        const participantesRef = collection(db, 'participantes');
+        const qPart = query(participantesRef, where('jogoId', '==', ultimoJogoId));
+        const partSnapshot = await getDocs(qPart);
+        
+        const participantes = [];
+        partSnapshot.forEach(doc => {
+            participantes.push({ id: doc.id, ...doc.data() });
+        });
+        
+        // Mostrar ranking do último jogo
+        if (participantes.length > 0) {
+            // Atualizar números sorteados para mostrar acertos
+            const sorteiosRef = collection(db, 'sorteios_quina');
+            const qSorteios = query(sorteiosRef, where('competicaoId', '==', ultimoJogoId));
+            const sorteiosSnapshot = await getDocs(qSorteios);
+            
+            const numerosAcumulados = [];
+            sorteiosSnapshot.forEach(doc => {
+                const s = doc.data();
+                for (const num of s.numeros) {
+                    if (!numerosAcumulados.includes(num)) {
+                        numerosAcumulados.push(num);
+                    }
+                }
+            });
+            numerosSorteadosAcumulados = numerosAcumulados;
+            
+            // Atualizar ranking com os participantes do último jogo
+            const totalSpan = document.getElementById('totalParticipantes');
+            const maiorSpan = document.getElementById('maiorPontuacao');
+            if (totalSpan) totalSpan.textContent = participantes.length;
+            if (maiorSpan && participantes.length > 0) {
+                const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+                maiorSpan.textContent = `${maiorAcertos}`;
+            }
+            
+            atualizarRanking(participantes);
+            
+            // Mostrar vencedor
+            const vencedor = participantes.find(p => p.acertouTodos === true);
+            if (vencedor) {
+                document.getElementById('vencedorInfo').style.display = 'block';
+                document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedor.nome} 🎉`;
+                document.getElementById('vencedorData').innerHTML = `Vencedor da última competição!`;
+            }
+            
+            // Atualizar lista de sorteios
+            const container = document.getElementById('listaSorteios');
+            if (container && sorteiosSnapshot.size > 0) {
+                let html = '';
+                sorteiosSnapshot.forEach(doc => {
+                    const s = doc.data();
+                    html += `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`;
+                });
+                container.innerHTML = html;
+            }
+            
+            // Atualizar grid de números sorteados
+            const grid = document.getElementById('gridNumerosSorteados');
+            if (grid && numerosAcumulados.length > 0) {
+                let html = '<div class="grid-numeros">';
+                for (let i = 1; i <= 80; i++) {
+                    const foiSorteado = numerosAcumulados.includes(i);
+                    html += `<div class="grid-numero ${foiSorteado ? 'sorteados' : ''}">${i}</div>`;
+                }
+                html += '</div>';
+                grid.innerHTML = html;
+            }
+            
+            // Atualizar números sorteados (último sorteio)
+            const ultimoSorteio = ultimoJogoData.ultimosNumerosSorteados;
+            if (ultimoSorteio && ultimoSorteio.length > 0) {
+                mostrarNumerosSorteados(ultimoSorteio);
+            }
+            
             return;
         }
+    }
+    
+    // Se não houver histórico, mostrar mensagem padrão
+    document.getElementById('listaParticipantes').innerHTML = `
+        <div class="loading">⚡ Nenhum jogo em andamento. Aguarde o próximo!</div>
+    `;
+    await carregarUltimoVencedor();
+    return;
+}
         
         const jogoDoc = querySnapshot.docs[0];
         jogoAtual = jogoDoc.data();
