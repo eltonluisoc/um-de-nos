@@ -229,50 +229,53 @@ async function carregarJogoAtivo() {
         return;
     }
     
-    // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
+    // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM orderBy)
     console.log('⚠️ Nenhuma competição ativa. Buscando último encerrado...');
     
-    const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+    const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
     const encerradoSnapshot = await getDocs(qEncerrado);
     
     if (!encerradoSnapshot.empty) {
-        const jogoDoc = encerradoSnapshot.docs[0];
+        // Ordenar MANUALMENTE por encerradoEm
+        const jogos = [];
+        encerradoSnapshot.forEach(doc => {
+            const data = doc.data();
+            jogos.push({ 
+                id: doc.id, 
+                nome: data.nome,
+                status: data.status,
+                encerradoEm: data.encerradoEm,
+                vencedorNome: data.vencedorNome,
+                ultimoConcursoImportado: data.ultimoConcursoImportado,
+                ...data
+            });
+        });
+        jogos.sort((a, b) => {
+            const dateA = a.encerradoEm?.toDate() || new Date(0);
+            const dateB = b.encerradoEm?.toDate() || new Date(0);
+            return dateB - dateA;
+        });
+        
+        const jogoDoc = jogos[0];
         jogoAtualId = jogoDoc.id;
         jogoAtualStatus = 'encerrado';
-        const jogoData = jogoDoc.data();
-        console.log('📌 Último jogo encerrado carregado:', jogoData.nome);
-        console.log('👑 Vencedor:', jogoData.vencedorNome || 'Nenhum');
+        console.log('📌 Último jogo encerrado carregado:', jogoDoc.nome);
+        console.log('👑 Vencedor:', jogoDoc.vencedorNome || 'Nenhum');
         
         // Mostrar no dashboard
         const statusDiv = document.getElementById('statusAdmin');
         if (statusDiv) {
             statusDiv.innerHTML = `
-                <p>🏆 Última competição: ${jogoData.nome}</p>
-                <p>👑 Vencedor: ${jogoData.vencedorNome || 'Não houve vencedor'}</p>
-                <p>📅 Encerrada em: ${jogoData.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</p>
-                <p>📊 Último sorteio: ${jogoData.ultimoConcursoImportado || 'Nenhum'}</p>
+                <p>🏆 Última competição: ${jogoDoc.nome}</p>
+                <p>👑 Vencedor: ${jogoDoc.vencedorNome || 'Não houve vencedor'}</p>
+                <p>📅 Encerrada em: ${jogoDoc.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</p>
+                <p>📊 Último sorteio: ${jogoDoc.ultimoConcursoImportado || 'Nenhum'}</p>
             `;
         }
         return;
     }
     
-    // 3. BUSCAR QUALQUER JOGO (para debug)
-    console.log('⚠️ Nenhum jogo ativo ou encerrado. Buscando qualquer jogo...');
-    const allSnapshot = await getDocs(jogosRef);
-    if (!allSnapshot.empty) {
-        allSnapshot.forEach(doc => {
-            console.log(`📌 Jogo encontrado: ${doc.id} - ${doc.data().nome} - Status: ${doc.data().status}`);
-        });
-        // Pegar o primeiro jogo disponível
-        const primeiroJogo = allSnapshot.docs[0];
-        jogoAtualId = primeiroJogo.id;
-        jogoAtualStatus = primeiroJogo.data().status;
-        const jogoData = primeiroJogo.data();
-        console.log('📌 Usando jogo:', jogoData.nome, 'Status:', jogoData.status);
-        return;
-    }
-    
-    // 4. NENHUM JOGO ENCONTRADO
+    // 3. NENHUM JOGO ENCONTRADO
     jogoAtualId = null;
     jogoAtualStatus = null;
     jogoBloqueado = false;
@@ -995,19 +998,39 @@ async function carregarRanking() {
     // Se não há jogo ativo, buscar o último encerrado
     let jogoIdParaBuscar = jogoAtualId;
     let jogoStatus = jogoAtualStatus;
+    let nomeCompeticao = '';
     
-    // Se não tem jogo ativo, buscar o último encerrado
+    // Se não tem jogo ativo, buscar o último encerrado (SEM orderBy)
     if (!jogoIdParaBuscar || jogoStatus !== 'aberto') {
         const jogosRef = collection(db, 'jogos');
-        const q = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+        const q = query(jogosRef, where('status', '==', 'encerrado'));
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
-            const jogoDoc = querySnapshot.docs[0];
+            // Ordenar MANUALMENTE por encerradoEm
+            const jogos = [];
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                jogos.push({ 
+                    id: doc.id, 
+                    nome: data.nome,
+                    encerradoEm: data.encerradoEm,
+                    vencedorNome: data.vencedorNome,
+                    ultimoConcursoImportado: data.ultimoConcursoImportado,
+                    ...data
+                });
+            });
+            jogos.sort((a, b) => {
+                const dateA = a.encerradoEm?.toDate() || new Date(0);
+                const dateB = b.encerradoEm?.toDate() || new Date(0);
+                return dateB - dateA;
+            });
+            
+            const jogoDoc = jogos[0];
             jogoIdParaBuscar = jogoDoc.id;
             jogoStatus = 'encerrado';
-            console.log('📌 Mostrando ranking do último jogo encerrado:', jogoDoc.data().nome);
-            container.innerHTML = '<div style="color: #ff8c00; text-align: center; padding: 10px; font-weight: bold;">🏆 ÚLTIMA COMPETIÇÃO ENCERRADA</div>';
+            nomeCompeticao = jogoDoc.nome || 'Competição encerrada';
+            console.log('📌 Mostrando ranking do último jogo encerrado:', nomeCompeticao);
         } else {
             container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição encontrada.</div>';
             return;
@@ -1019,11 +1042,20 @@ async function carregarRanking() {
         const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
         const querySnapshot = await getDocs(q);
         
+        // Limpar container
+        container.innerHTML = '';
+        
+        // Adicionar título
+        const titulo = document.createElement('div');
+        titulo.style.cssText = 'color: #ff8c00; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1em;';
+        titulo.textContent = `🏆 ${nomeCompeticao || 'ÚLTIMA COMPETIÇÃO ENCERRADA'}`;
+        container.appendChild(titulo);
+        
         if (querySnapshot.empty) {
-            const addMsg = document.createElement('div');
-            addMsg.style.cssText = 'text-align: center; padding: 20px; color: rgba(255,255,255,0.5);';
-            addMsg.textContent = 'Nenhum participante cadastrado nesta competição.';
-            container.appendChild(addMsg);
+            const msg = document.createElement('div');
+            msg.style.cssText = 'text-align: center; padding: 20px; color: rgba(255,255,255,0.5);';
+            msg.textContent = 'Nenhum participante cadastrado nesta competição.';
+            container.appendChild(msg);
             return;
         }
         
@@ -1033,17 +1065,11 @@ async function carregarRanking() {
         });
         participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
         
-        // Limpar container mantendo o título
-        const titulo = container.querySelector('div:first-child');
-        container.innerHTML = '';
-        if (titulo) container.appendChild(titulo);
-        
-        // Usar DocumentFragment para melhor performance
         const fragment = document.createDocumentFragment();
         let pos = 1;
         const totalParticipantes = participantes.length;
         
-        // Adicionar cabeçalho
+        // Cabeçalho
         const header = document.createElement('div');
         header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
         header.innerHTML = `
@@ -1059,13 +1085,11 @@ async function carregarRanking() {
             const div = document.createElement('div');
             div.className = 'linha-participante';
             
-            // Destacar vencedor
             if (p.acertouTodos === true) {
                 div.style.background = 'rgba(255,215,0,0.15)';
                 div.style.borderLeft = '4px solid #ffd700';
             }
             
-            // Destacar menos acertos (se não for vencedor)
             if (pos === totalParticipantes && p.acertouTodos !== true && totalParticipantes > 2) {
                 div.style.background = 'rgba(220,53,69,0.05)';
                 div.style.borderLeft = '4px solid #dc3545';
@@ -1501,17 +1525,24 @@ async function verificarMaiorConcurso() {
     
     try {
         const sorteiosRef = collection(db, 'sorteios_quina');
-        const maiorQuery = query(sorteiosRef, orderBy('concurso', 'desc'), limit(1));
-        const maiorSnapshot = await getDocs(maiorQuery);
+        // SEM orderBy - buscar todos e ordenar manualmente
+        const querySnapshot = await getDocs(sorteiosRef);
         
-        if (maiorSnapshot.empty) {
+        if (querySnapshot.empty) {
             console.log('📌 Nenhum sorteio encontrado no Firestore');
             return;
         }
         
-        const dados = maiorSnapshot.docs[0].data();
-        const maiorConcurso = dados.concurso;
-        const maiorNumeros = dados.numeros;
+        // Ordenar manualmente por concurso
+        const sorteios = [];
+        querySnapshot.forEach(doc => {
+            sorteios.push({ id: doc.id, ...doc.data() });
+        });
+        sorteios.sort((a, b) => (b.concurso || 0) - (a.concurso || 0));
+        
+        const maior = sorteios[0];
+        const maiorConcurso = maior.concurso;
+        const maiorNumeros = maior.numeros;
         
         console.log(`📌 Maior concurso no Firestore: ${maiorConcurso}`);
         
