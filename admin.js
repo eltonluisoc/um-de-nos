@@ -213,11 +213,13 @@ async function carregarDados() {
 
 async function carregarJogoAtivo() {
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'aberto'), limit(1));
     
-    const querySnapshot = await getDocs(q);
-    if (!querySnapshot.empty) {
-        const jogoDoc = querySnapshot.docs[0];
+    // 1. TENTAR BUSCAR JOGO ATIVO
+    const qAtivo = query(jogosRef, where('status', '==', 'aberto'), limit(1));
+    const ativoSnapshot = await getDocs(qAtivo);
+    
+    if (!ativoSnapshot.empty) {
+        const jogoDoc = ativoSnapshot.docs[0];
         jogoAtualId = jogoDoc.id;
         jogoAtualStatus = jogoDoc.data().status;
         const jogoData = jogoDoc.data();
@@ -227,8 +229,9 @@ async function carregarJogoAtivo() {
         return;
     }
     
-    // Nenhum jogo ativo - buscar último encerrado
-    console.log('⚠️ Nenhuma competição ativa. Buscando último jogo encerrado...');
+    // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
+    console.log('⚠️ Nenhuma competição ativa. Buscando último encerrado...');
+    
     const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
     const encerradoSnapshot = await getDocs(qEncerrado);
     
@@ -237,7 +240,8 @@ async function carregarJogoAtivo() {
         jogoAtualId = jogoDoc.id;
         jogoAtualStatus = 'encerrado';
         const jogoData = jogoDoc.data();
-        console.log('📌 Último jogo encerrado:', jogoData.nome, 'Vencedor:', jogoData.vencedorNome || 'Nenhum');
+        console.log('📌 Último jogo encerrado carregado:', jogoData.nome);
+        console.log('👑 Vencedor:', jogoData.vencedorNome || 'Nenhum');
         
         // Mostrar no dashboard
         const statusDiv = document.getElementById('statusAdmin');
@@ -252,7 +256,23 @@ async function carregarJogoAtivo() {
         return;
     }
     
-    // Nenhum jogo encontrado
+    // 3. BUSCAR QUALQUER JOGO (para debug)
+    console.log('⚠️ Nenhum jogo ativo ou encerrado. Buscando qualquer jogo...');
+    const allSnapshot = await getDocs(jogosRef);
+    if (!allSnapshot.empty) {
+        allSnapshot.forEach(doc => {
+            console.log(`📌 Jogo encontrado: ${doc.id} - ${doc.data().nome} - Status: ${doc.data().status}`);
+        });
+        // Pegar o primeiro jogo disponível
+        const primeiroJogo = allSnapshot.docs[0];
+        jogoAtualId = primeiroJogo.id;
+        jogoAtualStatus = primeiroJogo.data().status;
+        const jogoData = primeiroJogo.data();
+        console.log('📌 Usando jogo:', jogoData.nome, 'Status:', jogoData.status);
+        return;
+    }
+    
+    // 4. NENHUM JOGO ENCONTRADO
     jogoAtualId = null;
     jogoAtualStatus = null;
     jogoBloqueado = false;
