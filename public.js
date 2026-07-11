@@ -7,7 +7,6 @@ import {
     onSnapshot, 
     doc, 
     getDoc,
-    orderBy,
     limit
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -18,7 +17,7 @@ let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - v5');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v6');
     carregarDados();
 });
 
@@ -26,6 +25,9 @@ async function carregarDados() {
     await carregarJogoAtivo();
 }
 
+// ============================================
+// 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo
+// ============================================
 async function carregarJogoAtivo() {
     const jogosRef = collection(db, 'jogos');
     
@@ -58,42 +60,75 @@ async function carregarJogoAtivo() {
             return;
         }
         
-        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
+        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM orderBy)
         console.log('📌 Nenhum jogo ativo. Buscando último encerrado...');
         
-        const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+        const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
         if (!encerradoSnapshot.empty) {
-            const jogoDoc = encerradoSnapshot.docs[0];
-            jogoAtual = jogoDoc.data();
+            // 🔥 ORDENAÇÃO MANUAL - mais recente primeiro
+            const jogos = [];
+            encerradoSnapshot.forEach(doc => {
+                const data = doc.data();
+                jogos.push({ 
+                    id: doc.id, 
+                    nome: data.nome,
+                    encerradoEm: data.encerradoEm,
+                    vencedorNome: data.vencedorNome,
+                    valorInscricao: data.valorInscricao || 50,
+                    totalParticipantes: data.totalParticipantes || 0,
+                    ultimosNumerosSorteados: data.ultimosNumerosSorteados || [],
+                    ultimoConcursoImportado: data.ultimoConcursoImportado,
+                    ...data
+                });
+            });
+            
+            jogos.sort((a, b) => {
+                const dateA = a.encerradoEm?.toDate ? a.encerradoEm.toDate() : new Date(0);
+                const dateB = b.encerradoEm?.toDate ? b.encerradoEm.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            
+            const jogoDoc = jogos[0];
+            jogoAtual = jogoDoc;
             jogoId = jogoDoc.id;
             
-            console.log('📌 Último jogo encerrado:', jogoId, jogoAtual.nome);
+            console.log(`📌 Último jogo encerrado: ${jogoDoc.nome} (${jogoDoc.id})`);
+            console.log(`👑 Vencedor: ${jogoDoc.vencedorNome || 'Nenhum'}`);
             
+            // Mostrar status
             document.getElementById('statusJogo').innerHTML = `
                 <span class="status-badge" style="background:#ff8c00;">🏆 COMPETIÇÃO ENCERRADA 🏆</span>
             `;
             
+            // Mostrar últimos números sorteados
             if (jogoAtual.ultimosNumerosSorteados && jogoAtual.ultimosNumerosSorteados.length > 0) {
                 mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
             }
             
+            // Carregar dados
             await carregarPremiacao();
             await carregarSorteios();
             await carregarNumerosSorteadosGrid();
             await carregarParticipantesPorJogo(jogoId);
             
+            // Mostrar vencedor se houver
             const vencedorNome = jogoAtual.vencedorNome;
             if (vencedorNome) {
                 document.getElementById('vencedorInfo').style.display = 'block';
                 document.getElementById('vencedorNome').innerHTML = `🎉 ${vencedorNome} 🎉`;
-                document.getElementById('vencedorData').innerHTML = `Vencedor da última competição!`;
+                document.getElementById('vencedorData').innerHTML = `Vencedor da competição "${jogoAtual.nome}"!`;
+            } else {
+                // Se não houver vencedor, mostrar mensagem
+                document.getElementById('vencedorInfo').style.display = 'block';
+                document.getElementById('vencedorNome').innerHTML = `⚡ Nenhum vencedor`;
+                document.getElementById('vencedorData').innerHTML = `Competição encerrada sem vencedor`;
             }
             
             const statusSpan = document.getElementById('statusSorteio');
             if (statusSpan) {
-                statusSpan.innerHTML = '🏁 Competição finalizada';
+                statusSpan.innerHTML = `🏁 Competição finalizada em ${jogoAtual.encerradoEm?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}`;
                 statusSpan.className = 'encerrado';
             }
             
@@ -112,14 +147,16 @@ async function carregarJogoAtivo() {
         await carregarUltimoVencedor();
         
     } catch (error) {
-        console.error('Erro ao carregar jogo:', error);
+        console.error('❌ Erro ao carregar jogo:', error);
         document.getElementById('listaParticipantes').innerHTML = `
             <div class="loading">❌ Erro ao carregar dados</div>
         `;
     }
 }
 
-// Função auxiliar para carregar participantes por jogo
+// ============================================
+// FUNÇÃO CORRIGIDA - carregarParticipantesPorJogo
+// ============================================
 async function carregarParticipantesPorJogo(jogoId) {
     try {
         const participantesRef = collection(db, 'participantes');
@@ -139,17 +176,139 @@ async function carregarParticipantesPorJogo(jogoId) {
         const totalSpan = document.getElementById('totalParticipantes');
         const maiorSpan = document.getElementById('maiorPontuacao');
         if (totalSpan) totalSpan.textContent = participantes.length;
-        if (maiorSpan && participantes.length > 0) {
+        
+        if (participantes.length > 0) {
             const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
-            maiorSpan.textContent = `${maiorAcertos}`;
+            if (maiorSpan) maiorSpan.textContent = `${maiorAcertos}/17`;
+        } else {
+            if (maiorSpan) maiorSpan.textContent = '0';
         }
         
         atualizarRanking(participantes);
         
     } catch (error) {
-        console.error('Erro ao carregar participantes:', error);
+        console.error('❌ Erro ao carregar participantes:', error);
     }
 }
+
+// ============================================
+// FUNÇÃO CORRIGIDA - atualizarRanking
+// ============================================
+function atualizarRanking(participantes) {
+    const container = document.getElementById('listaParticipantes');
+    if (!container) return;
+    
+    if (participantes.length === 0) {
+        container.innerHTML = '<div class="loading">📋 Nenhum participante cadastrado nesta competição...</div>';
+        return;
+    }
+    
+    // 🔥 ORDENAÇÃO: primeiro quem acertou tudo, depois por acertos
+    const ordenados = [...participantes].sort((a, b) => {
+        if (a.acertouTodos && !b.acertouTodos) return -1;
+        if (!a.acertouTodos && b.acertouTodos) return 1;
+        return (b.acertos || 0) - (a.acertos || 0);
+    });
+    
+    const maiorAcertos = ordenados[0]?.acertos || 0;
+    const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
+    
+    let html = '';
+    let posicaoAtual = 1;
+    
+    for (let i = 0; i < ordenados.length; i++) {
+        const p = ordenados[i];
+        
+        // Calcular posição (considerando empates)
+        if (i > 0 && p.acertos === ordenados[i-1].acertos) {
+            // Mesma posição do anterior
+        } else {
+            posicaoAtual = i + 1;
+        }
+        
+        const progressoPercent = Math.min(((p.acertos || 0) / 17) * 100, 100);
+        const isChampion = p.acertouTodos === true;
+        const isLastPlace = p.acertos === menorAcertos && ordenados.length > 2 && !isChampion;
+        
+        // Determinar classe da linha
+        let rowClass = '';
+        let posText = '';
+        let medalha = '';
+        
+        if (isChampion) {
+            rowClass = 'first-place champion';
+            medalha = '👑';
+            posText = `${medalha} 1º`;
+        } else if (posicaoAtual === 1 && !isChampion) {
+            rowClass = 'first-place';
+            medalha = '🏆';
+            posText = `${medalha} 1º`;
+        } else if (posicaoAtual === 2 && !isChampion && ordenados[0].acertos !== p.acertos) {
+            rowClass = 'second-place';
+            medalha = '🥈';
+            posText = `${medalha} 2º`;
+        } else if (posicaoAtual === 3 && !isChampion && ordenados[1]?.acertos !== p.acertos) {
+            medalha = '🥉';
+            posText = `${medalha} ${posicaoAtual}º`;
+        } else if (isLastPlace) {
+            rowClass = 'last-place';
+            medalha = '🎯';
+            posText = `${medalha} ${posicaoAtual}º`;
+        } else {
+            posText = `${posicaoAtual}º`;
+        }
+        
+        // Números do participante
+        let numerosHtml = '<div class="player-numbers">';
+        if (p.numeros && Array.isArray(p.numeros)) {
+            for (const num of p.numeros) {
+                const acertou = numerosSorteadosAcumulados.includes(num);
+                numerosHtml += `<span class="number-badge ${acertou ? 'hit' : ''}">${num}</span>`;
+            }
+        }
+        numerosHtml += '</div>';
+        
+        // Badge de prêmio
+        let premioBadge = '';
+        if (p.premioGanho && p.premioGanho > 0) {
+            premioBadge = `<span style="color:#ffd700;font-weight:bold;font-size:0.75em;margin-left:8px;">💰 R$ ${p.premioGanho.toFixed(2)}</span>`;
+        }
+        
+        let lastBadge = '';
+        if (isLastPlace && !isChampion) {
+            lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
+        }
+        
+        html += `<div class="ranking-row ${rowClass}" onclick="window.mostrarDetalhes('${p.id}')">
+                    <div class="ranking-pos">${posText}</div>
+                    <div class="ranking-player">
+                        <div class="player-name">
+                            ${p.nome} 
+                            ${lastBadge}
+                            ${premioBadge}
+                            ${isChampion ? ' ⭐' : ''}
+                        </div>
+                        ${numerosHtml}
+                    </div>
+                    <div class="ranking-score">${p.acertos || 0}<small>/17</small></div>
+                    <div class="ranking-progress">
+                        <div class="progress-wrapper">
+                            <div class="progress-bar-container">
+                                <div class="progress-fill" style="width: ${progressoPercent}%; background: ${isChampion ? 'linear-gradient(90deg, #ffd700, #ff8c00)' : 'linear-gradient(90deg, #f1c40f, #ff8c00)'};"></div>
+                            </div>
+                            <div class="progress-percent">${Math.round(progressoPercent)}%</div>
+                        </div>
+                    </div>
+                </div>`;
+    }
+    
+    container.innerHTML = html;
+    console.log(`✅ Ranking atualizado com ${ordenados.length} participantes`);
+}
+
+// ============================================
+// FUNÇÕES AUXILIARES (mantidas iguais)
+// ============================================
 
 async function carregarPremiacao() {
     if (!jogoAtual) return;
@@ -180,29 +339,33 @@ async function carregarSorteios() {
     const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
     const querySnapshot = await getDocs(q);
     sorteiosRealizados = [];
+    numerosSorteadosAcumulados = [];
     
     const container = document.getElementById('listaSorteios');
     if (!container) return;
     
     if (querySnapshot.empty) {
-        container.innerHTML = '<div>Nenhum sorteio importado ainda.</div>';
+        container.innerHTML = '<div style="color:rgba(255,255,255,0.4);">Nenhum sorteio importado ainda.</div>';
         return;
     }
     
     const sorteios = [];
     querySnapshot.forEach(doc => {
-        sorteios.push({ id: doc.id, ...doc.data() });
+        const data = doc.data();
+        sorteios.push({ id: doc.id, ...data });
+        if (data.numeros) {
+            numerosSorteadosAcumulados.push(...data.numeros);
+        }
     });
     sorteios.sort((a, b) => b.concurso - a.concurso);
+    sorteiosRealizados = sorteios;
     
     let html = '';
     for (const s of sorteios) {
-        sorteiosRealizados.push(s);
         html += `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`;
-        numerosSorteadosAcumulados.push(...s.numeros);
     }
     container.innerHTML = html;
-    console.log(`${sorteios.length} sorteios carregados`);
+    console.log(`${sorteios.length} sorteios carregados, ${numerosSorteadosAcumulados.length} números acumulados`);
 }
 
 async function carregarNumerosSorteadosGrid() {
@@ -212,7 +375,7 @@ async function carregarNumerosSorteadosGrid() {
     const totalSpan = document.getElementById('totalSorteados');
     
     if (!container) {
-        console.log('Elemento numerosSorteadosGrid não encontrado - ignorando');
+        console.log('Elemento numerosSorteadosGrid não encontrado');
         return;
     }
     
@@ -223,13 +386,15 @@ async function carregarNumerosSorteadosGrid() {
     const frequencia = new Map();
     for (const doc of querySnapshot.docs) {
         const s = doc.data();
-        for (const num of s.numeros) {
-            frequencia.set(num, (frequencia.get(num) || 0) + 1);
+        if (s.numeros) {
+            for (const num of s.numeros) {
+                frequencia.set(num, (frequencia.get(num) || 0) + 1);
+            }
         }
     }
     
     if (frequencia.size === 0) {
-        container.innerHTML = '<div style="text-align: center;">Nenhum número sorteado ainda</div>';
+        container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4);">Nenhum número sorteado ainda</div>';
         if (totalSpan) totalSpan.innerHTML = '';
         return;
     }
@@ -285,131 +450,13 @@ function escutarParticipantes() {
         if (totalSpan) totalSpan.textContent = participantes.length;
         if (maiorSpan && participantes.length > 0) {
             const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
-            maiorSpan.textContent = `${maiorAcertos}`;
+            maiorSpan.textContent = `${maiorAcertos}/17`;
         }
         
     }, (error) => {
-        console.error('Erro ao escutar participantes:', error);
+        console.error('❌ Erro ao escutar participantes:', error);
     });
 }
-
-function atualizarRanking(participantes) {
-    const container = document.getElementById('listaParticipantes');
-    if (!container) return;
-    
-    if (participantes.length === 0) {
-        container.innerHTML = '<div class="loading">📋 Nenhum participante cadastrado ainda...</div>';
-        return;
-    }
-    
-    const ordenados = [...participantes].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
-    const maiorAcertos = ordenados[0]?.acertos || 0;
-    const menorAcertos = ordenados[ordenados.length - 1]?.acertos || 0;
-    
-    const posicoes = [];
-    let posicaoAtual = 1;
-    for (let i = 0; i < ordenados.length; i++) {
-        if (i > 0 && ordenados[i].acertos === ordenados[i-1].acertos) {
-            posicoes.push(posicaoAtual);
-        } else {
-            posicaoAtual = i + 1;
-            posicoes.push(posicaoAtual);
-        }
-    }
-    
-    const primeiroAcerto = ordenados[0]?.acertos || 0;
-    const temEmpatePrimeiro = ordenados.filter(p => p.acertos === primeiroAcerto).length > 1;
-    
-    let html = '';
-    
-    ordenados.forEach((p, index) => {
-        const posicao = posicoes[index];
-        const progressoPercent = ((p.acertos || 0) / 17) * 100;
-        const isChampion = p.acertouTodos === true;
-        const isLastPlace = p.acertos === menorAcertos;
-        
-        let rowClass = '';
-        let medalhaIcon = '';
-        
-        if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
-            rowClass = 'first-place';
-            medalhaIcon = '👑';
-        } else if (posicao === 1 && !temEmpatePrimeiro) {
-            rowClass = 'first-place';
-            medalhaIcon = '👑';
-        } else if (posicao === 2 && ordenados[0].acertos !== p.acertos) {
-            rowClass = 'second-place';
-            medalhaIcon = '🥈';
-        } else if (isLastPlace && ordenados.length > 2) {
-            rowClass = 'last-place';
-            medalhaIcon = '🎯';
-        }
-        
-        if (isChampion) rowClass += ' champion';
-        
-        let posText = '';
-        if (temEmpatePrimeiro && p.acertos === primeiroAcerto) {
-            posText = `👑 ${posicao}º`;
-        } else if (posicao === 1 && !temEmpatePrimeiro) {
-            posText = `👑 1º`;
-        } else if (posicao === 2 && ordenados[0].acertos !== p.acertos) {
-            posText = `🥈 2º`;
-        } else if (isLastPlace && ordenados.length > 2) {
-            posText = `🎯 ${posicao}º`;
-        } else {
-            posText = `${posicao}º`;
-        }
-        
-        let numerosHtml = '<div class="player-numbers">';
-        if (p.numeros && Array.isArray(p.numeros)) {
-            for (const num of p.numeros) {
-                const acertou = numerosSorteadosAcumulados.includes(num);
-                numerosHtml += `<span class="number-badge ${acertou ? 'hit' : ''}">${num}</span>`;
-            }
-        }
-        numerosHtml += '</div>';
-        
-        let lastBadge = '';
-        if (isLastPlace && ordenados.length > 2 && !temEmpatePrimeiro) {
-            lastBadge = '<span class="last-place-badge">🎯 MENOS ACERTOS</span>';
-        }
-        
-        html += `<div class="ranking-row ${rowClass}">
-                    <div class="ranking-pos">${posText}</div>
-                    <div class="ranking-player">
-                        <div class="player-name">${p.nome} ${lastBadge}</div>
-                        ${numerosHtml}
-                    </div>
-                    <div class="ranking-score">${p.acertos || 0}<small>/17</small></div>
-                    <div class="ranking-progress">
-                        <div class="progress-wrapper">
-                            <div class="progress-bar-container">
-                                <div class="progress-fill" style="width: ${progressoPercent}%"></div>
-                            </div>
-                            <div class="progress-percent">${Math.round(progressoPercent)}%</div>
-                        </div>
-                    </div>
-                </div>`;
-    });
-    
-    container.innerHTML = html;
-}
-
-window.mostrarDetalhes = function(participanteId) {
-    const participante = participantes.find(p => p.id === participanteId);
-    if (participante) {
-        let acertos = 0;
-        let msg = `📋 ${participante.nome}\n\n🎯 Números Selecionados:\n`;
-        for (const num of participante.numeros) {
-            const acertou = numerosSorteadosAcumulados.includes(num);
-            if (acertou) acertos++;
-            msg += `${num} ${acertou ? '✅' : '❌'}  `;
-        }
-        msg += `\n\n✅ Acertos: ${acertos}/17`;
-        msg += `\n📊 Progresso: ${Math.round((acertos/17)*100)}%`;
-        alert(msg);
-    }
-};
 
 function mostrarNumerosSorteados(numeros) {
     const container = document.getElementById('numerosSorteio');
@@ -434,7 +481,7 @@ function verificarVencedor(participantes) {
     const vencedorNome = document.getElementById('vencedorNome');
     const vencedorData = document.getElementById('vencedorData');
     
-    if (vencedor) {
+    if (vencedor && jogoAtual?.status !== 'encerrado') {
         if (statusDiv) {
             statusDiv.innerHTML = `<span class="status-badge" style="background:#ff8c00;">🏆 JOGO ENCERRADO - VENCEDOR ENCONTRADO 🏆</span>`;
         }
@@ -446,24 +493,32 @@ function verificarVencedor(participantes) {
 }
 
 async function carregarUltimoVencedor() {
-    const historicoRef = collection(db, 'historico_vencedores');
-    const querySnapshot = await getDocs(historicoRef);
-    
-    const historico = [];
-    querySnapshot.forEach(doc => {
-        historico.push({ id: doc.id, ...doc.data() });
-    });
-    historico.sort((a, b) => b.dataVitoria?.toDate() - a.dataVitoria?.toDate());
-    
-    if (historico.length > 0) {
-        const ultimoVencedor = historico[0];
-        const vencedorDiv = document.getElementById('vencedorInfo');
-        const vencedorNome = document.getElementById('vencedorNome');
-        const vencedorData = document.getElementById('vencedorData');
+    try {
+        const historicoRef = collection(db, 'historico_vencedores');
+        const querySnapshot = await getDocs(historicoRef);
         
-        if (vencedorDiv) vencedorDiv.style.display = 'block';
-        if (vencedorNome) vencedorNome.innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
-        if (vencedorData) vencedorData.innerHTML = `Vitória em ${new Date(ultimoVencedor.dataVitoria?.toDate()).toLocaleDateString('pt-BR')}`;
+        const historico = [];
+        querySnapshot.forEach(doc => {
+            historico.push({ id: doc.id, ...doc.data() });
+        });
+        historico.sort((a, b) => {
+            const dateA = a.dataVitoria?.toDate?.() || new Date(0);
+            const dateB = b.dataVitoria?.toDate?.() || new Date(0);
+            return dateB - dateA;
+        });
+        
+        if (historico.length > 0) {
+            const ultimoVencedor = historico[0];
+            const vencedorDiv = document.getElementById('vencedorInfo');
+            const vencedorNome = document.getElementById('vencedorNome');
+            const vencedorData = document.getElementById('vencedorData');
+            
+            if (vencedorDiv) vencedorDiv.style.display = 'block';
+            if (vencedorNome) vencedorNome.innerHTML = `🏆 Último vencedor: ${ultimoVencedor.participanteNome}`;
+            if (vencedorData) vencedorData.innerHTML = `Vitória em ${ultimoVencedor.dataVitoria?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}`;
+        }
+    } catch (error) {
+        console.error('❌ Erro ao carregar último vencedor:', error);
     }
 }
 
@@ -520,3 +575,35 @@ async function atualizarStatusSorteio() {
         statusSpan.className = 'erro';
     }
 }
+
+// ============================================
+// FUNÇÃO PARA MOSTRAR DETALHES DO PARTICIPANTE
+// ============================================
+window.mostrarDetalhes = function(participanteId) {
+    const participante = participantes.find(p => p.id === participanteId);
+    if (!participante) return;
+    
+    let acertos = 0;
+    let msg = `📋 ${participante.nome}\n\n🎯 Números Selecionados (17):\n`;
+    
+    if (participante.numeros && Array.isArray(participante.numeros)) {
+        for (const num of participante.numeros) {
+            const acertou = numerosSorteadosAcumulados.includes(num);
+            if (acertou) acertos++;
+            msg += `${num} ${acertou ? '✅' : '❌'}  `;
+        }
+    }
+    
+    msg += `\n\n✅ Acertos: ${acertos}/17`;
+    msg += `\n📊 Progresso: ${Math.round((acertos/17)*100)}%`;
+    
+    if (participante.acertouTodos) {
+        msg += '\n\n🏆 VENCEDOR! Acertou todos os 17 números!';
+    }
+    
+    alert(msg);
+};
+
+// EXPORTAR PARA O CONSOLE
+window.carregarJogoAtivo = carregarJogoAtivo;
+window.atualizarRanking = atualizarRanking;
