@@ -211,7 +211,12 @@ async function carregarDados() {
     iniciarBuscaAutomaticaMelhorada();
 }
 
+// ============================================
+// 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo
+// ============================================
 async function carregarJogoAtivo() {
+    console.log('🔍 carregarJogoAtivo() - Iniciando...');
+    
     const jogosRef = collection(db, 'jogos');
     
     // 1. TENTAR BUSCAR JOGO ATIVO
@@ -226,6 +231,16 @@ async function carregarJogoAtivo() {
         jogoBloqueado = jogoData.primeiraConferenciaRealizada === true;
         console.log('🏆 Competição ativa carregada:', jogoAtualId, jogoData.nome);
         console.log('📌 Primeira conferência:', jogoData.primeiraConferenciaRealizada);
+        
+        // Atualizar UI
+        const statusDiv = document.getElementById('statusAdmin');
+        if (statusDiv) {
+            statusDiv.innerHTML = `
+                <p>🏆 Competição ativa: ${jogoData.nome}</p>
+                <p>📌 Status: ATIVO</p>
+                <p>👥 Participantes: ${await contarParticipantesPorCompeticao(jogoAtualId)}</p>
+            `;
+        }
         return;
     }
     
@@ -236,7 +251,7 @@ async function carregarJogoAtivo() {
     const encerradoSnapshot = await getDocs(qEncerrado);
     
     if (!encerradoSnapshot.empty) {
-        // Ordenar MANUALMENTE por encerradoEm
+        // Ordenar MANUALMENTE por encerradoEm (mais recente primeiro)
         const jogos = [];
         encerradoSnapshot.forEach(doc => {
             const data = doc.data();
@@ -250,9 +265,11 @@ async function carregarJogoAtivo() {
                 ...data
             });
         });
+        
+        // 🔥 ORDENAÇÃO MANUAL - mais recente primeiro
         jogos.sort((a, b) => {
-            const dateA = a.encerradoEm?.toDate() || new Date(0);
-            const dateB = b.encerradoEm?.toDate() || new Date(0);
+            const dateA = a.encerradoEm?.toDate ? a.encerradoEm.toDate() : new Date(0);
+            const dateB = b.encerradoEm?.toDate ? b.encerradoEm.toDate() : new Date(0);
             return dateB - dateA;
         });
         
@@ -268,7 +285,7 @@ async function carregarJogoAtivo() {
             statusDiv.innerHTML = `
                 <p>🏆 Última competição: ${jogoDoc.nome}</p>
                 <p>👑 Vencedor: ${jogoDoc.vencedorNome || 'Não houve vencedor'}</p>
-                <p>📅 Encerrada em: ${jogoDoc.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</p>
+                <p>📅 Encerrada em: ${jogoDoc.encerradoEm?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}</p>
                 <p>📊 Último sorteio: ${jogoDoc.ultimoConcursoImportado || 'Nenhum'}</p>
             `;
         }
@@ -281,6 +298,259 @@ async function carregarJogoAtivo() {
     jogoBloqueado = false;
     if (intervaloBusca) clearInterval(intervaloBusca);
     console.log('⚠️ Nenhuma competição encontrada');
+}
+
+// ============================================
+// 🚀 FUNÇÃO CORRIGIDA - carregarRanking
+// ============================================
+async function carregarRanking() {
+    const container = document.getElementById('listaRankingAdmin');
+    if (!container) {
+        console.log('⚠️ Container listaRankingAdmin não encontrado');
+        return;
+    }
+    
+    console.log('📊 carregarRanking() - Iniciando...');
+    console.log(`📌 jogoAtualId: ${jogoAtualId}`);
+    console.log(`📌 jogoAtualStatus: ${jogoAtualStatus}`);
+    
+    // Se não há jogo ativo, buscar o último encerrado
+    let jogoIdParaBuscar = jogoAtualId;
+    let nomeCompeticao = '';
+    let isEncerrado = false;
+    
+    // Se não tem jogo ativo, buscar o último encerrado (SEM orderBy)
+    if (!jogoIdParaBuscar || jogoAtualStatus !== 'aberto') {
+        console.log('🔍 Buscando último jogo encerrado para o ranking...');
+        
+        const jogosRef = collection(db, 'jogos');
+        const q = query(jogosRef, where('status', '==', 'encerrado'));
+        const querySnapshot = await getDocs(q);
+        
+        if (!querySnapshot.empty) {
+            // Ordenar MANUALMENTE por encerradoEm
+            const jogos = [];
+            querySnapshot.forEach(doc => {
+                const data = doc.data();
+                jogos.push({ 
+                    id: doc.id, 
+                    nome: data.nome,
+                    encerradoEm: data.encerradoEm,
+                    vencedorNome: data.vencedorNome,
+                    ...data
+                });
+            });
+            
+            jogos.sort((a, b) => {
+                const dateA = a.encerradoEm?.toDate ? a.encerradoEm.toDate() : new Date(0);
+                const dateB = b.encerradoEm?.toDate ? b.encerradoEm.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            
+            const jogoDoc = jogos[0];
+            jogoIdParaBuscar = jogoDoc.id;
+            nomeCompeticao = jogoDoc.nome || 'Competição encerrada';
+            isEncerrado = true;
+            console.log(`📌 Mostrando ranking do último jogo encerrado: ${nomeCompeticao} (ID: ${jogoIdParaBuscar})`);
+        } else {
+            container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição encontrada.</div>';
+            return;
+        }
+    }
+    
+    if (!jogoIdParaBuscar) {
+        container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição ativa ou encerrada.</div>';
+        return;
+    }
+    
+    try {
+        console.log(`🔍 Buscando participantes do jogo: ${jogoIdParaBuscar}`);
+        const participantesRef = collection(db, 'participantes');
+        const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
+        const querySnapshot = await getDocs(q);
+        
+        container.innerHTML = '';
+        
+        // Adicionar título
+        const titulo = document.createElement('div');
+        titulo.style.cssText = 'color: #ff8c00; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1em;';
+        titulo.textContent = isEncerrado ? `🏆 ${nomeCompeticao} (ENCERRADA)` : '🏆 RANKING ATUAL';
+        container.appendChild(titulo);
+        
+        if (querySnapshot.empty) {
+            const msg = document.createElement('div');
+            msg.style.cssText = 'text-align: center; padding: 20px; color: rgba(255,255,255,0.5);';
+            msg.textContent = 'Nenhum participante cadastrado nesta competição.';
+            container.appendChild(msg);
+            return;
+        }
+        
+        // Converter para array e ordenar
+        const participantes = [];
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            participantes.push({ 
+                id: doc.id, 
+                nome: data.nome || 'Anônimo',
+                numeros: data.numeros || [],
+                acertos: data.acertos || 0,
+                acertouTodos: data.acertouTodos === true,
+                ordemVitoria: data.ordemVitoria || null,
+                premioGanho: data.premioGanho || 0,
+                ...data
+            });
+        });
+        
+        // 🔥 ORDENAÇÃO: primeiro quem acertou tudo, depois por acertos
+        participantes.sort((a, b) => {
+            // Primeiro: quem acertou todos
+            if (a.acertouTodos && !b.acertouTodos) return -1;
+            if (!a.acertouTodos && b.acertouTodos) return 1;
+            // Depois por número de acertos
+            return (b.acertos || 0) - (a.acertos || 0);
+        });
+        
+        console.log(`✅ ${participantes.length} participantes encontrados e ordenados`);
+        
+        // Cabeçalho
+        const header = document.createElement('div');
+        header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
+        header.innerHTML = `
+            <span>Pos</span>
+            <span>Participante</span>
+            <span>Acertos</span>
+            <span>Progresso</span>
+        `;
+        container.appendChild(header);
+        
+        // Listar participantes
+        let pos = 1;
+        const total = participantes.length;
+        const fragment = document.createDocumentFragment();
+        
+        for (const p of participantes) {
+            const progresso = Math.min(((p.acertos || 0) / 17) * 100, 100);
+            const div = document.createElement('div');
+            div.className = 'linha-participante';
+            div.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 12px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);';
+            
+            // Estilo para vencedor
+            if (p.acertouTodos === true) {
+                div.style.background = 'rgba(255,215,0,0.15)';
+                div.style.borderLeft = '4px solid #ffd700';
+                div.style.borderRadius = '4px';
+            }
+            
+            // Medalhas e emojis
+            let posicaoDisplay = pos;
+            if (p.acertouTodos) {
+                posicaoDisplay = `👑 ${pos}º`;
+            } else if (pos === 1 && !p.acertouTodos) {
+                posicaoDisplay = '🏆 1º';
+            } else if (pos === 2) {
+                posicaoDisplay = '🥈 2º';
+            } else if (pos === 3) {
+                posicaoDisplay = '🥉 3º';
+            } else {
+                posicaoDisplay = `${pos}º`;
+            }
+            
+            // Prêmio
+            let premioTexto = '';
+            if (p.premioGanho && p.premioGanho > 0) {
+                premioTexto = ` 💰 R$ ${p.premioGanho.toFixed(2)}`;
+            }
+            
+            div.innerHTML = `
+                <span>${posicaoDisplay}</span>
+                <span><strong>${p.nome}</strong>${premioTexto}</span>
+                <span>${p.acertos || 0}/17</span>
+                <div class="barra-progresso" style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 8px; overflow: hidden; width: 100px;">
+                    <div class="barra-progresso-fill" style="background: ${p.acertouTodos ? '#ffd700' : '#f1c40f'}; height: 100%; width: ${progresso}%; transition: width 0.5s ease; border-radius: 10px;"></div>
+                </div>
+            `;
+            fragment.appendChild(div);
+            pos++;
+        }
+        
+        container.appendChild(fragment);
+        
+        // Mostrar informações adicionais se for jogo encerrado
+        if (isEncerrado) {
+            const vencedor = participantes.find(p => p.acertouTodos === true);
+            if (vencedor) {
+                const info = document.createElement('div');
+                info.style.cssText = 'margin-top: 15px; padding: 12px; background: rgba(255,215,0,0.1); border-radius: 10px; text-align: center; border: 1px solid rgba(255,215,0,0.3);';
+                info.innerHTML = `
+                    🎉 <strong>CAMPEÃO:</strong> ${vencedor.nome} 🎉<br>
+                    💰 <strong>Prêmio:</strong> R$ ${(vencedor.premioGanho || 0).toFixed(2)}
+                `;
+                container.appendChild(info);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Erro ao carregar ranking:', error);
+        container.innerHTML = `<div style="text-align: center; padding: 20px; color: #dc3545;">Erro ao carregar ranking: ${error.message}</div>`;
+    }
+}
+
+// ============================================
+// FUNÇÃO DE TESTE PARA DIAGNÓSTICO
+// ============================================
+window.diagnosticar = async function() {
+    console.log('🔍 INICIANDO DIAGNÓSTICO DO RANKING...');
+    
+    try {
+        // 1. Verificar todos os jogos
+        console.log('\n📋 LISTA DE JOGOS:');
+        const jogosRef = collection(db, 'jogos');
+        const allGames = await getDocs(jogosRef);
+        allGames.docs.forEach(doc => {
+            const data = doc.data();
+            console.log(`- Jogo ${doc.id}: status="${data.status}", nome="${data.nome}", encerradoEm=${data.encerradoEm ? '✅' : '❌'}`);
+        });
+        
+        // 2. Buscar jogos encerrados
+        console.log('\n🔎 BUSCANDO JOGOS ENCERRADOS:');
+        const q = query(jogosRef, where('status', '==', 'encerrado'));
+        const encerrados = await getDocs(q);
+        console.log(`Encontrados: ${encerrados.size} jogos encerrados`);
+        encerrados.docs.forEach(doc => {
+            const data = doc.data();
+            console.log(`- ${doc.id}: "${data.nome}", encerradoEm=${data.encerradoEm?.toDate?.()?.toLocaleString() || 'N/A'}`);
+        });
+        
+        // 3. Verificar participantes do jogo atual
+        if (jogoAtualId) {
+            console.log(`\n👥 PARTICIPANTES DO JOGO ${jogoAtualId}:`);
+            const participantesRef = collection(db, 'participantes');
+            const qp = query(participantesRef, where('jogoId', '==', jogoAtualId));
+            const participantes = await getDocs(qp);
+            console.log(`Encontrados: ${participantes.size} participantes`);
+            participantes.docs.forEach(doc => {
+                const data = doc.data();
+                console.log(`- ${doc.id}: ${data.nome} - ${data.acertos || 0} acertos`);
+            });
+        }
+        
+        console.log('\n✅ DIAGNÓSTICO CONCLUÍDO');
+        console.log('💡 Execute carregarRanking() manualmente para testar');
+        
+    } catch (error) {
+        console.error('❌ ERRO NO DIAGNÓSTICO:', error);
+    }
+};
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+async function contarParticipantesPorCompeticao(competicaoId) {
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', competicaoId));
+    const snapshot = await getDocs(q);
+    return snapshot.size;
 }
 
 async function carregarCompeticaoPreparandoValor() {
@@ -312,13 +582,6 @@ async function carregarCompeticaoPreparandoValor() {
         }
         competicaoPreparandoId = null;
     }
-}
-
-async function contarParticipantesPorCompeticao(competicaoId) {
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', competicaoId));
-    const snapshot = await getDocs(q);
-    return snapshot.size;
 }
 
 // ============================================
@@ -408,11 +671,11 @@ async function atualizarStatusGame() {
                     </div>
                     <div class="status-item">
                         <span class="status-label">Data Criação</span>
-                        <span class="status-value">${jogoData.createdAt?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                        <span class="status-value">${jogoData.createdAt?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}</span>
                     </div>
                     <div class="status-item">
                         <span class="status-label">Data Ativação</span>
-                        <span class="status-value">${jogoData.dataInicio?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                        <span class="status-value">${jogoData.dataInicio?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}</span>
                     </div>
                 </div>
             </div>
@@ -420,12 +683,22 @@ async function atualizarStatusGame() {
     } else {
         // Verificar se há jogo encerrado
         const jogosEncerradosRef = collection(db, 'jogos');
-        const qEncerrado = query(jogosEncerradosRef, where('status', '==', 'encerrado'), orderBy('encerradoEm', 'desc'), limit(1));
+        const qEncerrado = query(jogosEncerradosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
         if (!encerradoSnapshot.empty) {
-            const jogoDoc = encerradoSnapshot.docs[0];
-            const jogoData = jogoDoc.data();
+            // Ordenar manualmente
+            const jogos = [];
+            encerradoSnapshot.forEach(doc => {
+                jogos.push({ id: doc.id, ...doc.data() });
+            });
+            jogos.sort((a, b) => {
+                const dateA = a.encerradoEm?.toDate ? a.encerradoEm.toDate() : new Date(0);
+                const dateB = b.encerradoEm?.toDate ? b.encerradoEm.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            const jogoDoc = jogos[0];
+            const jogoData = jogoDoc;
             const totalParticipantes = await contarParticipantesPorCompeticao(jogoDoc.id);
             const vencedorNome = jogoData.vencedorNome || 'Nenhum';
             
@@ -454,7 +727,7 @@ async function atualizarStatusGame() {
                         </div>
                         <div class="status-item">
                             <span class="status-label">Data Encerramento</span>
-                            <span class="status-value">${jogoData.encerradoEm?.toDate()?.toLocaleDateString('pt-BR') || '-'}</span>
+                            <span class="status-value">${jogoData.encerradoEm?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}</span>
                         </div>
                     </div>
                 </div>
@@ -540,21 +813,25 @@ async function carregarSelectCompeticoes() {
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'preparando'), orderBy('createdAt', 'desc'));
+    const q = query(jogosRef, where('status', '==', 'preparando'));
     const querySnapshot = await getDocs(q);
     
-    select.innerHTML = '<option value="">-- Selecione uma competição para ATIVAR --</option>';
+    // Ordenar manualmente
+    const jogos = [];
+    querySnapshot.forEach(doc => {
+        jogos.push({ id: doc.id, ...doc.data() });
+    });
+    jogos.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB - dateA;
+    });
     
-    let primeira = true;
-    for (const doc of querySnapshot.docs) {
-        const jogo = doc.data();
+    select.innerHTML = '<option value="">-- Selecione uma competição para ATIVAR --</option>';
+    for (const jogo of jogos) {
         const option = document.createElement('option');
-        option.value = doc.id;
+        option.value = jogo.id;
         option.textContent = `🟡 ${jogo.nome} (PREPARANDO) - ${jogo.totalParticipantes || 0} participantes`;
-        if (primeira) {
-            option.selected = true;
-            primeira = false;
-        }
         select.appendChild(option);
     }
     
@@ -568,13 +845,24 @@ async function carregarSelectCompeticoesCadastro() {
     if (!select) return;
     
     const jogosRef = collection(db, 'jogos');
-    const q = query(jogosRef, where('status', '==', 'preparando'), orderBy('createdAt', 'desc'));
+    const q = query(jogosRef, where('status', '==', 'preparando'));
     const querySnapshot = await getDocs(q);
+    
+    // Ordenar manualmente
+    const jogos = [];
+    querySnapshot.forEach(doc => {
+        jogos.push({ id: doc.id, ...doc.data() });
+    });
+    jogos.sort((a, b) => {
+        const dateA = a.createdAt?.toDate ? a.createdAt.toDate() : new Date(0);
+        const dateB = b.createdAt?.toDate ? b.createdAt.toDate() : new Date(0);
+        return dateB - dateA;
+    });
     
     select.innerHTML = '';
     const bloqueioDiv = document.getElementById('bloqueioCadastro');
     
-    if (querySnapshot.empty) {
+    if (jogos.length === 0) {
         select.innerHTML = '<option value="">-- Nenhuma competição em PREPARAÇÃO --</option>';
         if (bloqueioDiv) bloqueioDiv.style.display = 'block';
         document.getElementById('btnSalvarParticipante')?.setAttribute('disabled', 'disabled');
@@ -582,16 +870,10 @@ async function carregarSelectCompeticoesCadastro() {
         if (bloqueioDiv) bloqueioDiv.style.display = 'none';
         document.getElementById('btnSalvarParticipante')?.removeAttribute('disabled');
         
-        let primeira = true;
-        for (const doc of querySnapshot.docs) {
-            const jogo = doc.data();
+        for (const jogo of jogos) {
             const option = document.createElement('option');
-            option.value = doc.id;
+            option.value = jogo.id;
             option.textContent = `🟡 ${jogo.nome} - ${jogo.totalParticipantes || 0} participantes (R$ ${jogo.valorInscricao || 20})`;
-            if (primeira) {
-                option.selected = true;
-                primeira = false;
-            }
             select.appendChild(option);
         }
     }
@@ -610,7 +892,7 @@ async function carregarSelectCompeticaoLista() {
     });
     jogos.sort((a, b) => {
         const ordem = { 'aberto': 1, 'preparando': 2, 'encerrado': 3 };
-        return ordem[a.status] - ordem[b.status];
+        return (ordem[a.status] || 99) - (ordem[b.status] || 99);
     });
     
     select.innerHTML = '';
@@ -676,10 +958,10 @@ async function carregarParticipantesPorCompeticao(competicaoId) {
         tbody.innerHTML = '';
         for (const p of participantes) {
             const tr = document.createElement('tr');
-            const dataCadastro = p.dataCadastro?.toDate()?.toLocaleString('pt-BR') || '-';
+            const dataCadastro = p.dataCadastro?.toDate?.()?.toLocaleString('pt-BR') || '-';
             tr.innerHTML = `
                 <td><strong>${p.nome}</strong></td>
-                <td style="font-size:11px;">${p.numeros.join(', ')}</td>
+                <td style="font-size:11px;">${p.numeros?.join(', ') || '-'}</td>
                 <td>${p.acertos || 0}/17</td>
                 <td>${dataCadastro}</td>
                 <td><button class="btn-danger" onclick="window.excluirParticipante('${p.id}')">Excluir</button></td>
@@ -988,133 +1270,6 @@ function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
 }
 
 // ============================================
-// RANKING
-// ============================================
-
-async function carregarRanking() {
-    const container = document.getElementById('listaRankingAdmin');
-    if (!container) return;
-    
-    // Se não há jogo ativo, buscar o último encerrado
-    let jogoIdParaBuscar = jogoAtualId;
-    let jogoStatus = jogoAtualStatus;
-    let nomeCompeticao = '';
-    
-    // Se não tem jogo ativo, buscar o último encerrado (SEM orderBy)
-    if (!jogoIdParaBuscar || jogoStatus !== 'aberto') {
-        const jogosRef = collection(db, 'jogos');
-        const q = query(jogosRef, where('status', '==', 'encerrado'));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-            // Ordenar MANUALMENTE por encerradoEm
-            const jogos = [];
-            querySnapshot.forEach(doc => {
-                const data = doc.data();
-                jogos.push({ 
-                    id: doc.id, 
-                    nome: data.nome,
-                    encerradoEm: data.encerradoEm,
-                    vencedorNome: data.vencedorNome,
-                    ultimoConcursoImportado: data.ultimoConcursoImportado,
-                    ...data
-                });
-            });
-            jogos.sort((a, b) => {
-                const dateA = a.encerradoEm?.toDate() || new Date(0);
-                const dateB = b.encerradoEm?.toDate() || new Date(0);
-                return dateB - dateA;
-            });
-            
-            const jogoDoc = jogos[0];
-            jogoIdParaBuscar = jogoDoc.id;
-            jogoStatus = 'encerrado';
-            nomeCompeticao = jogoDoc.nome || 'Competição encerrada';
-            console.log('📌 Mostrando ranking do último jogo encerrado:', nomeCompeticao);
-        } else {
-            container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição encontrada.</div>';
-            return;
-        }
-    }
-    
-    try {
-        const participantesRef = collection(db, 'participantes');
-        const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
-        const querySnapshot = await getDocs(q);
-        
-        // Limpar container
-        container.innerHTML = '';
-        
-        // Adicionar título
-        const titulo = document.createElement('div');
-        titulo.style.cssText = 'color: #ff8c00; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1em;';
-        titulo.textContent = `🏆 ${nomeCompeticao || 'ÚLTIMA COMPETIÇÃO ENCERRADA'}`;
-        container.appendChild(titulo);
-        
-        if (querySnapshot.empty) {
-            const msg = document.createElement('div');
-            msg.style.cssText = 'text-align: center; padding: 20px; color: rgba(255,255,255,0.5);';
-            msg.textContent = 'Nenhum participante cadastrado nesta competição.';
-            container.appendChild(msg);
-            return;
-        }
-        
-        const participantes = [];
-        querySnapshot.forEach(doc => {
-            participantes.push({ id: doc.id, ...doc.data() });
-        });
-        participantes.sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
-        
-        const fragment = document.createDocumentFragment();
-        let pos = 1;
-        const totalParticipantes = participantes.length;
-        
-        // Cabeçalho
-        const header = document.createElement('div');
-        header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
-        header.innerHTML = `
-            <span>Pos</span>
-            <span>Participante</span>
-            <span>Acertos</span>
-            <span>Progresso</span>
-        `;
-        fragment.appendChild(header);
-        
-        for (const p of participantes) {
-            const progresso = ((p.acertos || 0) / 17) * 100;
-            const div = document.createElement('div');
-            div.className = 'linha-participante';
-            
-            if (p.acertouTodos === true) {
-                div.style.background = 'rgba(255,215,0,0.15)';
-                div.style.borderLeft = '4px solid #ffd700';
-            }
-            
-            if (pos === totalParticipantes && p.acertouTodos !== true && totalParticipantes > 2) {
-                div.style.background = 'rgba(220,53,69,0.05)';
-                div.style.borderLeft = '4px solid #dc3545';
-            }
-            
-            div.innerHTML = `
-                <span>${pos++}º</span>
-                <span><strong>${p.nome} ${p.acertouTodos === true ? '👑' : ''}</strong></span>
-                <span>${p.acertos || 0}/17</span>
-                <div class="barra-progresso">
-                    <div class="barra-progresso-fill" style="width: ${progresso}%"></div>
-                </div>
-            `;
-            fragment.appendChild(div);
-        }
-        
-        container.appendChild(fragment);
-        
-    } catch (error) {
-        console.error('Erro ranking:', error);
-        container.innerHTML = '<div style="text-align: center; padding: 20px; color: #dc3545;">Erro ao carregar ranking</div>';
-    }
-}
-
-// ============================================
 // SORTEIOS
 // ============================================
 
@@ -1150,9 +1305,6 @@ function iniciarBuscaAutomaticaMelhorada() {
     }, 1000);
 }
 
-// ============================================
-// BUSCAR SORTEIO (VERSÃO COMPLETA E CORRIGIDA)
-// ============================================
 async function buscarSorteioQuina() {
     console.log('🔍 INICIANDO BUSCA DE SORTEIO');
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
@@ -1193,9 +1345,8 @@ async function buscarSorteioQuina() {
         console.log(`🎉 NOVO SORTEIO DETECTADO! #${concurso} (${concurso} > ${ultimoImportado})`);
         console.log(`📊 Números: ${numeros.join(', ')}`);
         console.log(`📅 Data: ${data || 'Não informada'}`);
-        console.log(`📍 Fonte: ${resultado.fonte || 'Desconhecida'}`);
         
-        const dataInicio = jogoData.dataInicio?.toDate() || new Date(2024, 0, 1);
+        const dataInicio = jogoData.dataInicio?.toDate?.() || new Date(2024, 0, 1);
         let dataSorteioObj = new Date();
         if (data) {
             const partes = data.split('/');
@@ -1274,7 +1425,6 @@ async function atualizarAcertosParticipantes() {
     const participantesSnapshot = await getDocs(participantesQuery);
     
     let vencedores = [];
-    let relatorio = '\n========== RELATÓRIO DE ACERTOS ==========\n';
     
     for (const participanteDoc of participantesSnapshot.docs) {
         const p = participanteDoc.data();
@@ -1289,11 +1439,6 @@ async function atualizarAcertosParticipantes() {
             }
         }
         
-        relatorio += `\n📌 ${p.nome}:\n`;
-        relatorio += `   Números do participante: ${p.numeros.join(', ')}\n`;
-        relatorio += `   Números acertados: ${acertados.join(', ')}\n`;
-        relatorio += `   Total acertos: ${acertos}/17 (anterior: ${p.acertos || 0})\n`;
-        
         if (acertos !== (p.acertos || 0)) {
             await updateDoc(doc(db, 'participantes', participanteDoc.id), { acertos: acertos });
             console.log(`✏️ Atualizando ${p.nome}: ${p.acertos || 0} → ${acertos}`);
@@ -1303,8 +1448,6 @@ async function atualizarAcertosParticipantes() {
             vencedores.push({ id: participanteDoc.id, nome: p.nome, acertos: acertos });
         }
     }
-    
-    console.log(relatorio);
     
     if (vencedores.length > 0) {
         await declararVencedores(vencedores);
@@ -1582,6 +1725,7 @@ window.excluirParticipante = async function(id) {
     }
 };
 
+// EXPORTAR FUNÇÕES PARA O CONSOLE
 window.atualizarAcertosParticipantes = atualizarAcertosParticipantes;
 window.carregarJogoAtivo = carregarJogoAtivo;
 window.carregarRanking = carregarRanking;
@@ -1593,3 +1737,4 @@ window.carregarDados = carregarDados;
 window.buscarSorteioQuina = buscarSorteioQuina;
 window.verificarSenha = verificarSenha;
 window.logout = logout;
+window.diagnosticar = diagnosticar;
