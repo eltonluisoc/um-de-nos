@@ -25,6 +25,17 @@ async function carregarDados() {
     await carregarJogoAtivo();
 }
 
+import { db } from './firebase-config.js';
+import { 
+    collection, 
+    query, 
+    where, 
+    getDocs, 
+    onSnapshot,  // ← ADICIONE ESTA LINHA
+    doc, 
+    getDoc,
+    limit
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ============================================
 // 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo

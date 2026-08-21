@@ -30,6 +30,23 @@ const QUINA_APIS = [
     'https://loterias-api.vercel.app/api/quina/latest'
 ];
 
+import { db } from './firebase-config.js';
+import { 
+    collection, 
+    addDoc, 
+    getDocs, 
+    getDoc,
+    updateDoc, 
+    deleteDoc, 
+    doc, 
+    query, 
+    where, 
+    orderBy, 
+    writeBatch,
+    limit,
+    onSnapshot  // ← ADICIONE ESTA LINHA
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 async function buscarSorteioMultiplasAPIs() {
     console.log('🔍 INICIANDO BUSCA POR SORTEIOS...');
     
