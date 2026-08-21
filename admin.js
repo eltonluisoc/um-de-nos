@@ -11,8 +11,10 @@ import {
     where, 
     orderBy, 
     writeBatch,
-    limit
+    limit,
+    onSnapshot  // ← ESTA LINHA É ESSENCIAL
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
 
 const SENHA_ADMIN = "172163";
 let jogoAtualId = null;
@@ -1698,31 +1700,35 @@ function iniciarEscutaRanking() {
     
     console.log('📡 Iniciando escuta em tempo real do ranking...');
     
+    // Usar db diretamente com onSnapshot (já importado)
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
     
     // Escutar mudanças nos participantes
-    onSnapshot(q, (snapshot) => {
+    const unsubscribeParticipantes = onSnapshot(q, (snapshot) => {
         console.log('🔄 Mudança detectada nos participantes - atualizando ranking...');
-        carregarRanking(); // Recarrega o ranking
+        carregarRanking();
     }, (error) => {
         console.error('❌ Erro na escuta do ranking:', error);
     });
     
-    // Também escutar mudanças nos sorteios (para atualizar quando um novo sorteio for importado)
+    // Também escutar mudanças nos sorteios
     const sorteiosRef = collection(db, 'sorteios_quina');
     const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
-    onSnapshot(qSorteios, (snapshot) => {
+    
+    const unsubscribeSorteios = onSnapshot(qSorteios, (snapshot) => {
         console.log('🔄 Mudança detectada nos sorteios - atualizando ranking...');
         carregarRanking();
     }, (error) => {
         console.error('❌ Erro na escuta dos sorteios:', error);
     });
+    
+    // Retornar função para cancelar escuta (opcional)
+    return () => {
+        unsubscribeParticipantes();
+        unsubscribeSorteios();
+    };
 }
-
-// Chamar após carregar o jogo ativo
-// Adicione esta linha no final da função carregarJogoAtivo() após definir jogoAtualId:
-// iniciarEscutaRanking();
 
 
 // ============================================
