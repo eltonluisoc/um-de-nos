@@ -241,6 +241,12 @@ async function carregarJogoAtivo() {
                 <p>👥 Participantes: ${await contarParticipantesPorCompeticao(jogoAtualId)}</p>
             `;
         }
+        
+        // 🔥 INICIAR ESCUTA EM TEMPO REAL
+        if (jogoAtualId) {
+            iniciarEscutaRanking();
+        }
+        
         return;
     }
     
@@ -289,6 +295,12 @@ async function carregarJogoAtivo() {
                 <p>📊 Último sorteio: ${jogoDoc.ultimoConcursoImportado || 'Nenhum'}</p>
             `;
         }
+        
+        // 🔥 INICIAR ESCUTA EM TEMPO REAL (mesmo para jogo encerrado)
+        if (jogoAtualId) {
+            iniciarEscutaRanking();
+        }
+        
         return;
     }
     
@@ -301,8 +313,9 @@ async function carregarJogoAtivo() {
 }
 
 // ============================================
-// 🚀 FUNÇÃO CORRIGIDA - carregarRanking
+// RANKING - COM BARRA DE PROGRESSO E ATUALIZAÇÃO EM TEMPO REAL
 // ============================================
+
 async function carregarRanking() {
     const container = document.getElementById('listaRankingAdmin');
     if (!container) {
@@ -369,6 +382,7 @@ async function carregarRanking() {
         const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
         const querySnapshot = await getDocs(q);
         
+        // Limpar container (apenas o conteúdo, sem cabeçalho fixo)
         container.innerHTML = '';
         
         // Adicionar título
@@ -403,16 +417,14 @@ async function carregarRanking() {
         
         // 🔥 ORDENAÇÃO: primeiro quem acertou tudo, depois por acertos
         participantes.sort((a, b) => {
-            // Primeiro: quem acertou todos
             if (a.acertouTodos && !b.acertouTodos) return -1;
             if (!a.acertouTodos && b.acertouTodos) return 1;
-            // Depois por número de acertos
             return (b.acertos || 0) - (a.acertos || 0);
         });
         
         console.log(`✅ ${participantes.length} participantes encontrados e ordenados`);
         
-        // Cabeçalho
+        // Cabeçalho (sem duplicação)
         const header = document.createElement('div');
         header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
         header.innerHTML = `
@@ -432,7 +444,6 @@ async function carregarRanking() {
             const progresso = Math.min(((p.acertos || 0) / 17) * 100, 100);
             const div = document.createElement('div');
             div.className = 'linha-participante';
-            div.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 12px; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);';
             
             // Estilo para vencedor
             if (p.acertouTodos === true) {
@@ -465,8 +476,11 @@ async function carregarRanking() {
                 <span>${posicaoDisplay}</span>
                 <span><strong>${p.nome}</strong>${premioTexto}</span>
                 <span>${p.acertos || 0}/17</span>
-                <div class="barra-progresso" style="background: rgba(255,255,255,0.2); border-radius: 10px; height: 8px; overflow: hidden; width: 100px;">
-                    <div class="barra-progresso-fill" style="background: ${p.acertouTodos ? '#ffd700' : '#f1c40f'}; height: 100%; width: ${progresso}%; transition: width 0.5s ease; border-radius: 10px;"></div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <div style="flex:1;background:rgba(255,255,255,0.2);border-radius:10px;height:8px;overflow:hidden;">
+                        <div style="background:${p.acertouTodos ? '#ffd700' : '#f1c40f'};height:100%;width:${progresso}%;transition:width 0.5s ease;border-radius:10px;"></div>
+                    </div>
+                    <span style="font-size:0.75em;color:rgba(255,255,255,0.6);min-width:35px;">${Math.round(progresso)}%</span>
                 </div>
             `;
             fragment.appendChild(div);
@@ -1654,6 +1668,45 @@ async function resetarTudo() {
         }
     }
 }
+
+// ============================================
+// ATUALIZAÇÃO AUTOMÁTICA DO RANKING (TEMPO REAL)
+// ============================================
+
+function iniciarEscutaRanking() {
+    if (!jogoAtualId) {
+        console.log('⏸️ Escuta do ranking desativada (sem jogo ativo)');
+        return;
+    }
+    
+    console.log('📡 Iniciando escuta em tempo real do ranking...');
+    
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
+    
+    // Escutar mudanças nos participantes
+    onSnapshot(q, (snapshot) => {
+        console.log('🔄 Mudança detectada nos participantes - atualizando ranking...');
+        carregarRanking(); // Recarrega o ranking
+    }, (error) => {
+        console.error('❌ Erro na escuta do ranking:', error);
+    });
+    
+    // Também escutar mudanças nos sorteios (para atualizar quando um novo sorteio for importado)
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
+    onSnapshot(qSorteios, (snapshot) => {
+        console.log('🔄 Mudança detectada nos sorteios - atualizando ranking...');
+        carregarRanking();
+    }, (error) => {
+        console.error('❌ Erro na escuta dos sorteios:', error);
+    });
+}
+
+// Chamar após carregar o jogo ativo
+// Adicione esta linha no final da função carregarJogoAtivo() após definir jogoAtualId:
+// iniciarEscutaRanking();
+
 
 // ============================================
 // VERIFICAR E ATUALIZAR PARA O MAIOR CONCURSO DISPONÍVEL
