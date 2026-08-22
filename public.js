@@ -4,7 +4,7 @@ import {
     query, 
     where, 
     getDocs, 
-    onSnapshot, 
+    onSnapshot,
     doc, 
     getDoc,
     limit
@@ -15,27 +15,17 @@ let jogoId = null;
 let participantes = [];
 let numerosSorteadosAcumulados = [];
 let sorteiosRealizados = [];
+let unsubscribeParticipantes = null;
+let unsubscribeSorteios = null;
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - v7');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v8 (Correção Definitiva)');
     carregarDados();
 });
 
 async function carregarDados() {
     await carregarJogoAtivo();
 }
-
-import { db } from './firebase-config.js';
-import { 
-    collection, 
-    query, 
-    where, 
-    getDocs, 
-    onSnapshot,  // ← ADICIONE ESTA LINHA
-    doc, 
-    getDoc,
-    limit
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
 // ============================================
 // 🚀 FUNÇÃO CORRIGIDA - carregarJogoAtivo
@@ -67,19 +57,19 @@ async function carregarJogoAtivo() {
             await carregarSorteios();
             await carregarNumerosSorteadosGrid();
             await carregarParticipantesPorJogo(jogoId);
-            escutarParticipantes();
+            iniciarEscutaTempoReal();
             await atualizarStatusSorteio();
             return;
         }
         
-        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
+        // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM orderBy)
         console.log('📌 Nenhum jogo ativo. Buscando último encerrado...');
         
         const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
         if (!encerradoSnapshot.empty) {
-            // Ordenar manualmente
+            // 🔥 ORDENAÇÃO MANUAL - mais recente primeiro
             const jogos = [];
             encerradoSnapshot.forEach(doc => {
                 const data = doc.data();
@@ -128,6 +118,7 @@ async function carregarJogoAtivo() {
             
             // 🔥 CORREÇÃO: Buscar vencedor do histórico se não estiver no jogo
             let vencedorNome = jogoAtual.vencedorNome;
+            let premioVencedor = null;
             
             // Se não tem vencedor no jogo, buscar do histórico
             if (!vencedorNome || vencedorNome === 'Nenhum') {
@@ -135,8 +126,12 @@ async function carregarJogoAtivo() {
                 const vencedorInfo = await buscarVencedorDoHistorico(jogoId);
                 if (vencedorInfo) {
                     vencedorNome = vencedorInfo.nome;
+                    premioVencedor = vencedorInfo.premio;
                     console.log(`✅ Vencedor encontrado no histórico: ${vencedorNome}`);
                 }
+            } else {
+                // Buscar prêmio do vencedor
+                premioVencedor = await buscarPremioVencedor(jogoId, vencedorNome);
             }
             
             // Mostrar vencedor
@@ -148,10 +143,8 @@ async function carregarJogoAtivo() {
                 vencedorDiv.style.display = 'block';
                 vencedorNomeEl.innerHTML = `🎉 ${vencedorNome} 🎉`;
                 
-                // Buscar prêmio do vencedor
-                const premio = await buscarPremioVencedor(jogoId, vencedorNome);
-                if (premio) {
-                    vencedorDataEl.innerHTML = `🏆 Vencedor com R$ ${premio.toFixed(2)} de prêmio!`;
+                if (premioVencedor && premioVencedor > 0) {
+                    vencedorDataEl.innerHTML = `🏆 Vencedor com R$ ${premioVencedor.toFixed(2)} de prêmio!`;
                 } else {
                     vencedorDataEl.innerHTML = `🏆 Vencedor da competição "${jogoAtual.nome}"!`;
                 }
@@ -167,6 +160,9 @@ async function carregarJogoAtivo() {
                 statusSpan.innerHTML = `🏁 Competição finalizada em ${jogoAtual.encerradoEm?.toDate?.()?.toLocaleDateString('pt-BR') || '-'}`;
                 statusSpan.className = 'encerrado';
             }
+            
+            // Iniciar escuta mesmo para jogo encerrado (para atualizar se houver mudanças)
+            iniciarEscutaTempoReal();
             
             return;
         }
@@ -255,6 +251,74 @@ async function buscarPremioVencedor(jogoId, nomeVencedor) {
         console.error('❌ Erro ao buscar prêmio:', error);
         return null;
     }
+}
+
+// ============================================
+// 🔥 NOVA FUNÇÃO: ESCUTA EM TEMPO REAL
+// ============================================
+
+function iniciarEscutaTempoReal() {
+    // Cancelar escutas anteriores
+    if (unsubscribeParticipantes) {
+        unsubscribeParticipantes();
+        unsubscribeParticipantes = null;
+    }
+    if (unsubscribeSorteios) {
+        unsubscribeSorteios();
+        unsubscribeSorteios = null;
+    }
+    
+    if (!jogoId) {
+        console.log('⏸️ Escuta desativada (sem jogo)');
+        return;
+    }
+    
+    console.log('📡 Iniciando escuta em tempo real no índice público...');
+    
+    // Escutar mudanças nos participantes
+    const participantesRef = collection(db, 'participantes');
+    const q = query(participantesRef, where('jogoId', '==', jogoId));
+    
+    unsubscribeParticipantes = onSnapshot(q, (snapshot) => {
+        console.log('🔄 Mudança detectada nos participantes - atualizando ranking público...');
+        participantes = [];
+        snapshot.forEach((doc) => {
+            participantes.push({
+                id: doc.id,
+                ...doc.data()
+            });
+        });
+        
+        atualizarRanking(participantes);
+        verificarVencedor(participantes);
+        
+        const totalSpan = document.getElementById('totalParticipantes');
+        const maiorSpan = document.getElementById('maiorPontuacao');
+        if (totalSpan) totalSpan.textContent = participantes.length;
+        if (maiorSpan && participantes.length > 0) {
+            const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
+            maiorSpan.textContent = `${maiorAcertos}/17`;
+        }
+    }, (error) => {
+        console.error('❌ Erro na escuta dos participantes:', error);
+    });
+    
+    // Escutar mudanças nos sorteios
+    const sorteiosRef = collection(db, 'sorteios_quina');
+    const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoId));
+    
+    unsubscribeSorteios = onSnapshot(qSorteios, (snapshot) => {
+        console.log('🔄 Mudança detectada nos sorteios - atualizando números sorteados...');
+        // Recarregar dados de sorteios
+        carregarSorteios();
+        carregarNumerosSorteadosGrid();
+        // Atualizar ranking com novos acertos
+        if (participantes.length > 0) {
+            atualizarRanking(participantes);
+        }
+    }, (error) => {
+        console.error('❌ Erro na escuta dos sorteios:', error);
+    });
 }
 
 // ============================================
@@ -405,11 +469,11 @@ function atualizarRanking(participantes) {
     }
     
     container.innerHTML = html;
-    console.log(`✅ Ranking atualizado com ${ordenados.length} participantes`);
+    console.log(`✅ Ranking público atualizado com ${ordenados.length} participantes`);
 }
 
 // ============================================
-// FUNÇÕES AUXILIARES (mantidas iguais)
+// FUNÇÕES AUXILIARES (mantidas e melhoradas)
 // ============================================
 
 async function carregarPremiacao() {
@@ -528,36 +592,10 @@ async function carregarNumerosSorteadosGrid() {
     }
 }
 
+// Mantida para compatibilidade (mas agora usa onSnapshot)
 function escutarParticipantes() {
-    if (!jogoId) return;
-    
-    const participantesRef = collection(db, 'participantes');
-    const q = query(participantesRef, where('jogoId', '==', jogoId));
-    
-    onSnapshot(q, (snapshot) => {
-        console.log('🔄 Atualização em tempo real');
-        participantes = [];
-        snapshot.forEach((doc) => {
-            participantes.push({
-                id: doc.id,
-                ...doc.data()
-            });
-        });
-        
-        atualizarRanking(participantes);
-        verificarVencedor(participantes);
-        
-        const totalSpan = document.getElementById('totalParticipantes');
-        const maiorSpan = document.getElementById('maiorPontuacao');
-        if (totalSpan) totalSpan.textContent = participantes.length;
-        if (maiorSpan && participantes.length > 0) {
-            const maiorAcertos = Math.max(...participantes.map(p => p.acertos || 0));
-            maiorSpan.textContent = `${maiorAcertos}/17`;
-        }
-        
-    }, (error) => {
-        console.error('❌ Erro ao escutar participantes:', error);
-    });
+    // Esta função foi substituída por iniciarEscutaTempoReal()
+    iniciarEscutaTempoReal();
 }
 
 function mostrarNumerosSorteados(numeros) {
