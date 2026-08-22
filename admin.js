@@ -12,9 +12,8 @@ import {
     orderBy, 
     writeBatch,
     limit,
-    onSnapshot  // ← ESTA LINHA É ESSENCIAL
+    onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
 
 const SENHA_ADMIN = "172163";
 let jogoAtualId = null;
@@ -32,42 +31,23 @@ const QUINA_APIS = [
     'https://loterias-api.vercel.app/api/quina/latest'
 ];
 
-import { db } from './firebase-config.js';
-import { 
-    collection, 
-    addDoc, 
-    getDocs, 
-    getDoc,
-    updateDoc, 
-    deleteDoc, 
-    doc, 
-    query, 
-    where, 
-    orderBy, 
-    writeBatch,
-    limit,
-    onSnapshot  // ← ADICIONE ESTA LINHA
-} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-async function buscarSorteioMultiplasAPIs() {
-    console.log('🔍 INICIANDO BUSCA POR SORTEIOS...');
+// ============================================
+// 🔥 NOVA FUNÇÃO: BUSCAR CONCURSO ESPECÍFICO POR NÚMERO
+// ============================================
+async function buscarConcursoPorNumero(numero) {
+    const apis = [
+        `https://loteriascaixa-api.herokuapp.com/api/quina/${numero}`,
+        `https://apiloteria.herokuapp.com/api/quina/${numero}`,
+        `https://loterias-api.vercel.app/api/quina/${numero}`
+    ];
     
-    const ultimoConhecido = jogoAtualId ? (await getDoc(doc(db, 'jogos', jogoAtualId))).data()?.ultimoConcursoImportado : 0;
-    console.log(`📌 Último concurso importado: ${ultimoConhecido}`);
-    
-    for (const api of QUINA_APIS) {
+    for (const api of apis) {
         try {
-            console.log(`📡 Tentando API: ${api}`);
             const response = await fetch(api);
-            if (!response.ok) {
-                console.log(`⚠️ API ${api} retornou status ${response.status}`);
-                continue;
-            }
+            if (!response.ok) continue;
             const dados = await response.json();
-            console.log(`📊 Dados recebidos de ${api}:`, dados);
             
             let numeros, concurso, data;
-            
             if (dados.dezenas) {
                 numeros = dados.dezenas.map(Number);
                 concurso = dados.concurso;
@@ -83,26 +63,78 @@ async function buscarSorteioMultiplasAPIs() {
             }
             
             if (numeros && numeros.length === 5 && concurso) {
-                console.log(`✅ SUCESSO NA API: ${api}`);
-                console.log(`🎲 CONCURSO ENCONTRADO: #${concurso}`);
-                console.log(`📊 Números: ${numeros.join(', ')}`);
-                console.log(`📅 Data: ${data || 'Não informada'}`);
-                console.log(`🔍 COMPARAÇÃO: Último importado = ${ultimoConhecido} | Encontrado = ${concurso}`);
-                
-                if (concurso > ultimoConhecido) {
-                    console.log(`🎉 NOVO SORTEIO DETECTADO! (${concurso} > ${ultimoConhecido})`);
-                } else {
-                    console.log(`⏸️ Sorteio ${concurso} já foi importado (${concurso} <= ${ultimoConhecido})`);
-                }
-                
                 return { numeros, concurso, data };
             }
-        } catch (error) {
-            console.error(`❌ ERRO NA API ${api}:`, error.message);
+        } catch (e) {
+            console.log(`⚠️ Erro na API para concurso ${numero}:`, e.message);
         }
     }
-    console.error('❌ TODAS AS APIs FALHARAM!');
-    throw new Error('Todas as APIs falharam');
+    return null;
+}
+
+// ============================================
+// 🔥 NOVA FUNÇÃO: IMPORTAR CONCURSOS INTERMEDIÁRIOS
+// ============================================
+async function importarConcursosIntermediarios(ultimoImportado, ultimoDisponivel) {
+    console.log(`🔍 Verificando concursos entre ${ultimoImportado + 1} e ${ultimoDisponivel}...`);
+    
+    let importados = 0;
+    let faltantes = [];
+    
+    for (let concurso = ultimoImportado + 1; concurso <= ultimoDisponivel; concurso++) {
+        console.log(`📡 Verificando concurso #${concurso}...`);
+        
+        // Verificar se já existe no Firestore
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const q = query(sorteiosRef, where('concurso', '==', concurso));
+        const snapshot = await getDocs(q);
+        
+        if (!snapshot.empty) {
+            console.log(`✅ Concurso #${concurso} já importado.`);
+            continue;
+        }
+        
+        // Buscar da API
+        const dados = await buscarConcursoPorNumero(concurso);
+        if (!dados) {
+            console.log(`❌ Concurso #${concurso} não encontrado na API (pode não ter ocorrido ainda).`);
+            faltantes.push(concurso);
+            continue;
+        }
+        
+        // Importar
+        console.log(`📥 Importando concurso #${concurso}: ${dados.numeros.join(', ')}`);
+        
+        const dataSorteio = new Date();
+        if (dados.data) {
+            const partes = dados.data.split('/');
+            if (partes.length === 3) {
+                dataSorteio.setFullYear(partes[2], partes[1] - 1, partes[0]);
+            }
+        }
+        
+        await addDoc(collection(db, 'sorteios_quina'), {
+            concurso: dados.concurso,
+            numeros: dados.numeros,
+            data: dataSorteio,
+            importadoEm: new Date(),
+            competicaoId: jogoAtualId
+        });
+        
+        importados++;
+        console.log(`✅ Concurso #${concurso} importado!`);
+    }
+    
+    if (importados > 0) {
+        // Atualizar o último concurso importado no jogo
+        const jogoRef = doc(db, 'jogos', jogoAtualId);
+        await updateDoc(jogoRef, {
+            ultimoConcursoImportado: ultimoDisponivel
+        });
+        console.log(`📌 Jogo atualizado: último concurso importado = ${ultimoDisponivel}`);
+    }
+    
+    return { importados, faltantes };
 }
 
 // ============================================
@@ -110,7 +142,7 @@ async function buscarSorteioMultiplasAPIs() {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Admin carregado - Versão Final');
+    console.log('Admin carregado - Versão Definitiva v8');
     const btnEntrar = document.getElementById('btnEntrarAdmin');
     const senhaInput = document.getElementById('senhaInput');
     
@@ -251,7 +283,6 @@ async function carregarJogoAtivo() {
         console.log('🏆 Competição ativa carregada:', jogoAtualId, jogoData.nome);
         console.log('📌 Primeira conferência:', jogoData.primeiraConferenciaRealizada);
         
-        // Atualizar UI
         const statusDiv = document.getElementById('statusAdmin');
         if (statusDiv) {
             statusDiv.innerHTML = `
@@ -261,7 +292,6 @@ async function carregarJogoAtivo() {
             `;
         }
         
-        // 🔥 INICIAR ESCUTA EM TEMPO REAL
         if (jogoAtualId) {
             iniciarEscutaRanking();
         }
@@ -269,14 +299,13 @@ async function carregarJogoAtivo() {
         return;
     }
     
-    // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO (SEM orderBy)
+    // 2. SE NÃO TEM JOGO ATIVO, BUSCAR O ÚLTIMO ENCERRADO
     console.log('⚠️ Nenhuma competição ativa. Buscando último encerrado...');
     
     const qEncerrado = query(jogosRef, where('status', '==', 'encerrado'));
     const encerradoSnapshot = await getDocs(qEncerrado);
     
     if (!encerradoSnapshot.empty) {
-        // Ordenar MANUALMENTE por encerradoEm (mais recente primeiro)
         const jogos = [];
         encerradoSnapshot.forEach(doc => {
             const data = doc.data();
@@ -291,7 +320,6 @@ async function carregarJogoAtivo() {
             });
         });
         
-        // 🔥 ORDENAÇÃO MANUAL - mais recente primeiro
         jogos.sort((a, b) => {
             const dateA = a.encerradoEm?.toDate ? a.encerradoEm.toDate() : new Date(0);
             const dateB = b.encerradoEm?.toDate ? b.encerradoEm.toDate() : new Date(0);
@@ -304,7 +332,6 @@ async function carregarJogoAtivo() {
         console.log('📌 Último jogo encerrado carregado:', jogoDoc.nome);
         console.log('👑 Vencedor:', jogoDoc.vencedorNome || 'Nenhum');
         
-        // Mostrar no dashboard
         const statusDiv = document.getElementById('statusAdmin');
         if (statusDiv) {
             statusDiv.innerHTML = `
@@ -315,7 +342,6 @@ async function carregarJogoAtivo() {
             `;
         }
         
-        // 🔥 INICIAR ESCUTA EM TEMPO REAL (mesmo para jogo encerrado)
         if (jogoAtualId) {
             iniciarEscutaRanking();
         }
@@ -343,15 +369,11 @@ async function carregarRanking() {
     }
     
     console.log('📊 carregarRanking() - Iniciando...');
-    console.log(`📌 jogoAtualId: ${jogoAtualId}`);
-    console.log(`📌 jogoAtualStatus: ${jogoAtualStatus}`);
     
-    // Se não há jogo ativo, buscar o último encerrado
     let jogoIdParaBuscar = jogoAtualId;
     let nomeCompeticao = '';
     let isEncerrado = false;
     
-    // Se não tem jogo ativo, buscar o último encerrado (SEM orderBy)
     if (!jogoIdParaBuscar || jogoAtualStatus !== 'aberto') {
         console.log('🔍 Buscando último jogo encerrado para o ranking...');
         
@@ -360,7 +382,6 @@ async function carregarRanking() {
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
-            // Ordenar MANUALMENTE por encerradoEm
             const jogos = [];
             querySnapshot.forEach(doc => {
                 const data = doc.data();
@@ -383,7 +404,7 @@ async function carregarRanking() {
             jogoIdParaBuscar = jogoDoc.id;
             nomeCompeticao = jogoDoc.nome || 'Competição encerrada';
             isEncerrado = true;
-            console.log(`📌 Mostrando ranking do último jogo encerrado: ${nomeCompeticao} (ID: ${jogoIdParaBuscar})`);
+            console.log(`📌 Mostrando ranking do último jogo encerrado: ${nomeCompeticao}`);
         } else {
             container.innerHTML = '<div style="text-align: center; padding: 20px; color: rgba(255,255,255,0.5);">Nenhuma competição encontrada.</div>';
             return;
@@ -396,15 +417,12 @@ async function carregarRanking() {
     }
     
     try {
-        console.log(`🔍 Buscando participantes do jogo: ${jogoIdParaBuscar}`);
         const participantesRef = collection(db, 'participantes');
         const q = query(participantesRef, where('jogoId', '==', jogoIdParaBuscar));
         const querySnapshot = await getDocs(q);
         
-        // Limpar container (apenas o conteúdo, sem cabeçalho fixo)
         container.innerHTML = '';
         
-        // Adicionar título
         const titulo = document.createElement('div');
         titulo.style.cssText = 'color: #ff8c00; text-align: center; padding: 10px; font-weight: bold; font-size: 1.1em;';
         titulo.textContent = isEncerrado ? `🏆 ${nomeCompeticao} (ENCERRADA)` : '🏆 RANKING ATUAL';
@@ -418,7 +436,6 @@ async function carregarRanking() {
             return;
         }
         
-        // Converter para array e ordenar
         const participantes = [];
         querySnapshot.forEach(doc => {
             const data = doc.data();
@@ -434,7 +451,6 @@ async function carregarRanking() {
             });
         });
         
-        // 🔥 ORDENAÇÃO: primeiro quem acertou tudo, depois por acertos
         participantes.sort((a, b) => {
             if (a.acertouTodos && !b.acertouTodos) return -1;
             if (!a.acertouTodos && b.acertouTodos) return 1;
@@ -443,7 +459,6 @@ async function carregarRanking() {
         
         console.log(`✅ ${participantes.length} participantes encontrados e ordenados`);
         
-        // Cabeçalho (sem duplicação)
         const header = document.createElement('div');
         header.style.cssText = 'display: grid; grid-template-columns: 50px 1fr 80px 100px; padding: 10px; background: rgba(241,196,15,0.15); color: #f1c40f; border-radius: 10px; font-weight: bold; margin-bottom: 10px;';
         header.innerHTML = `
@@ -454,9 +469,7 @@ async function carregarRanking() {
         `;
         container.appendChild(header);
         
-        // Listar participantes
         let pos = 1;
-        const total = participantes.length;
         const fragment = document.createDocumentFragment();
         
         for (const p of participantes) {
@@ -464,14 +477,12 @@ async function carregarRanking() {
             const div = document.createElement('div');
             div.className = 'linha-participante';
             
-            // Estilo para vencedor
             if (p.acertouTodos === true) {
                 div.style.background = 'rgba(255,215,0,0.15)';
                 div.style.borderLeft = '4px solid #ffd700';
                 div.style.borderRadius = '4px';
             }
             
-            // Medalhas e emojis
             let posicaoDisplay = pos;
             if (p.acertouTodos) {
                 posicaoDisplay = `👑 ${pos}º`;
@@ -485,7 +496,6 @@ async function carregarRanking() {
                 posicaoDisplay = `${pos}º`;
             }
             
-            // Prêmio
             let premioTexto = '';
             if (p.premioGanho && p.premioGanho > 0) {
                 premioTexto = ` 💰 R$ ${p.premioGanho.toFixed(2)}`;
@@ -508,7 +518,6 @@ async function carregarRanking() {
         
         container.appendChild(fragment);
         
-        // Mostrar informações adicionais se for jogo encerrado
         if (isEncerrado) {
             const vencedor = participantes.find(p => p.acertouTodos === true);
             if (vencedor) {
@@ -535,7 +544,6 @@ window.diagnosticar = async function() {
     console.log('🔍 INICIANDO DIAGNÓSTICO DO RANKING...');
     
     try {
-        // 1. Verificar todos os jogos
         console.log('\n📋 LISTA DE JOGOS:');
         const jogosRef = collection(db, 'jogos');
         const allGames = await getDocs(jogosRef);
@@ -544,7 +552,6 @@ window.diagnosticar = async function() {
             console.log(`- Jogo ${doc.id}: status="${data.status}", nome="${data.nome}", encerradoEm=${data.encerradoEm ? '✅' : '❌'}`);
         });
         
-        // 2. Buscar jogos encerrados
         console.log('\n🔎 BUSCANDO JOGOS ENCERRADOS:');
         const q = query(jogosRef, where('status', '==', 'encerrado'));
         const encerrados = await getDocs(q);
@@ -554,7 +561,6 @@ window.diagnosticar = async function() {
             console.log(`- ${doc.id}: "${data.nome}", encerradoEm=${data.encerradoEm?.toDate?.()?.toLocaleString() || 'N/A'}`);
         });
         
-        // 3. Verificar participantes do jogo atual
         if (jogoAtualId) {
             console.log(`\n👥 PARTICIPANTES DO JOGO ${jogoAtualId}:`);
             const participantesRef = collection(db, 'participantes');
@@ -568,7 +574,6 @@ window.diagnosticar = async function() {
         }
         
         console.log('\n✅ DIAGNÓSTICO CONCLUÍDO');
-        console.log('💡 Execute carregarRanking() manualmente para testar');
         
     } catch (error) {
         console.error('❌ ERRO NO DIAGNÓSTICO:', error);
@@ -645,7 +650,6 @@ async function atualizarStatusGame() {
     
     let html = '';
     
-    // Buscar competição ATIVA
     const jogosAtivosRef = collection(db, 'jogos');
     const ativosQuery = query(jogosAtivosRef, where('status', '==', 'aberto'), limit(1));
     const ativosSnapshot = await getDocs(ativosQuery);
@@ -714,13 +718,11 @@ async function atualizarStatusGame() {
             </div>
         `;
     } else {
-        // Verificar se há jogo encerrado
         const jogosEncerradosRef = collection(db, 'jogos');
         const qEncerrado = query(jogosEncerradosRef, where('status', '==', 'encerrado'));
         const encerradoSnapshot = await getDocs(qEncerrado);
         
         if (!encerradoSnapshot.empty) {
-            // Ordenar manualmente
             const jogos = [];
             encerradoSnapshot.forEach(doc => {
                 jogos.push({ id: doc.id, ...doc.data() });
@@ -849,7 +851,6 @@ async function carregarSelectCompeticoes() {
     const q = query(jogosRef, where('status', '==', 'preparando'));
     const querySnapshot = await getDocs(q);
     
-    // Ordenar manualmente
     const jogos = [];
     querySnapshot.forEach(doc => {
         jogos.push({ id: doc.id, ...doc.data() });
@@ -881,7 +882,6 @@ async function carregarSelectCompeticoesCadastro() {
     const q = query(jogosRef, where('status', '==', 'preparando'));
     const querySnapshot = await getDocs(q);
     
-    // Ordenar manualmente
     const jogos = [];
     querySnapshot.forEach(doc => {
         jogos.push({ id: doc.id, ...doc.data() });
@@ -1303,7 +1303,7 @@ function atualizarPreviewPremiacao(valorInscricao, totalParticipantes) {
 }
 
 // ============================================
-// SORTEIOS
+// SORTEIOS - FUNÇÃO CORRIGIDA (NÃO PULA CONCURSOS)
 // ============================================
 
 function iniciarBuscaAutomaticaMelhorada() {
@@ -1338,8 +1338,11 @@ function iniciarBuscaAutomaticaMelhorada() {
     }, 1000);
 }
 
+// ============================================
+// 🔥 FUNÇÃO CORRIGIDA - buscarSorteioQuina (NÃO PULA CONCURSOS)
+// ============================================
 async function buscarSorteioQuina() {
-    console.log('🔍 INICIANDO BUSCA DE SORTEIO');
+    console.log('🔍 INICIANDO BUSCA DE SORTEIO (versão definitiva)');
     if (!jogoAtualId || jogoAtualStatus !== 'aberto') {
         console.log('⚠️ Sem competição ativa');
         return;
@@ -1349,6 +1352,7 @@ async function buscarSorteioQuina() {
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Buscando...'; }
     
     try {
+        // 1. Buscar último sorteio disponível na API
         console.log('📡 Buscando último sorteio disponível na API...');
         const resultado = await buscarSorteioMultiplasAPIs();
         
@@ -1365,8 +1369,8 @@ async function buscarSorteioQuina() {
         
         console.log(`🔍 ANÁLISE: Último importado = ${ultimoImportado} | Encontrado = ${concurso}`);
         
+        // 2. Se já está atualizado
         if (concurso <= ultimoImportado) {
-            console.log(`⚠️ Sorteio #${concurso} NÃO É NOVO (${concurso} <= ${ultimoImportado})`);
             console.log(`✅ O sistema está atualizado. Último sorteio: ${ultimoImportado}`);
             if (btn) {
                 btn.disabled = false;
@@ -1375,11 +1379,75 @@ async function buscarSorteioQuina() {
             return;
         }
         
-        console.log(`🎉 NOVO SORTEIO DETECTADO! #${concurso} (${concurso} > ${ultimoImportado})`);
-        console.log(`📊 Números: ${numeros.join(', ')}`);
-        console.log(`📅 Data: ${data || 'Não informada'}`);
+        // 3. 🔥 VERIFICAR SE HÁ CONCURSOS INTERMEDIÁRIOS FALTANDO
+        const concursosFaltando = [];
+        for (let c = ultimoImportado + 1; c < concurso; c++) {
+            // Verificar se já existe no Firestore
+            const sorteiosRef = collection(db, 'sorteios_quina');
+            const q = query(sorteiosRef, where('concurso', '==', c));
+            const snapshot = await getDocs(q);
+            if (snapshot.empty) {
+                concursosFaltando.push(c);
+            }
+        }
         
-        const dataInicio = jogoData.dataInicio?.toDate?.() || new Date(2024, 0, 1);
+        if (concursosFaltando.length > 0) {
+            console.log(`⚠️ ATENÇÃO: ${concursosFaltando.length} concursos intermediários faltando!`);
+            console.log(`📋 Concursos faltando: ${concursosFaltando.join(', ')}`);
+            
+            // Importar concursos intermediários
+            for (const c of concursosFaltando) {
+                console.log(`📥 Importando concurso intermediário #${c}...`);
+                const dadosConcurso = await buscarConcursoPorNumero(c);
+                if (dadosConcurso) {
+                    const dataSorteio = new Date();
+                    if (dadosConcurso.data) {
+                        const partes = dadosConcurso.data.split('/');
+                        if (partes.length === 3) {
+                            dataSorteio.setFullYear(partes[2], partes[1] - 1, partes[0]);
+                        }
+                    }
+                    
+                    await addDoc(collection(db, 'sorteios_quina'), {
+                        concurso: dadosConcurso.concurso,
+                        numeros: dadosConcurso.numeros,
+                        data: dataSorteio,
+                        importadoEm: new Date(),
+                        competicaoId: jogoAtualId
+                    });
+                    console.log(`✅ Concurso #${c} importado!`);
+                } else {
+                    console.log(`❌ Concurso #${c} não encontrado na API (pode não ter ocorrido ainda)`);
+                }
+            }
+        }
+        
+        // 4. Se o concurso atual já foi importado nos passos acima, pular
+        const sorteiosRef = collection(db, 'sorteios_quina');
+        const qCheck = query(sorteiosRef, where('concurso', '==', concurso));
+        const checkSnapshot = await getDocs(qCheck);
+        if (!checkSnapshot.empty) {
+            console.log(`✅ Concurso #${concurso} já foi importado (via intermediários)`);
+            // Atualizar último concurso importado no jogo
+            await updateDoc(jogoRef, {
+                ultimoConcursoImportado: concurso
+            });
+            await atualizarAcertosParticipantes();
+            await carregarRanking();
+            await carregarHistoricoSorteios();
+            await carregarNumerosSorteadosAdmin();
+            await atualizarStatusGame();
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = '📢 Buscar Último Sorteio da Quina';
+            }
+            alert(`✅ Sorteios intermediários importados! Último: ${concurso}`);
+            return;
+        }
+        
+        // 5. Importar o concurso atual
+        console.log(`🎉 IMPORTANDO CONCURSO #${concurso}: ${numeros.join(', ')}`);
+        
         let dataSorteioObj = new Date();
         if (data) {
             const partes = data.split('/');
@@ -1388,6 +1456,7 @@ async function buscarSorteioQuina() {
             }
         }
         
+        // Primeira conferência - bloquear novos cadastros
         if (!jogoData.primeiraConferenciaRealizada) {
             console.log('🔒 PRIMEIRA CONFERÊNCIA - Bloqueando novos cadastros');
             await updateDoc(jogoRef, { 
@@ -1413,6 +1482,7 @@ async function buscarSorteioQuina() {
         
         console.log(`✅ Sorteio #${concurso} salvo no Firestore!`);
         
+        // 6. Recalcular acertos
         await atualizarAcertosParticipantes();
         
         console.log(`✅ Sorteio #${concurso} IMPORTADO COM SUCESSO!`);
@@ -1424,7 +1494,8 @@ async function buscarSorteioQuina() {
         
         sorteioEncontradoHoje = true;
         
-        alert(`✅ SORTEIO ${concurso} IMPORTADO! Números: ${numeros.join(', ')}`);
+        const msgConcsFaltando = concursosFaltando.length > 0 ? `\n⚠️ ${concursosFaltando.length} concursos intermediários também foram importados.` : '';
+        alert(`✅ SORTEIO ${concurso} IMPORTADO! Números: ${numeros.join(', ')}${msgConcsFaltando}`);
         
     } catch (error) {
         console.error('❌ ERRO AO BUSCAR SORTEIO:', error.message);
@@ -1432,6 +1503,62 @@ async function buscarSorteioQuina() {
     } finally {
         if (btn) { btn.disabled = false; btn.textContent = '📢 Buscar Último Sorteio da Quina'; }
     }
+}
+
+async function buscarSorteioMultiplasAPIs() {
+    console.log('🔍 INICIANDO BUSCA POR SORTEIOS...');
+    
+    const ultimoConhecido = jogoAtualId ? (await getDoc(doc(db, 'jogos', jogoAtualId))).data()?.ultimoConcursoImportado : 0;
+    console.log(`📌 Último concurso importado: ${ultimoConhecido}`);
+    
+    for (const api of QUINA_APIS) {
+        try {
+            console.log(`📡 Tentando API: ${api}`);
+            const response = await fetch(api);
+            if (!response.ok) {
+                console.log(`⚠️ API ${api} retornou status ${response.status}`);
+                continue;
+            }
+            const dados = await response.json();
+            console.log(`📊 Dados recebidos de ${api}:`, dados);
+            
+            let numeros, concurso, data;
+            
+            if (dados.dezenas) {
+                numeros = dados.dezenas.map(Number);
+                concurso = dados.concurso;
+                data = dados.data;
+            } else if (dados.listaDezenas) {
+                numeros = dados.listaDezenas.map(Number);
+                concurso = dados.numero;
+                data = dados.dataApuracao;
+            } else if (dados.numeros) {
+                numeros = dados.numeros.map(Number);
+                concurso = dados.concurso;
+                data = dados.data;
+            }
+            
+            if (numeros && numeros.length === 5 && concurso) {
+                console.log(`✅ SUCESSO NA API: ${api}`);
+                console.log(`🎲 CONCURSO ENCONTRADO: #${concurso}`);
+                console.log(`📊 Números: ${numeros.join(', ')}`);
+                console.log(`📅 Data: ${data || 'Não informada'}`);
+                console.log(`🔍 COMPARAÇÃO: Último importado = ${ultimoConhecido} | Encontrado = ${concurso}`);
+                
+                if (concurso > ultimoConhecido) {
+                    console.log(`🎉 NOVO SORTEIO DETECTADO! (${concurso} > ${ultimoConhecido})`);
+                } else {
+                    console.log(`⏸️ Sorteio ${concurso} já foi importado (${concurso} <= ${ultimoConhecido})`);
+                }
+                
+                return { numeros, concurso, data };
+            }
+        } catch (error) {
+            console.error(`❌ ERRO NA API ${api}:`, error.message);
+        }
+    }
+    console.error('❌ TODAS AS APIs FALHARAM!');
+    throw new Error('Todas as APIs falharam');
 }
 
 async function atualizarAcertosParticipantes() {
@@ -1700,11 +1827,9 @@ function iniciarEscutaRanking() {
     
     console.log('📡 Iniciando escuta em tempo real do ranking...');
     
-    // Usar db diretamente com onSnapshot (já importado)
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
     
-    // Escutar mudanças nos participantes
     const unsubscribeParticipantes = onSnapshot(q, (snapshot) => {
         console.log('🔄 Mudança detectada nos participantes - atualizando ranking...');
         carregarRanking();
@@ -1712,7 +1837,6 @@ function iniciarEscutaRanking() {
         console.error('❌ Erro na escuta do ranking:', error);
     });
     
-    // Também escutar mudanças nos sorteios
     const sorteiosRef = collection(db, 'sorteios_quina');
     const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
     
@@ -1723,13 +1847,11 @@ function iniciarEscutaRanking() {
         console.error('❌ Erro na escuta dos sorteios:', error);
     });
     
-    // Retornar função para cancelar escuta (opcional)
     return () => {
         unsubscribeParticipantes();
         unsubscribeSorteios();
     };
 }
-
 
 // ============================================
 // VERIFICAR E ATUALIZAR PARA O MAIOR CONCURSO DISPONÍVEL
@@ -1744,7 +1866,6 @@ async function verificarMaiorConcurso() {
     
     try {
         const sorteiosRef = collection(db, 'sorteios_quina');
-        // SEM orderBy - buscar todos e ordenar manualmente
         const querySnapshot = await getDocs(sorteiosRef);
         
         if (querySnapshot.empty) {
@@ -1752,7 +1873,6 @@ async function verificarMaiorConcurso() {
             return;
         }
         
-        // Ordenar manualmente por concurso
         const sorteios = [];
         querySnapshot.forEach(doc => {
             sorteios.push({ id: doc.id, ...doc.data() });
@@ -1814,3 +1934,6 @@ window.buscarSorteioQuina = buscarSorteioQuina;
 window.verificarSenha = verificarSenha;
 window.logout = logout;
 window.diagnosticar = diagnosticar;
+// Nova função exportada para console
+window.importarConcursosIntermediarios = importarConcursosIntermediarios;
+window.buscarConcursoPorNumero = buscarConcursoPorNumero;
