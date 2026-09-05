@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-admin-v15';
+const CACHE_NAME = 'umdenos-admin-v16';
 const urlsToCache = [
   '/um-de-nos/admin.html',
   '/um-de-nos/admin.js',
@@ -16,7 +16,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker Admin instalado v15');
+  console.log('Service Worker Admin instalado v16');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -28,12 +28,12 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker Admin ativado v15');
+  console.log('Service Worker Admin ativado v16');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName.startsWith('umdenos-admin')) {
+          if (cacheName !== CACHE_NAME && cacheName.startsWith("umdenos-admin")) {
             console.log('Removendo cache antigo do Admin:', cacheName);
             return caches.delete(cacheName);
           }

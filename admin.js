@@ -1,21 +1,31 @@
-import { db } from './firebase-config.js';
-import { 
-    collection, 
-    addDoc, 
-    getDocs, 
+import { db, app } from './firebase-config.js';
+import {
+    collection,
+    addDoc,
+    getDocs,
     getDoc,
-    updateDoc, 
-    deleteDoc, 
-    doc, 
-    query, 
-    where, 
-    orderBy, 
+    updateDoc,
+    deleteDoc,
+    doc,
+    query,
+    where,
+    orderBy,
     writeBatch,
     limit,
     onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import {
+    getAuth,
+    signInWithEmailAndPassword,
+    signOut,
+    onAuthStateChanged
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
-const SENHA_ADMIN = "172163";
+// Login do painel via Firebase Authentication.
+// Só este e-mail tem acesso de escrita (ver firestore.rules).
+const auth = getAuth(app);
+const ADMIN_EMAIL = 'eltonluisoc@gmail.com';
+let dadosCarregados = false;
 let jogoAtualId = null;
 let jogoAtualStatus = null;
 let intervaloBusca = null;
@@ -142,19 +152,38 @@ async function importarConcursosIntermediarios(ultimoImportado, ultimoDisponivel
 // ============================================
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('Admin carregado - Versão Definitiva v8');
+    console.log('Admin carregado - login seguro (Firebase Auth)');
     const btnEntrar = document.getElementById('btnEntrarAdmin');
+    const emailInput = document.getElementById('emailInput');
     const senhaInput = document.getElementById('senhaInput');
-    
+
     if (btnEntrar) {
-        btnEntrar.addEventListener('click', verificarSenha);
+        btnEntrar.addEventListener('click', fazerLogin);
     }
-    if (senhaInput) {
-        senhaInput.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') verificarSenha();
+    [emailInput, senhaInput].forEach(campo => {
+        campo?.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') fazerLogin();
         });
-    }
-    
+    });
+
+    // Mantém a sessão: se já estava logado, entra direto; se deslogar, volta ao login.
+    onAuthStateChanged(auth, async (user) => {
+        if (user && user.email === ADMIN_EMAIL) {
+            document.getElementById('loginScreen').style.display = 'none';
+            document.getElementById('adminContent').style.display = 'block';
+            if (!dadosCarregados) {
+                dadosCarregados = true;
+                await carregarDados();
+            }
+        } else {
+            if (user) { await signOut(auth); }
+            dadosCarregados = false;
+            if (intervaloBusca) clearInterval(intervaloBusca);
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('adminContent').style.display = 'none';
+        }
+    });
+
     document.getElementById('btnLogout')?.addEventListener('click', logout);
     document.getElementById('btnSalvarParametros')?.addEventListener('click', salvarParametros);
     document.getElementById('btnPrepararCompeticao')?.addEventListener('click', criarNovaCompeticaoPreparando);
@@ -196,48 +225,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 800);
 });
 
-function verificarSenha() {
+async function fazerLogin() {
+    const email = document.getElementById('emailInput').value.trim();
     const senha = document.getElementById('senhaInput').value;
     const btn = document.getElementById('btnEntrarAdmin');
     const loading = document.getElementById('msgLoading');
     const msgErro = document.getElementById('msgErro');
-    
-    if (!senha) {
-        msgErro.textContent = '⚠️ Digite a senha';
+
+    if (!email || !senha) {
+        msgErro.textContent = '⚠️ Preencha e-mail e senha';
         return;
     }
-    
+
     msgErro.textContent = '';
     loading.style.display = 'block';
-    if (btn) {
-        btn.disabled = true;
-        btn.textContent = '⏳ VERIFICANDO...';
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ ENTRANDO...'; }
+
+    try {
+        await signInWithEmailAndPassword(auth, email, senha);
+        // onAuthStateChanged assume daqui: mostra o painel e carrega os dados.
+        loading.style.display = 'none';
+        document.getElementById('senhaInput').value = '';
+    } catch (erro) {
+        loading.style.display = 'none';
+        if (btn) { btn.disabled = false; btn.textContent = '🔐 ENTRAR'; }
+        const amigavel = {
+            'auth/invalid-email': 'E-mail inválido.',
+            'auth/invalid-credential': 'E-mail ou senha incorretos.',
+            'auth/wrong-password': 'E-mail ou senha incorretos.',
+            'auth/user-not-found': 'E-mail ou senha incorretos.',
+            'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos.',
+            'auth/network-request-failed': 'Sem conexão. Verifique a internet.'
+        };
+        msgErro.textContent = '❌ ' + (amigavel[erro.code] || ('Falha no login: ' + erro.code));
+        document.getElementById('senhaInput').value = '';
+        document.getElementById('senhaInput').focus();
     }
-    
-    setTimeout(async () => {
-        if (senha === SENHA_ADMIN) {
-            loading.style.display = 'none';
-            document.getElementById('loginScreen').style.display = 'none';
-            document.getElementById('adminContent').style.display = 'block';
-            await carregarDados();
-        } else {
-            loading.style.display = 'none';
-            msgErro.textContent = '❌ Senha incorreta! Tente novamente.';
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = '🔐 ENTRAR';
-            }
-            document.getElementById('senhaInput').value = '';
-            document.getElementById('senhaInput').focus();
-        }
-    }, 500);
 }
 
-function logout() {
+async function logout() {
     if (intervaloBusca) clearInterval(intervaloBusca);
-    document.getElementById('loginScreen').style.display = 'flex';
-    document.getElementById('adminContent').style.display = 'none';
-    document.getElementById('senhaInput').value = '';
+    await signOut(auth);
+    // onAuthStateChanged volta a tela de login automaticamente.
 }
 
 // ============================================
@@ -1931,7 +1960,7 @@ window.carregarNumerosSorteadosAdmin = carregarNumerosSorteadosAdmin;
 window.atualizarStatusGame = atualizarStatusGame;
 window.carregarDados = carregarDados;
 window.buscarSorteioQuina = buscarSorteioQuina;
-window.verificarSenha = verificarSenha;
+window.fazerLogin = fazerLogin;
 window.logout = logout;
 window.diagnosticar = diagnosticar;
 // Nova função exportada para console

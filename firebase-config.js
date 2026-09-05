@@ -13,4 +13,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export { db };
+// `app` é exportado para o painel admin inicializar o Firebase Authentication.
+// A página pública continua usando só `db`.
+export { db, app };

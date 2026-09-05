@@ -1,0 +1,51 @@
+rules_version = '2';
+
+// ============================================================
+// REGRAS DE SEGURANÇA DO FIRESTORE - "Um de Nós"
+// ------------------------------------------------------------
+// Princípio:
+//   - QUALQUER visitante pode LER (o site público precisa disso).
+//   - NINGUÉM escreve pelo navegador, exceto o admin logado.
+//   - A automação (GitHub Actions) usa o Admin SDK, que IGNORA
+//     estas regras — ou seja, ela sempre consegue escrever.
+// ============================================================
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // É o administrador? (logado via Firebase Authentication com este e-mail)
+    function isAdmin() {
+      return request.auth != null
+          && request.auth.token.email == 'eltonluisoc@gmail.com';
+    }
+
+    // --- Competições ---
+    match /jogos/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Participantes ---
+    match /participantes/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Sorteios importados da Quina ---
+    match /sorteios_quina/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Histórico de vencedores ---
+    match /historico_vencedores/{doc} {
+      allow read:  if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Qualquer outra coleção: totalmente bloqueada ---
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
