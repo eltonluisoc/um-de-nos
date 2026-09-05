@@ -1,0 +1,23 @@
+# Dependências
+node_modules/
+
+# Credenciais / segredos — NUNCA versionar
+serviceAccountKey.json
+*serviceAccount*.json
+*firebase-adminsdk*.json
+.env
+.env.*
+!.env.example
+
+# Sistema operacional
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editores
+.vscode/
+.idea/
+
+# Lixo
+tyle.css
+*.log
