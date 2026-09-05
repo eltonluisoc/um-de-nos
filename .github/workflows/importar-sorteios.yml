@@ -1,0 +1,43 @@
+name: Importar sorteios da Quina
+
+on:
+  # Horários em UTC. Brasília = UTC-3.
+  # A Quina sorteia de segunda a sábado, ~20h de Brasília (~23h UTC).
+  schedule:
+    - cron: '20,50 23 * * *'   # 20:20 e 20:50 de Brasília
+    - cron: '30 0 * * *'       # 21:30 de Brasília
+    - cron: '0 12 * * *'       # 09:00 de Brasília (rede de segurança)
+  # Botão "Run workflow" na aba Actions, para rodar na hora.
+  workflow_dispatch:
+
+# Nunca deixa dois runs ao mesmo tempo.
+concurrency:
+  group: importar-sorteios
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Preparar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Importar sorteios
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          EMAIL_DESTINO: eltonluisoc@gmail.com
+          MAX_CONCURSOS: '90'
+        run: node scripts/importar-sorteios.mjs
