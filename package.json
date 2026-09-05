@@ -1,0 +1,17 @@
+{
+  "name": "um-de-nos-automacao",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Automação de importação dos sorteios da Quina para o sistema Um de Nós",
+  "scripts": {
+    "importar": "node scripts/importar-sorteios.mjs",
+    "importar:simular": "node scripts/importar-sorteios.mjs --simular"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}
