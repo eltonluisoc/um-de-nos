@@ -2,6 +2,7 @@ import { db, app } from './firebase-config.js';
 import {
     collection,
     addDoc,
+    setDoc,
     getDocs,
     getDoc,
     updateDoc,
@@ -34,10 +35,9 @@ let sorteioEncontradoHoje = false;
 let competicaoPreparandoId = null;
 let competicaoPreparandoValor = 20;
 
-// MÚLTIPLAS APIs DA QUINA
+// APIs da Quina (mesma lista usada pela automação em scripts/importar-sorteios.mjs)
 const QUINA_APIS = [
     'https://loteriascaixa-api.herokuapp.com/api/quina/latest',
-    'https://apiloteria.herokuapp.com/api/quina/latest',
     'https://loterias-api.vercel.app/api/quina/latest'
 ];
 
@@ -47,7 +47,6 @@ const QUINA_APIS = [
 async function buscarConcursoPorNumero(numero) {
     const apis = [
         `https://loteriascaixa-api.herokuapp.com/api/quina/${numero}`,
-        `https://apiloteria.herokuapp.com/api/quina/${numero}`,
         `https://loterias-api.vercel.app/api/quina/${numero}`
     ];
     
@@ -123,14 +122,16 @@ async function importarConcursosIntermediarios(ultimoImportado, ultimoDisponivel
             }
         }
         
-        await addDoc(collection(db, 'sorteios_quina'), {
+        // ID determinístico: evita duplicar concurso se a automação também rodar.
+        await setDoc(doc(db, 'sorteios_quina', `${jogoAtualId}_${dados.concurso}`), {
             concurso: dados.concurso,
             numeros: dados.numeros,
             data: dataSorteio,
             importadoEm: new Date(),
-            competicaoId: jogoAtualId
+            competicaoId: jogoAtualId,
+            origem: 'admin'
         });
-        
+
         importados++;
         console.log(`✅ Concurso #${concurso} importado!`);
     }
@@ -179,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (user) { await signOut(auth); }
             dadosCarregados = false;
             if (intervaloBusca) clearInterval(intervaloBusca);
+            pararEscutaRanking();
             document.getElementById('loginScreen').style.display = 'flex';
             document.getElementById('adminContent').style.display = 'none';
         }
@@ -696,9 +698,14 @@ async function atualizarStatusGame() {
         const primeiraConferencia = jogoData.primeiraConferenciaRealizada || false;
         
         if (temSorteio && jogoData.ultimoConcursoImportado) {
-            const hojeStr = hoje.toISOString().split('T')[0];
-            const dataUltimoSorteio = jogoData.ultimosNumerosSorteados?.dataUltimoSorteio?.toDate?.()?.toISOString().split('T')[0];
-            if (dataUltimoSorteio === hojeStr) {
+            const hojeStr = hoje.toLocaleDateString('pt-BR');
+            // Data mais recente entre os sorteios já importados desta competição.
+            let dataMaisRecente = null;
+            sorteiosSnapshot.forEach(s => {
+                const dt = s.data().data?.toDate?.();
+                if (dt && (!dataMaisRecente || dt > dataMaisRecente)) dataMaisRecente = dt;
+            });
+            if (dataMaisRecente && dataMaisRecente.toLocaleDateString('pt-BR') === hojeStr) {
                 statusSorteioMsg = '✅ Sorteio de hoje já importado!';
                 statusSorteioCor = '#28a745';
             }
@@ -1437,12 +1444,13 @@ async function buscarSorteioQuina() {
                         }
                     }
                     
-                    await addDoc(collection(db, 'sorteios_quina'), {
+                    await setDoc(doc(db, 'sorteios_quina', `${jogoAtualId}_${dadosConcurso.concurso}`), {
                         concurso: dadosConcurso.concurso,
                         numeros: dadosConcurso.numeros,
                         data: dataSorteio,
                         importadoEm: new Date(),
-                        competicaoId: jogoAtualId
+                        competicaoId: jogoAtualId,
+                        origem: 'admin'
                     });
                     console.log(`✅ Concurso #${c} importado!`);
                 } else {
@@ -1496,14 +1504,15 @@ async function buscarSorteioQuina() {
             await verificarBloqueio();
         }
         
-        await addDoc(collection(db, 'sorteios_quina'), {
+        await setDoc(doc(db, 'sorteios_quina', `${jogoAtualId}_${concurso}`), {
             concurso: concurso,
             numeros: numeros,
             data: dataSorteioObj,
             importadoEm: new Date(),
-            competicaoId: jogoAtualId
+            competicaoId: jogoAtualId,
+            origem: 'admin'
         });
-        
+
         await updateDoc(jogoRef, {
             ultimosNumerosSorteados: numeros,
             ultimoConcursoImportado: concurso
@@ -1848,38 +1857,44 @@ async function resetarTudo() {
 // ATUALIZAÇÃO AUTOMÁTICA DO RANKING (TEMPO REAL)
 // ============================================
 
+let unsubRankingParticipantes = null;
+let unsubRankingSorteios = null;
+
+function pararEscutaRanking() {
+    if (unsubRankingParticipantes) { unsubRankingParticipantes(); unsubRankingParticipantes = null; }
+    if (unsubRankingSorteios) { unsubRankingSorteios(); unsubRankingSorteios = null; }
+}
+
 function iniciarEscutaRanking() {
+    // Sempre solta as escutas anteriores antes de abrir novas (evita empilhar listeners).
+    pararEscutaRanking();
+
     if (!jogoAtualId) {
         console.log('⏸️ Escuta do ranking desativada (sem jogo ativo)');
         return;
     }
-    
+
     console.log('📡 Iniciando escuta em tempo real do ranking...');
-    
+
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
-    
-    const unsubscribeParticipantes = onSnapshot(q, (snapshot) => {
+
+    unsubRankingParticipantes = onSnapshot(q, () => {
         console.log('🔄 Mudança detectada nos participantes - atualizando ranking...');
         carregarRanking();
     }, (error) => {
         console.error('❌ Erro na escuta do ranking:', error);
     });
-    
+
     const sorteiosRef = collection(db, 'sorteios_quina');
     const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoAtualId));
-    
-    const unsubscribeSorteios = onSnapshot(qSorteios, (snapshot) => {
+
+    unsubRankingSorteios = onSnapshot(qSorteios, () => {
         console.log('🔄 Mudança detectada nos sorteios - atualizando ranking...');
         carregarRanking();
     }, (error) => {
         console.error('❌ Erro na escuta dos sorteios:', error);
     });
-    
-    return () => {
-        unsubscribeParticipantes();
-        unsubscribeSorteios();
-    };
 }
 
 // ============================================

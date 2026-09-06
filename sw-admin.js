@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-admin-v16';
+const CACHE_NAME = 'umdenos-admin-v17';
 const urlsToCache = [
   '/um-de-nos/admin.html',
   '/um-de-nos/admin.js',
@@ -16,7 +16,7 @@ const urlsToCache = [
 ];
 
 self.addEventListener('install', event => {
-  console.log('Service Worker Admin instalado v16');
+  console.log('Service Worker Admin instalado v17');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -28,7 +28,7 @@ self.addEventListener('install', event => {
 });
 
 self.addEventListener('activate', event => {
-  console.log('Service Worker Admin ativado v16');
+  console.log('Service Worker Admin ativado v17');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
