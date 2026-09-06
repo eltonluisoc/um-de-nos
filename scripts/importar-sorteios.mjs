@@ -335,53 +335,65 @@ async function declararVencedores({ jogoRef, jogo, jogoId, participantes, venced
   const premio2 = premioTotal * PCT_2O;
   const premio3 = premioTotal * PCT_MENOS_ACERTOS;
 
-  vencedores.sort((a, b) => b.acertos - a.acertos);
-  const empatadosTopo = vencedores.filter((v) => v.acertos === vencedores[0].acertos);
+  // 1º lugar: quem fechou 17 (divide os 63% se houver empate).
+  const campeoes = [...vencedores].sort((a, b) => (b.acertos || 0) - (a.acertos || 0));
+  const idsCampeoes = new Set(campeoes.map((c) => c.id));
+  const naoCampeoes = participantes.filter((p) => !idsCampeoes.has(p.id));
 
-  const naoVencedores = participantes.filter((p) => !vencedores.includes(p));
-  let perdedor = null;
-  for (const p of naoVencedores) {
-    if (!perdedor || (p.acertos || 0) < perdedor.acertos) perdedor = { id: p.id, nome: p.nome, acertos: p.acertos || 0 };
+  // 2º lugar: maior(es) acerto(s) entre quem NÃO venceu (divide os 20% se empate).
+  // Menos acertos: menor(es) acerto(s) entre quem não venceu (divide os 5% se empate).
+  let segundos = [];
+  let perdedores = [];
+  if (naoCampeoes.length) {
+    const maxNC = Math.max(...naoCampeoes.map((p) => p.acertos || 0));
+    const minNC = Math.min(...naoCampeoes.map((p) => p.acertos || 0));
+    segundos = naoCampeoes.filter((p) => (p.acertos || 0) === maxNC);
+    if (minNC < maxNC && total >= 3) perdedores = naoCampeoes.filter((p) => (p.acertos || 0) === minNC);
   }
 
+  const premio1Cada = premio1 / campeoes.length;
+  const premio2Cada = segundos.length ? premio2 / segundos.length : 0;
+  const premio3Cada = perdedores.length ? premio3 / perdedores.length : 0;
+
+  const linha = (lst, val) => lst.map((p) => p.nome).join(', ') + ` — R$ ${val.toFixed(2)} cada`;
+
   if (SIMULAR) {
-    log(`   [simulação] 1º: ${vencedores[0].nome} (R$ ${premio1.toFixed(2)}${empatadosTopo.length > 1 ? ` / ${empatadosTopo.length} empatados` : ''})`);
-    if (vencedores[1]) log(`   [simulação] 2º: ${vencedores[1].nome} (R$ ${premio2.toFixed(2)})`);
-    if (perdedor && total >= 3) log(`   [simulação] menos acertos: ${perdedor.nome} (R$ ${premio3.toFixed(2)})`);
+    log(`   [simulação] 1º: ${linha(campeoes, premio1Cada)}`);
+    if (segundos.length) log(`   [simulação] 2º: ${linha(segundos, premio2Cada)}`);
+    if (perdedores.length) log(`   [simulação] menos acertos: ${linha(perdedores, premio3Cada)}`);
     log('   [simulação] jogo seria ENCERRADO.');
     return;
   }
 
   const batch = db.batch();
-  for (let i = 0; i < vencedores.length && i < 2; i++) {
-    const v = vencedores[i];
-    let premio = i === 0 ? premio1 : premio2;
-    if (i === 0 && empatadosTopo.length > 1) premio = premio1 / empatadosTopo.length;
-    batch.update(db.collection('participantes').doc(v.id), {
-      acertouTodos: true, ordemVitoria: i + 1, premioGanho: premio,
-    });
+  for (const v of campeoes) {
+    batch.update(db.collection('participantes').doc(v.id), { acertouTodos: true, ordemVitoria: 1, premioGanho: premio1Cada });
     batch.set(db.collection('historico_vencedores').doc(`${jogoId}_${v.id}`), {
-      jogoId, participanteId: v.id, participanteNome: v.nome,
-      posicao: i + 1, premio, dataVitoria: Timestamp.now(),
+      jogoId, participanteId: v.id, participanteNome: v.nome, posicao: 1, premio: premio1Cada, dataVitoria: Timestamp.now(),
     });
   }
-  if (perdedor && total >= 3) {
-    batch.update(db.collection('participantes').doc(perdedor.id), { premioMenosAcertos: premio3 });
-    batch.set(db.collection('historico_vencedores').doc(`${jogoId}_${perdedor.id}_menos`), {
-      jogoId, participanteId: perdedor.id, participanteNome: perdedor.nome,
-      posicao: 'MENOS ACERTOS', premio: premio3, acertos: perdedor.acertos, dataVitoria: Timestamp.now(),
+  for (const s of segundos) {
+    batch.update(db.collection('participantes').doc(s.id), { ordemVitoria: 2, premioGanho: premio2Cada });
+    batch.set(db.collection('historico_vencedores').doc(`${jogoId}_${s.id}`), {
+      jogoId, participanteId: s.id, participanteNome: s.nome, posicao: 2, premio: premio2Cada, acertos: s.acertos || 0, dataVitoria: Timestamp.now(),
     });
   }
-  batch.update(jogoRef, { status: 'encerrado', encerradoEm: Timestamp.now(), vencedorNome: vencedores[0].nome });
+  for (const p of perdedores) {
+    batch.update(db.collection('participantes').doc(p.id), { premioMenosAcertos: premio3Cada });
+    batch.set(db.collection('historico_vencedores').doc(`${jogoId}_${p.id}_menos`), {
+      jogoId, participanteId: p.id, participanteNome: p.nome, posicao: 'MENOS ACERTOS', premio: premio3Cada, acertos: p.acertos || 0, dataVitoria: Timestamp.now(),
+    });
+  }
+  batch.update(jogoRef, { status: 'encerrado', encerradoEm: Timestamp.now(), vencedorNome: campeoes[0].nome });
   await batch.commit();
   log('   jogo ENCERRADO e histórico gravado.');
 
   await enviarEmail(
-    `🏆 Um de Nós — TEMOS VENCEDOR: ${vencedores[0].nome}`,
+    `🏆 Um de Nós — TEMOS VENCEDOR: ${campeoes.map((c) => c.nome).join(', ')}`,
     `Competição "${jogo.nome}" encerrada!\n\n` +
-    `🥇 1º: ${vencedores[0].nome} — R$ ${premio1.toFixed(2)}\n` +
-    (vencedores[1] ? `🥈 2º: ${vencedores[1].nome} — R$ ${premio2.toFixed(2)}\n` : '') +
-    (perdedor && total >= 3 ? `🎯 Menos acertos: ${perdedor.nome} (${perdedor.acertos}/17) — R$ ${premio3.toFixed(2)}\n` : '') +
+    `🥇 1º lugar: ${linha(campeoes, premio1Cada)}\n` +
+    (segundos.length ? `🥈 2º lugar: ${linha(segundos, premio2Cada)}\n` : '') +
+    (perdedores.length ? `🎯 Menos acertos: ${linha(perdedores, premio3Cada)}\n` : '') +
     `\n${SITE_URL}`
   );
 }

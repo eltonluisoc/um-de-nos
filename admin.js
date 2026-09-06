@@ -528,8 +528,10 @@ async function carregarRanking() {
             }
             
             let premioTexto = '';
-            if (p.premioGanho && p.premioGanho > 0) {
-                premioTexto = ` 💰 R$ ${p.premioGanho.toFixed(2)}`;
+            const premioVal = (p.premioGanho && p.premioGanho > 0) ? p.premioGanho
+                : (p.premioMenosAcertos && p.premioMenosAcertos > 0) ? p.premioMenosAcertos : 0;
+            if (premioVal > 0) {
+                premioTexto = ` 💰 R$ ${premioVal.toFixed(2)}`;
             }
             
             div.innerHTML = `
@@ -1658,90 +1660,75 @@ async function atualizarAcertosParticipantes() {
 async function declararVencedores(vencedores) {
     const jogoRef = doc(db, 'jogos', jogoAtualId);
     const jogoDoc = await getDoc(jogoRef);
-    
     if (jogoDoc.data().status !== 'aberto') return;
-    
+
     const jogoData = jogoDoc.data();
     const valorInscricao = jogoData.valorInscricao || 50;
-    
+
     const participantesRef = collection(db, 'participantes');
     const q = query(participantesRef, where('jogoId', '==', jogoAtualId));
     const allParticipants = await getDocs(q);
-    
-    let menosAcertos = 17;
-    let perdedor = null;
-    allParticipants.forEach(doc => {
-        const p = doc.data();
-        if (!p.acertouTodos && p.acertos < menosAcertos) {
-            menosAcertos = p.acertos;
-            perdedor = { id: doc.id, nome: p.nome, acertos: p.acertos };
-        }
-    });
-    
-    const totalParticipantes = allParticipants.size;
+    const todos = allParticipants.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    const totalParticipantes = todos.length;
     const premioTotal = valorInscricao * totalParticipantes;
-    
     const premio1 = premioTotal * 0.63;
     const premio2 = premioTotal * 0.20;
     const premio3 = premioTotal * 0.05;
-    
-    vencedores.sort((a, b) => b.acertos - a.acertos);
-    
-    for (let i = 0; i < vencedores.length && i < 2; i++) {
-        const v = vencedores[i];
-        let premio = (i === 0) ? premio1 : premio2;
-        
-        const empatados = vencedores.filter(v2 => v2.acertos === v.acertos);
-        if (empatados.length > 1 && i === 0) {
-            premio = premio1 / empatados.length;
+
+    // 1º lugar: quem fechou 17 (divide os 63% se houver empate)
+    const campeoes = [...vencedores].sort((a, b) => b.acertos - a.acertos);
+    const idsCampeoes = new Set(campeoes.map(c => c.id));
+    const naoCampeoes = todos.filter(p => !idsCampeoes.has(p.id));
+
+    // 2º lugar: maior(es) acerto(s) entre quem NÃO venceu (divide os 20% se empate)
+    // Menos acertos: menor(es) acerto(s) entre quem não venceu (divide os 5% se empate)
+    let segundos = [];
+    let perdedores = [];
+    if (naoCampeoes.length) {
+        const maxNC = Math.max(...naoCampeoes.map(p => p.acertos || 0));
+        const minNC = Math.min(...naoCampeoes.map(p => p.acertos || 0));
+        segundos = naoCampeoes.filter(p => (p.acertos || 0) === maxNC);
+        if (minNC < maxNC && totalParticipantes >= 3) {
+            perdedores = naoCampeoes.filter(p => (p.acertos || 0) === minNC);
         }
-        
-        await updateDoc(doc(db, 'participantes', v.id), {
-            acertouTodos: true,
-            ordemVitoria: i + 1,
-            premioGanho: premio
-        });
-        
-        await addDoc(collection(db, 'historico_vencedores'), {
-            jogoId: jogoAtualId,
-            participanteId: v.id,
-            participanteNome: v.nome,
-            posicao: i + 1,
-            premio: premio,
-            dataVitoria: new Date()
+    }
+
+    const premio1Cada = premio1 / campeoes.length;
+    const premio2Cada = segundos.length ? premio2 / segundos.length : 0;
+    const premio3Cada = perdedores.length ? premio3 / perdedores.length : 0;
+
+    for (const v of campeoes) {
+        await updateDoc(doc(db, 'participantes', v.id), { acertouTodos: true, ordemVitoria: 1, premioGanho: premio1Cada });
+        await setDoc(doc(db, 'historico_vencedores', `${jogoAtualId}_${v.id}`), {
+            jogoId: jogoAtualId, participanteId: v.id, participanteNome: v.nome,
+            posicao: 1, premio: premio1Cada, dataVitoria: new Date()
         });
     }
-    
-    if (perdedor && totalParticipantes >= 3) {
-        await updateDoc(doc(db, 'participantes', perdedor.id), {
-            premioMenosAcertos: premio3
-        });
-        
-        await addDoc(collection(db, 'historico_vencedores'), {
-            jogoId: jogoAtualId,
-            participanteId: perdedor.id,
-            participanteNome: perdedor.nome,
-            posicao: 'MENOS ACERTOS',
-            premio: premio3,
-            acertos: perdedor.acertos,
-            dataVitoria: new Date()
+    for (const s of segundos) {
+        await updateDoc(doc(db, 'participantes', s.id), { ordemVitoria: 2, premioGanho: premio2Cada });
+        await setDoc(doc(db, 'historico_vencedores', `${jogoAtualId}_${s.id}`), {
+            jogoId: jogoAtualId, participanteId: s.id, participanteNome: s.nome,
+            posicao: 2, premio: premio2Cada, acertos: s.acertos || 0, dataVitoria: new Date()
         });
     }
-    
-    await updateDoc(jogoRef, {
-        status: 'encerrado',
-        encerradoEm: new Date()
-    });
-    
+    for (const p of perdedores) {
+        await updateDoc(doc(db, 'participantes', p.id), { premioMenosAcertos: premio3Cada });
+        await setDoc(doc(db, 'historico_vencedores', `${jogoAtualId}_${p.id}_menos`), {
+            jogoId: jogoAtualId, participanteId: p.id, participanteNome: p.nome,
+            posicao: 'MENOS ACERTOS', premio: premio3Cada, acertos: p.acertos || 0, dataVitoria: new Date()
+        });
+    }
+
+    await updateDoc(jogoRef, { status: 'encerrado', encerradoEm: new Date(), vencedorNome: campeoes[0].nome });
     if (intervaloBusca) clearInterval(intervaloBusca);
-    
+
     let msg = '🏆 RESULTADO FINAL! 🏆\n\n';
-    if (vencedores[0]) msg += `🥇 1º lugar: ${vencedores[0].nome}\n`;
-    if (vencedores[1]) msg += `🥈 2º lugar: ${vencedores[1].nome}\n`;
-    if (perdedor) msg += `🎯 Prêmio especial (menos acertos): ${perdedor.nome} (${perdedor.acertos}/17)\n`;
-    msg += '\n📊 Veja o ranking completo na tela!';
+    msg += `🥇 1º lugar: ${campeoes.map(c => c.nome).join(', ')} — R$ ${premio1Cada.toFixed(2)} cada\n`;
+    if (segundos.length) msg += `🥈 2º lugar: ${segundos.map(s => s.nome).join(', ')} — R$ ${premio2Cada.toFixed(2)} cada\n`;
+    if (perdedores.length) msg += `🎯 Menos acertos: ${perdedores.map(p => p.nome).join(', ')} — R$ ${premio3Cada.toFixed(2)} cada\n`;
     alert(msg);
-    
+
     await carregarRanking();
     await atualizarStatusGame();
 }

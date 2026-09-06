@@ -450,8 +450,10 @@ function atualizarRanking(participantes) {
         
         // Badge de prêmio
         let premioBadge = '';
-        if (p.premioGanho && p.premioGanho > 0) {
-            premioBadge = `<span style="color:#ffd700;font-weight:bold;font-size:0.75em;margin-left:8px;">💰 R$ ${p.premioGanho.toFixed(2)}</span>`;
+        const premioVal = (p.premioGanho && p.premioGanho > 0) ? p.premioGanho
+            : (p.premioMenosAcertos && p.premioMenosAcertos > 0) ? p.premioMenosAcertos : 0;
+        if (premioVal > 0) {
+            premioBadge = `<span style="color:#ffd700;font-weight:bold;font-size:0.75em;margin-left:8px;">💰 R$ ${premioVal.toFixed(2)}</span>`;
         }
         
         let lastBadge = '';
