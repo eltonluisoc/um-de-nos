@@ -18,8 +18,16 @@ let sorteiosRealizados = [];
 let unsubscribeParticipantes = null;
 let unsubscribeSorteios = null;
 
+// Aceita "dd/mm/yyyy" (resumo da automação) ou um Timestamp do Firestore.
+function fmtDataSorteio(d) {
+    if (!d) return '';
+    if (typeof d === 'string') return d;
+    const dt = d.toDate ? d.toDate() : new Date(d);
+    return isNaN(dt) ? '' : dt.toLocaleDateString('pt-BR');
+}
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 Um de Nós - Página Pública iniciada - v8 (Correção Definitiva)');
+    console.log('🚀 Um de Nós - Página Pública iniciada - v9');
     carregarDados();
 });
 
@@ -513,7 +521,7 @@ async function carregarSorteios() {
     let sorteios;
     // Caminho rápido: usa o resumo que a automação grava no doc do jogo.
     if (Array.isArray(jogoAtual?.sorteiosResumo)) {
-        sorteios = jogoAtual.sorteiosResumo.map(s => ({ concurso: s.concurso, numeros: s.numeros || [] }));
+        sorteios = jogoAtual.sorteiosResumo.map(s => ({ concurso: s.concurso, numeros: s.numeros || [], data: s.data || null }));
     } else {
         // Plano B: lê a coleção (competições antigas, sem resumo).
         const q = query(collection(db, 'sorteios_quina'), where('competicaoId', '==', jogoId));
@@ -523,6 +531,21 @@ async function carregarSorteios() {
 
     sorteios.sort((a, b) => b.concurso - a.concurso);
     sorteiosRealizados = sorteios;
+
+    // Nº do concurso + data do último sorteio, ao lado do título.
+    const infoEl = document.getElementById('ultimoSorteioInfo');
+    if (infoEl) {
+        const ult = sorteios[0];
+        if (ult) {
+            let txt = `Concurso ${ult.concurso}`;
+            const d = fmtDataSorteio(ult.data);
+            if (d) txt += ` · ${d}`;
+            if (jogoAtual?.proximoSorteioData) txt += `<br>Próximo: ${jogoAtual.proximoSorteioData}`;
+            infoEl.innerHTML = txt;
+        } else {
+            infoEl.textContent = '';
+        }
+    }
 
     numerosSorteadosAcumulados = Array.isArray(jogoAtual?.numerosAcumulados)
         ? [...jogoAtual.numerosAcumulados]
@@ -690,31 +713,18 @@ async function atualizarStatusSorteio() {
     try {
         const response = await fetch('https://loteriascaixa-api.herokuapp.com/api/quina/latest');
         const dados = await response.json();
-        const concursoAPI = dados.concurso;
-        
+        const concursoAPI = Number(dados.concurso) || null;
+
         const jogoRef = doc(db, 'jogos', jogoId);
         const jogoDoc = await getDoc(jogoRef);
-        const concursoImportado = jogoDoc.data()?.ultimoConcursoImportado;
-        const hoje = new Date();
-        const diaSemana = hoje.getDay();
-        const hora = hoje.getHours();
-        
-        const temSorteioHoje = (diaSemana >= 1 && diaSemana <= 6);
-        
-        if (concursoAPI === concursoImportado) {
-            statusSpan.innerHTML = '✅ Atualizado';
-            statusSpan.className = 'atualizado';
+        const concursoImportado = jogoDoc.data()?.ultimoConcursoImportado ?? null;
+
+        if (concursoAPI && concursoImportado && concursoAPI > concursoImportado) {
+            statusSpan.innerHTML = `🔄 Concurso ${concursoAPI} disponível — importando`;
+            statusSpan.className = 'verificando';
         } else {
-            if (!temSorteioHoje) {
-                statusSpan.innerHTML = '📌 Hoje não há sorteio (domingo)';
-                statusSpan.className = 'aguardando';
-            } else if (hora < 20) {
-                statusSpan.innerHTML = '⏳ Aguardando sorteio de hoje (20h)';
-                statusSpan.className = 'aguardando';
-            } else {
-                statusSpan.innerHTML = '🔄 Buscando sorteio de hoje...';
-                statusSpan.className = 'verificando';
-            }
+            statusSpan.innerHTML = `✅ Em dia${concursoImportado ? ` — concurso ${concursoImportado}` : ''}`;
+            statusSpan.className = 'atualizado';
         }
     } catch (error) {
         console.error('Erro ao verificar status:', error);

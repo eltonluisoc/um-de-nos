@@ -27,13 +27,14 @@ const MAX_CONCURSOS = Number(process.env.MAX_CONCURSOS || 90);
 const SITE_URL = 'https://eltonluisoc.github.io/um-de-nos/';
 
 // APIs da Quina (tenta na ordem até uma responder).
+// A 2ª é a própria Caixa — sem CORS, então só serve para o Node (não para o navegador).
 const APIS_QUINA = [
   (c) => `https://loteriascaixa-api.herokuapp.com/api/quina/${c}`,
-  (c) => `https://loterias-api.vercel.app/api/quina/${c}`,
+  (c) => `https://servicebus2.caixa.gov.br/portaldeloterias/api/quina/${c}`,
 ];
 const API_LATEST = [
   'https://loteriascaixa-api.herokuapp.com/api/quina/latest',
-  'https://loterias-api.vercel.app/api/quina/latest',
+  'https://servicebus2.caixa.gov.br/portaldeloterias/api/quina',
 ];
 
 // Rateio dos prêmios (igual ao painel admin).
@@ -76,10 +77,11 @@ function normalizarSorteio(dados) {
   let dezenas = dados.dezenas || dados.listaDezenas || dados.numeros;
   const concurso = Number(dados.concurso ?? dados.numero);
   const data = dados.data || dados.dataApuracao || null;
+  const proximo = dados.dataProximoConcurso || dados.proximoConcurso || null;
   if (!Array.isArray(dezenas)) return null;
   dezenas = dezenas.map(Number).filter((n) => Number.isInteger(n));
   if (dezenas.length !== 5 || !concurso) return null;
-  return { concurso, numeros: dezenas.sort((a, b) => a - b), data };
+  return { concurso, numeros: dezenas.sort((a, b) => a - b), data, proximo };
 }
 
 async function buscarUltimoConcurso() {
@@ -246,16 +248,26 @@ async function main() {
   const ultimoImportadoAgora = novos.length ? novos[novos.length - 1].concurso
     : (jogo.ultimoConcursoImportado || (concursosExistentes.size ? Math.max(...concursosExistentes) : null));
 
+  // dd/mm/yyyy a partir do Timestamp gravado (guardado como 23:05 UTC -> usar UTC).
+  const fmtBR = (ts) => {
+    const dt = ts && ts.toDate ? ts.toDate() : null;
+    if (!dt) return null;
+    const p = (n) => String(n).padStart(2, '0');
+    return `${p(dt.getUTCDate())}/${p(dt.getUTCMonth() + 1)}/${dt.getUTCFullYear()}`;
+  };
+
   // Lista compacta de todos os sorteios da competição (para o site público
   // renderizar o histórico sem precisar ler a coleção sorteios_quina).
   const sorteiosResumo = [
-    ...snapSorteios.docs.map((d) => ({ concurso: Number(d.data().concurso), numeros: (d.data().numeros || []).map(Number) })),
-    ...novos.map((s) => ({ concurso: s.concurso, numeros: s.numeros })),
+    ...snapSorteios.docs.map((d) => ({ concurso: Number(d.data().concurso), numeros: (d.data().numeros || []).map(Number), data: fmtBR(d.data().data) })),
+    ...novos.map((s) => ({ concurso: s.concurso, numeros: s.numeros, data: s.data || null })),
   ].sort((a, b) => b.concurso - a.concurso);
 
   const resumo = {
     ultimoConcursoImportado: ultimoImportadoAgora,
     ultimosNumerosSorteados: novos.length ? novos[novos.length - 1].numeros : (jogo.ultimosNumerosSorteados || []),
+    ultimoSorteioData: sorteiosResumo[0]?.data || null,
+    proximoSorteioData: ultimo.proximo || null,
     numerosAcumulados: [...numerosAcumulados].sort((a, b) => a - b),
     frequenciaNumeros: frequencia,
     sorteiosResumo,
