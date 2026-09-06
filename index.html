@@ -5,949 +5,505 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Desafio dos 17</title>
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0b1e19">
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230b1e19'/%3E%3Ctext x='50' y='67' font-size='50' text-anchor='middle' fill='%23f1c40f'%3E🎯%3C/text%3E%3C/svg%3E">
+    <meta name="theme-color" content="#081310">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23081310'/%3E%3Ctext x='50' y='68' font-size='52' text-anchor='middle'%3E%F0%9F%8E%AF%3C/text%3E%3C/svg%3E">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-            min-height: 100vh;
-            color: #ffffff;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-        
-        .hero-section {
-            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-            border-radius: 16px;
-            padding: 40px 20px;
-            margin-bottom: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-            text-align: center;
-        }
-        
-        .title-top {
-            font-size: 0.75em;
-            letter-spacing: 3px;
-            color: rgba(255, 255, 255, 0.5);
-            text-transform: uppercase;
-            margin-bottom: 15px;
-        }
-        
-        .main-title {
-            font-size: 3.5em;
-            font-weight: 800;
-            letter-spacing: 4px;
-            background: linear-gradient(135deg, #ffffff 0%, #f1c40f 80%);
-            -webkit-background-clip: text;
-            background-clip: text;
-            color: transparent;
-            margin: 0 0 15px 0;
-        }
-        
-        .challenge-badge {
-            color: #f1c40f;
-            font-weight: 700;
-            font-size: 1.1em;
-            letter-spacing: 1px;
-            margin-bottom: 20px;
-            display: inline-block;
-            padding: 5px 15px;
-            background: rgba(241, 196, 15, 0.08);
-            border-radius: 50px;
-            border: 1px solid rgba(241, 196, 15, 0.15);
-        }
-        
-        .description {
-            font-size: 0.95em;
-            color: rgba(255, 255, 255, 0.6);
-            line-height: 1.6;
-            max-width: 500px;
-            margin: 0 auto;
-        }
-        
-        .description strong {
-            color: #f1c40f;
-        }
-        
-        .status-jogo {
-            text-align: center;
-            margin-bottom: 25px;
-        }
-        
-        .status-badge {
-            background: rgba(241, 196, 15, 0.08);
-            border: 1px solid rgba(241, 196, 15, 0.2);
-            color: #f1c40f;
-            padding: 10px 24px;
-            border-radius: 50px;
-            font-weight: 600;
-            font-size: 0.9em;
-            display: inline-block;
-        }
-        
-        .status-info {
-            text-align: center;
-            margin-top: 5px;
-            margin-bottom: 15px;
-            font-size: 0.65em;
-            opacity: 0.6;
-            letter-spacing: 0.3px;
-        }
-        
-        .status-info span {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-        }
-        
-        .status-info .atualizado { color: #28a745; }
-        .status-info .aguardando { color: #f1c40f; }
-        .status-info .verificando { color: #ff8c00; }
-        .status-info .erro { color: #dc3545; }
-        
-        .premiacao {
-            background: rgba(255,255,255,0.03);
-            border-radius: 16px;
-            padding: 20px;
-            margin-bottom: 25px;
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .premio-item {
-            background: rgba(255,255,255,0.03);
-            border-radius: 12px;
-            padding: 15px;
-            transition: all 0.2s;
-        }
-        
-        .premio-item:hover {
-            background: rgba(241, 196, 15, 0.05);
-            transform: translateY(-2px);
-        }
-        
-        .premio-item h4 {
-            font-size: 0.85em;
-            margin-bottom: 8px;
-            color: rgba(255,255,255,0.5);
-        }
-        
-        .premio-item .valor {
-            font-size: 1.4em;
-            font-weight: 800;
-            color: #f1c40f;
-        }
-        
-        .ultimo-sorteio {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 16px 20px;
-            text-align: center;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .ultimo-sorteio h3 {
-            font-size: 0.85em;
-            margin-bottom: 12px;
-            color: rgba(255,255,255,0.5);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-        }
-        
-        .numeros-sorteio {
-            display: flex;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-        
-        .numeros-sorteio span {
-            background: rgba(241, 196, 15, 0.08);
-            border: 1px solid rgba(241, 196, 15, 0.2);
-            color: #f1c40f;
-            width: 50px;
-            height: 50px;
-            border-radius: 50%;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.3em;
-            font-weight: 800;
-        }
-        
-        .ranking-container {
-            background: rgba(0, 0, 0, 0.3);
-            border-radius: 16px;
-            margin-bottom: 25px;
-            overflow: hidden;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .ranking-header {
-            background: rgba(0,0,0,0.4);
-            padding: 18px 24px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .ranking-header h3 {
-            font-size: 1.1em;
-            font-weight: 600;
-            margin-bottom: 10px;
-            color: #f1c40f;
-        }
-        
-        .ranking-stats {
-            display: flex;
-            gap: 24px;
-            flex-wrap: wrap;
-        }
-        
-        .stat-item {
-            font-size: 0.8em;
-            color: rgba(255,255,255,0.5);
-        }
-        
-        .stat-item strong {
-            color: #f1c40f;
-        }
-        
-        .ranking-columns {
-            display: grid;
-            grid-template-columns: 70px 1fr 70px 80px;
-            background: rgba(241, 196, 15, 0.04);
-            padding: 12px 20px;
-            font-size: 0.7em;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            color: rgba(255,255,255,0.4);
-        }
-        
-        .ranking-list {
-            max-height: 500px;
-            overflow-y: auto;
-        }
-        
-        .ranking-list::-webkit-scrollbar {
-            width: 6px;
-        }
-        
-        .ranking-list::-webkit-scrollbar-track {
-            background: rgba(255,255,255,0.03);
-            border-radius: 10px;
-        }
-        
-        .ranking-list::-webkit-scrollbar-thumb {
-            background: #f1c40f;
-            border-radius: 10px;
-        }
-        
-        .ranking-row {
-            display: grid;
-            grid-template-columns: 70px 1fr 70px 80px;
-            padding: 14px 20px;
-            align-items: center;
-            border-bottom: 1px solid rgba(255,255,255,0.03);
-            transition: all 0.2s ease;
-            cursor: pointer;
-        }
-        
-        .ranking-row:hover {
-            background: rgba(241, 196, 15, 0.04);
-            transform: translateX(4px);
-        }
-        
-        .ranking-pos {
-            font-weight: 800;
-            font-size: 1em;
-        }
-        
-        .player-name {
-            font-weight: 700;
-            font-size: 0.95em;
-        }
-        
-        .player-numbers {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 4px;
-            margin-top: 4px;
-        }
-        
-        .number-badge {
-            background: rgba(255,255,255,0.08);
-            padding: 2px 6px;
-            border-radius: 12px;
-            font-size: 0.65em;
-            font-weight: 600;
-            transition: all 0.2s;
-        }
-        
-        .number-badge.hit {
-            background: rgba(40, 167, 69, 0.25);
-            color: #28a745;
-            border: 1px solid rgba(40, 167, 69, 0.3);
-        }
-        
-        .ranking-score {
-            text-align: center;
-            font-weight: 800;
-            font-size: 1.2em;
-            color: #f1c40f;
-        }
-        
-        .ranking-score small {
-            font-size: 0.6em;
-            font-weight: 400;
-            color: rgba(255,255,255,0.4);
-        }
-        
-        .progress-wrapper {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-        }
-        
-        .progress-bar-container {
-            background: rgba(255,255,255,0.08);
-            border-radius: 20px;
-            height: 4px;
-            width: 100%;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            background: linear-gradient(90deg, #f1c40f, #ff8c00);
-            height: 100%;
-            width: 0%;
-            border-radius: 20px;
-            transition: width 0.5s ease;
-        }
-        
-        .progress-percent {
-            font-size: 0.65em;
-            font-weight: 600;
-            color: rgba(255,255,255,0.4);
-        }
-        
-        /* CARD DE NÚMEROS SORTEADOS COM REPETIDOS */
-        .numeros-sorteados-card {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(241,196,15,0.15);
-        }
-        
-        .numeros-sorteados-card h3 {
-            font-size: 0.85em;
-            margin-bottom: 15px;
-            color: rgba(255,255,255,0.5);
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            text-align: center;
-        }
-        
-        .numeros-sorteados-grid {
-            display: grid;
-            grid-template-columns: repeat(10, 1fr);
-            gap: 6px;
-            margin-top: 10px;
-        }
-        
-        .grid-numero {
-            background: rgba(255,255,255,0.04);
-            padding: 8px 4px;
-            text-align: center;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.75em;
-        }
-        
-        .grid-numero.sorteados {
-            background: rgba(241,196,15,0.15);
-            color: #f1c40f;
-            font-weight: 700;
-        }
-        
-        .grid-numero.repetido {
-            background: linear-gradient(135deg, rgba(241,196,15,0.3), rgba(241,196,15,0.1));
-            border: 2px solid #f1c40f;
-            box-shadow: 0 0 8px rgba(241,196,15,0.3);
-            position: relative;
-        }
-        
-        .total-sorteados {
-            text-align: center;
-            font-size: 0.75em;
-            color: rgba(255,255,255,0.4);
-            margin-top: 12px;
-            padding-top: 10px;
-            border-top: 1px solid rgba(255,255,255,0.05);
-        }
-        
-        .lista-sorteios {
-            background: rgba(0,0,0,0.3);
-            border-radius: 16px;
-            padding: 18px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        
-        .lista-sorteios h3 {
-            font-size: 0.85em;
-            margin-bottom: 15px;
-            color: rgba(255,255,255,0.5);
-        }
-        
-        .sorteios-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
-        .sorteio-item {
-            background: rgba(241, 196, 15, 0.05);
-            border: 1px solid rgba(241, 196, 15, 0.1);
-            border-radius: 10px;
-            padding: 6px 12px;
-            font-size: 0.75em;
-        }
-        
-        .sorteio-item span {
-            font-weight: 700;
-            color: #f1c40f;
-        }
-        
-        .vencedor-card {
-            background: linear-gradient(135deg, rgba(241,196,15,0.1), rgba(0,0,0,0.3));
-            border: 1px solid rgba(241,196,15,0.2);
-            text-align: center;
-            padding: 25px;
-            border-radius: 16px;
-            margin-top: 20px;
-        }
-        
-        .vencedor-card h3 {
-            color: #f1c40f;
-            margin-bottom: 10px;
-        }
-        
-        .vencedor-card p {
-            font-size: 1.2em;
-            font-weight: 700;
-        }
-        
-        .loading {
-            text-align: center;
-            padding: 40px;
-            color: rgba(255,255,255,0.4);
-        }
-        
-        footer {
-            text-align: center;
-            padding: 20px;
-            font-size: 0.7em;
-            opacity: 0.4;
-        }
-        
-        /* DESTAQUES DO RANKING */
-        .ranking-row.first-place {
-            background: linear-gradient(90deg, rgba(255,215,0,0.12), rgba(255,215,0,0.03));
-            border-left: 4px solid #ffd700;
-        }
-        
-        .ranking-row.second-place {
-            background: linear-gradient(90deg, rgba(192,192,192,0.1), rgba(192,192,192,0.02));
-            border-left: 4px solid #c0c0c0;
-        }
-        
-        .ranking-row.last-place {
-            border: 1px solid rgba(220,53,69,0.4);
-            border-left: 4px solid #dc3545;
-            background: rgba(220,53,69,0.03);
-            margin-top: 8px;
-            border-radius: 12px;
-        }
-        
-        .last-place-badge {
-            display: inline-block;
-            background: rgba(220,53,69,0.15);
-            color: #ff6b6b;
-            font-size: 0.6em;
-            padding: 2px 8px;
-            border-radius: 20px;
-            margin-left: 8px;
-            font-weight: 600;
-        }
-        
-        /* MENU LATERAL HAMBÚRGUER */
-        .menu-btn {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            width: 45px;
-            height: 45px;
-            background: rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            z-index: 1001;
-            border: 1px solid rgba(255,255,255,0.1);
-            transition: all 0.3s ease;
-        }
-        
-        .menu-btn:hover {
-            background: rgba(241,196,15,0.2);
-            border-color: rgba(241,196,15,0.3);
-        }
-        
-        .menu-btn span {
-            font-size: 24px;
-        }
-        
-        .side-menu {
-            position: fixed;
-            top: 0;
-            left: -280px;
-            width: 280px;
-            height: 100%;
-            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-            backdrop-filter: blur(20px);
-            z-index: 1002;
-            transition: left 0.3s ease;
-            border-right: 1px solid rgba(241,196,15,0.2);
-            box-shadow: 5px 0 30px rgba(0,0,0,0.5);
-        }
-        
-        .side-menu.open {
-            left: 0;
-        }
-        
-        .menu-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.6);
-            z-index: 1001;
-            display: none;
-        }
-        
-        .menu-overlay.active {
-            display: block;
-        }
-        
-        .menu-header {
-            padding: 30px 20px;
-            border-bottom: 1px solid rgba(241,196,15,0.2);
-            margin-bottom: 20px;
-        }
-        
-        .menu-header h3 {
-            color: #f1c40f;
-            font-size: 1.2em;
-        }
-        
-        .menu-header p {
-            color: rgba(255,255,255,0.5);
-            font-size: 0.75em;
-            margin-top: 5px;
-        }
-        
-        .menu-item {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px 20px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border-left: 3px solid transparent;
-        }
-        
-        .menu-item:hover {
-            background: rgba(241,196,15,0.1);
-            border-left-color: #f1c40f;
-        }
-        
-        .menu-item .icon {
-            font-size: 1.3em;
-        }
-        
-        .menu-item .text {
-            font-size: 1em;
-            font-weight: 500;
-        }
-        
-        .menu-footer {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            padding: 20px;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            font-size: 0.7em;
-            color: rgba(255,255,255,0.3);
-            text-align: center;
-        }
-        
-        /* MODAL */
-        .modal {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.85);
-            backdrop-filter: blur(8px);
-            z-index: 2000;
-            display: none;
-            align-items: center;
-            justify-content: center;
-        }
-        
-        .modal.active {
-            display: flex;
-        }
-        
-        .modal-content {
-            background: linear-gradient(135deg, #0b1e19 0%, #050d0b 100%);
-            border-radius: 24px;
-            max-width: 500px;
-            width: 90%;
-            max-height: 80vh;
-            overflow-y: auto;
-            border: 1px solid rgba(241,196,15,0.2);
-            box-shadow: 0 30px 50px rgba(0,0,0,0.5);
-        }
-        
-        .modal-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(241,196,15,0.2);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .modal-header h2 {
-            color: #f1c40f;
-            font-size: 1.3em;
-        }
-        
-        .modal-close {
-            background: none;
-            border: none;
-            color: white;
-            font-size: 28px;
-            cursor: pointer;
-            padding: 0 8px;
-        }
-        
-        .modal-body {
-            padding: 20px;
-            color: rgba(255,255,255,0.8);
-            line-height: 1.6;
-        }
-        
-        .modal-body h3 {
-            color: #f1c40f;
-            margin: 15px 0 10px 0;
-        }
-        
-        .modal-body ul {
-            margin-left: 20px;
-        }
-        
-        .modal-body li {
-            margin: 8px 0;
-        }
-        
-        .modal-footer {
-            padding: 15px 20px;
-            border-top: 1px solid rgba(255,255,255,0.05);
-            text-align: center;
-        }
-        
-        .modal-footer button {
-            background: rgba(241,196,15,0.15);
-            border: 1px solid rgba(241,196,15,0.3);
-            color: #f1c40f;
-            padding: 8px 24px;
-            border-radius: 30px;
-            cursor: pointer;
-            font-weight: 600;
-        }
-        
-        @media (max-width: 768px) {
-            .container { padding: 12px; }
-            .main-title { font-size: 2em; letter-spacing: 2px; }
-            .ranking-columns, .ranking-row { grid-template-columns: 50px 1fr 55px 65px; padding: 10px 12px; }
-            .player-name { font-size: 0.85em; }
-            .number-badge { font-size: 0.55em; padding: 1px 4px; }
-            .ranking-score { font-size: 0.9em; }
-            .premiacao { gap: 8px; padding: 12px; }
-            .premio-item .valor { font-size: 1em; }
-            .numeros-sorteio span { width: 40px; height: 40px; font-size: 1em; }
-            .side-menu { width: 260px; }
-            .menu-btn { top: 15px; left: 15px; width: 40px; height: 40px; }
-            .numeros-sorteados-grid {
-                grid-template-columns: repeat(8, 1fr);
-                gap: 4px;
-            }
-        }
-        
-        @media (max-width: 480px) {
-            .numeros-sorteados-grid {
-                grid-template-columns: repeat(6, 1fr);
-                gap: 3px;
-            }
-        }
+        :root{
+            color-scheme: dark;
+            --bg:#081310;
+            --bg-2:#0b1a15;
+            --surface:#102019;
+            --surface-2:#16291f;
+            --line:rgba(125,180,150,.13);
+            --line-strong:rgba(125,180,150,.26);
+            --text:#e9f1ec;
+            --text-dim:#8ca699;
+            --text-mute:#607a6e;
+            --gold:#f2c230;
+            --gold-dim:#b98f27;
+            --gold-ink:#3a2c05;
+            --gold-glow:rgba(242,194,48,.20);
+            --hit:#45c592;
+            --hit-bg:rgba(69,197,146,.14);
+            --hit-line:rgba(69,197,146,.34);
+            --silver:#c9d3dc;
+            --bronze:#d59158;
+            --danger:#e8735c;
+            --danger-bg:rgba(232,115,92,.10);
+            --radius:16px;
+            --radius-sm:10px;
+            --maxw:640px;
+            --font-display:"Oswald","Arial Narrow",system-ui,sans-serif;
+            --font-ui:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+        }
+
+        *{margin:0;padding:0;box-sizing:border-box}
+        html{-webkit-text-size-adjust:100%}
+        body{
+            font-family:var(--font-ui);
+            background:var(--bg);
+            background-image:
+                radial-gradient(900px 500px at 50% -8%, rgba(242,194,48,.08), transparent 70%),
+                radial-gradient(700px 500px at 100% 0%, rgba(69,197,146,.06), transparent 60%);
+            background-attachment:fixed;
+            color:var(--text);
+            line-height:1.55;
+            -webkit-font-smoothing:antialiased;
+            min-height:100vh;
+        }
+        ::selection{background:var(--gold);color:var(--gold-ink)}
+        a{color:inherit}
+
+        .wrap{max-width:var(--maxw);margin:0 auto;padding:0 16px 72px}
+
+        /* ---------- top bar ---------- */
+        .topbar{
+            position:sticky;top:0;z-index:50;
+            display:flex;align-items:center;justify-content:space-between;
+            gap:12px;padding:14px 16px;margin:0 -16px 4px;
+            background:color-mix(in srgb, var(--bg) 82%, transparent);
+            backdrop-filter:blur(12px);
+            border-bottom:1px solid var(--line);
+        }
+        .brand{display:flex;flex-direction:column;line-height:1}
+        .brand b{
+            font-family:var(--font-display);font-weight:700;letter-spacing:.14em;
+            font-size:1.05rem;text-transform:uppercase;
+        }
+        .brand span{
+            font-size:.62rem;letter-spacing:.34em;text-transform:uppercase;
+            color:var(--text-mute);margin-top:5px;
+        }
+        .icon-btn{
+            inline-size:40px;block-size:40px;border-radius:12px;flex:none;
+            display:grid;place-items:center;cursor:pointer;
+            background:var(--surface);border:1px solid var(--line-strong);
+            color:var(--text);font-size:1.15rem;transition:border-color .2s, background .2s;
+        }
+        .icon-btn:hover{border-color:var(--gold);background:var(--surface-2)}
+        .icon-btn:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+
+        /* ---------- hero / status ---------- */
+        header.hero{padding:34px 4px 10px;text-align:center}
+        .kicker{
+            font-size:.62rem;letter-spacing:.4em;text-transform:uppercase;
+            color:var(--text-mute);
+        }
+        .hero h1{
+            font-family:var(--font-display);font-weight:700;
+            font-size:clamp(2.6rem,11vw,3.9rem);line-height:.95;letter-spacing:.06em;
+            text-transform:uppercase;margin:10px 0 14px;text-wrap:balance;
+            background:linear-gradient(180deg,#fff 0%, #ffe9a8 60%, var(--gold) 100%);
+            -webkit-background-clip:text;background-clip:text;color:transparent;
+        }
+        .tagline{
+            display:inline-flex;align-items:center;gap:8px;
+            font-family:var(--font-display);font-weight:500;letter-spacing:.08em;
+            text-transform:uppercase;font-size:.82rem;color:var(--gold);
+            border:1px solid var(--gold-glow);background:rgba(242,194,48,.06);
+            padding:6px 14px;border-radius:999px;
+        }
+        .hero p.lead{
+            max-width:34ch;margin:16px auto 0;color:var(--text-dim);font-size:.92rem;
+        }
+
+        .status-block{text-align:center;margin-top:24px}
+        .status-badge{
+            display:inline-flex;align-items:center;gap:9px;
+            font-family:var(--font-display);font-weight:600;letter-spacing:.11em;
+            text-transform:uppercase;font-size:.82rem;
+            padding:9px 18px;border-radius:999px;
+            background:var(--surface-2);border:1px solid var(--line-strong);color:var(--text);
+        }
+        .status-info{
+            margin-top:10px;font-size:.72rem;color:var(--text-mute);
+            display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;
+        }
+        .status-info .atualizado{color:var(--hit)}
+        .status-info .aguardando{color:var(--gold)}
+        .status-info .verificando{color:var(--gold)}
+        .status-info .erro{color:var(--danger)}
+
+        /* ---------- sections ---------- */
+        main{display:flex;flex-direction:column;gap:26px;margin-top:30px}
+        section{
+            background:linear-gradient(180deg,var(--surface) 0%, var(--bg-2) 100%);
+            border:1px solid var(--line);border-radius:var(--radius);
+            padding:18px 16px;
+        }
+        .sec-head{
+            display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+            padding-bottom:12px;margin-bottom:16px;border-bottom:1px solid var(--line);
+        }
+        .sec-head h2{
+            font-family:var(--font-display);font-weight:600;letter-spacing:.18em;
+            text-transform:uppercase;font-size:.82rem;color:var(--gold);
+        }
+        .sec-head .meta{font-size:.7rem;color:var(--text-mute);text-align:right}
+        .loading{padding:26px 8px;text-align:center;color:var(--text-mute);font-size:.85rem}
+
+        /* ---------- prize triptych ---------- */
+        .prizes{border:none;background:none;padding:0;grid-template-columns:repeat(3,1fr);gap:10px}
+        .prize{
+            background:linear-gradient(180deg,var(--surface) 0%, var(--bg-2) 100%);
+            border:1px solid var(--line);border-radius:var(--radius-sm);
+            padding:16px 10px;text-align:center;
+        }
+        .prize.lead-prize{border-color:var(--gold-glow);box-shadow:inset 0 2px 0 var(--gold)}
+        .prize h3{
+            font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;
+            color:var(--text-mute);margin-bottom:9px;font-weight:600;
+        }
+        .prize .val{
+            font-family:var(--font-display);font-weight:700;font-size:1.32rem;
+            color:var(--gold);font-variant-numeric:tabular-nums;letter-spacing:.01em;
+        }
+        .prize .pct{font-size:.62rem;color:var(--text-mute);margin-top:3px}
+
+        /* ---------- latest draw : balls ---------- */
+        .draw-balls{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+        .draw-balls span{
+            inline-size:54px;block-size:54px;border-radius:50%;
+            display:grid;place-items:center;
+            font-family:var(--font-display);font-weight:700;font-size:1.4rem;
+            color:var(--gold-ink);font-variant-numeric:tabular-nums;
+            background:radial-gradient(circle at 34% 30%, #fff7db 0%, var(--gold) 58%, var(--gold-dim) 100%);
+            box-shadow:inset 0 -6px 13px rgba(0,0,0,.28), 0 8px 18px -8px var(--gold-glow);
+        }
+        .draw-balls{color:var(--text-mute);font-size:.85rem}
+
+        /* ---------- ranking ---------- */
+        .ranking{padding:0;overflow:hidden}
+        .ranking .sec-head{padding:18px 16px 12px;margin-bottom:0}
+        .rank-stats{display:flex;gap:20px;padding:12px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+        .rank-stats .st{font-size:.72rem;color:var(--text-mute)}
+        .rank-stats .st b{
+            font-family:var(--font-display);font-weight:600;color:var(--text);
+            font-size:.95rem;margin-left:4px;font-variant-numeric:tabular-nums;
+        }
+
+        .ranking-row{
+            display:grid;grid-template-columns:38px 1fr auto;gap:6px 12px;
+            align-items:center;padding:14px 16px;
+            border-bottom:1px solid var(--line);cursor:pointer;
+            transition:background .16s;
+        }
+        .ranking-row:last-child{border-bottom:none}
+        .ranking-row:hover{background:var(--surface-2)}
+        .ranking-pos{
+            font-family:var(--font-display);font-weight:700;font-size:1rem;
+            color:var(--text-dim);font-variant-numeric:tabular-nums;
+        }
+        .ranking-player{min-width:0}
+        .player-name{
+            font-weight:600;font-size:.92rem;display:flex;align-items:center;
+            gap:7px;flex-wrap:wrap;
+        }
+        .player-numbers{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+        .number-badge{
+            font-family:var(--font-display);font-weight:500;font-size:.66rem;
+            padding:2px 6px;border-radius:6px;min-inline-size:20px;text-align:center;
+            background:var(--surface-2);border:1px solid var(--line);color:var(--text-mute);
+            font-variant-numeric:tabular-nums;
+        }
+        .number-badge.hit{
+            background:var(--hit-bg);border-color:var(--hit-line);color:var(--hit);
+        }
+        .ranking-score{
+            font-family:var(--font-display);font-weight:700;font-size:1.5rem;
+            color:var(--gold);font-variant-numeric:tabular-nums;text-align:right;line-height:1;
+        }
+        .ranking-score small{font-size:.6rem;color:var(--text-mute);font-weight:400}
+        .ranking-progress{grid-column:1 / -1;margin-top:4px}
+        .progress-wrapper{display:flex;align-items:center;gap:10px}
+        .progress-bar-container{
+            flex:1;block-size:5px;border-radius:999px;background:rgba(125,180,150,.12);overflow:hidden;
+        }
+        .progress-fill{block-size:100%;border-radius:999px;background:linear-gradient(90deg,var(--gold-dim),var(--gold))}
+        .progress-percent{
+            font-size:.64rem;color:var(--text-mute);min-inline-size:34px;text-align:right;
+            font-variant-numeric:tabular-nums;
+        }
+
+        .ranking-row.first-place{background:linear-gradient(90deg,rgba(242,194,48,.11),transparent 70%);box-shadow:inset 3px 0 0 var(--gold)}
+        .ranking-row.first-place .ranking-pos{color:var(--gold)}
+        .ranking-row.second-place{box-shadow:inset 3px 0 0 var(--silver)}
+        .ranking-row.second-place .ranking-pos{color:var(--silver)}
+        .ranking-row.champion{background:linear-gradient(90deg,rgba(242,194,48,.2),rgba(242,194,48,.04));box-shadow:inset 3px 0 0 var(--gold)}
+        .ranking-row.last-place{background:var(--danger-bg);box-shadow:inset 3px 0 0 var(--danger)}
+        .ranking-row.last-place .ranking-pos{color:var(--danger)}
+        .last-place-badge{
+            font-family:var(--font-display);font-weight:600;font-size:.56rem;letter-spacing:.08em;
+            text-transform:uppercase;padding:2px 7px;border-radius:999px;
+            background:var(--danger-bg);border:1px solid rgba(232,115,92,.34);color:var(--danger);
+        }
+
+        /* ---------- number board 1..80 (grid é criado pelo public.js) ---------- */
+        #numerosSorteadosGrid .numeros-grid{
+            display:grid !important;
+            grid-template-columns:repeat(10,minmax(0,1fr)) !important;
+            gap:5px !important;margin-top:0 !important;
+        }
+        .grid-numero{
+            aspect-ratio:1;display:grid;place-items:center;border-radius:7px;
+            font-family:var(--font-display);font-weight:500;font-size:.72rem;
+            background:var(--surface-2);color:var(--text-mute);
+            border:1px solid transparent;font-variant-numeric:tabular-nums;
+        }
+        .grid-numero.sorteados{background:var(--hit-bg);color:var(--hit);border-color:var(--hit-line)}
+        .grid-numero.repetido{
+            background:var(--hit);color:#04140d;font-weight:700;
+            box-shadow:0 0 10px -2px var(--hit-line);
+        }
+        .board-legend{
+            display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:12px;
+            border-top:1px solid var(--line);font-size:.68rem;color:var(--text-mute);
+        }
+        .board-legend i{inline-size:11px;block-size:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:5px}
+        .board-legend .s1{background:var(--hit-bg);border:1px solid var(--hit-line)}
+        .board-legend .s2{background:var(--hit)}
+
+        /* ---------- draw history chips ---------- */
+        .history{display:flex;flex-wrap:wrap;gap:8px}
+        .sorteio-item{
+            font-size:.72rem;color:var(--text-dim);
+            background:var(--surface-2);border:1px solid var(--line);
+            border-radius:999px;padding:6px 12px;font-variant-numeric:tabular-nums;
+        }
+        .sorteio-item span{
+            font-family:var(--font-display);font-weight:600;color:var(--gold);margin-right:6px;
+        }
+
+        /* ---------- winner ---------- */
+        .winner{
+            text-align:center;
+            background:linear-gradient(180deg,rgba(242,194,48,.14),var(--bg-2));
+            border-color:var(--gold-glow);
+        }
+        .winner h2{
+            font-family:var(--font-display);font-weight:600;letter-spacing:.18em;
+            text-transform:uppercase;font-size:.82rem;color:var(--gold);margin-bottom:6px;
+        }
+        .winner #vencedorNome{font-family:var(--font-display);font-weight:700;font-size:1.5rem;margin:8px 0 4px}
+        .winner #vencedorData{color:var(--text-dim);font-size:.85rem}
+
+        footer{
+            text-align:center;margin-top:36px;font-size:.68rem;color:var(--text-mute);
+            letter-spacing:.04em;
+        }
+
+        /* ---------- side menu ---------- */
+        .menu-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);backdrop-filter:blur(2px);z-index:90;opacity:0;pointer-events:none;transition:opacity .25s}
+        .menu-overlay.active{opacity:1;pointer-events:auto}
+        .side-menu{
+            position:fixed;top:0;bottom:0;left:0;inline-size:280px;max-inline-size:82vw;z-index:100;
+            background:var(--bg-2);border-right:1px solid var(--line-strong);
+            transform:translateX(-100%);transition:transform .25s ease;
+            display:flex;flex-direction:column;
+        }
+        .side-menu.open{transform:translateX(0)}
+        .menu-header{padding:26px 20px;border-bottom:1px solid var(--line)}
+        .menu-header h3{font-family:var(--font-display);font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-size:1.05rem}
+        .menu-header p{margin-top:4px;font-size:.66rem;letter-spacing:.28em;text-transform:uppercase;color:var(--text-mute)}
+        .menu-item{
+            display:flex;align-items:center;gap:13px;padding:15px 20px;color:var(--text);
+            text-decoration:none;font-size:.92rem;border-left:3px solid transparent;
+            cursor:pointer;transition:background .15s,border-color .15s;background:none;border-top:0;border-right:0;border-bottom:0;width:100%;text-align:left;font-family:inherit;
+        }
+        .menu-item:hover{background:var(--surface);border-left-color:var(--gold)}
+        .menu-item .icon{font-size:1.15rem;width:22px;text-align:center}
+        .menu-item.admin{margin-top:auto;border-top:1px solid var(--line);color:var(--gold)}
+        .menu-footer{padding:16px 20px;font-size:.64rem;color:var(--text-mute);border-top:1px solid var(--line)}
+
+        /* ---------- modal ---------- */
+        .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);backdrop-filter:blur(6px);z-index:110;display:none;align-items:center;justify-content:center;padding:16px}
+        .modal.active{display:flex}
+        .modal-content{
+            background:var(--bg-2);border:1px solid var(--line-strong);border-radius:var(--radius);
+            max-width:460px;width:100%;max-height:82vh;overflow-y:auto;
+        }
+        .modal-header{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--line)}
+        .modal-header h2{font-family:var(--font-display);font-weight:600;letter-spacing:.12em;text-transform:uppercase;font-size:.95rem;color:var(--gold)}
+        .modal-close{background:none;border:0;color:var(--text-dim);font-size:1.6rem;line-height:1;cursor:pointer}
+        .modal-body{padding:20px;color:var(--text-dim);font-size:.9rem}
+        .modal-body h3{font-family:var(--font-display);font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:.76rem;color:var(--gold);margin:16px 0 6px}
+        .modal-body h3:first-child{margin-top:0}
+        .modal-body strong{color:var(--text)}
+        .modal-body ul{margin:6px 0 0 18px}
+        .modal-body li{margin:5px 0}
+        .modal-footer{padding:14px 20px;border-top:1px solid var(--line);text-align:center}
+        .modal-footer button{
+            font-family:var(--font-display);font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem;
+            background:var(--gold);color:var(--gold-ink);border:0;border-radius:999px;padding:9px 22px;cursor:pointer;
+        }
+
+        @media (max-width:430px){
+            .draw-balls span{inline-size:46px;block-size:46px;font-size:1.15rem}
+            #numerosSorteadosGrid .numeros-grid{grid-template-columns:repeat(8,minmax(0,1fr)) !important}
+            .prize .val{font-size:1.05rem}
+            .ranking-row{grid-template-columns:30px 1fr auto}
+        }
+        @media (prefers-reduced-motion:reduce){*{transition:none!important}}
     </style>
 </head>
 <body>
-    <!-- BOTÃO MENU -->
-    <div class="menu-btn" id="menuBtn">
-        <span>☰</span>
-    </div>
-
-    <!-- OVERLAY -->
     <div class="menu-overlay" id="menuOverlay"></div>
-
-    <!-- MENU LATERAL -->
-    <div class="side-menu" id="sideMenu">
+    <nav class="side-menu" id="sideMenu" aria-label="Menu">
         <div class="menu-header">
-            <h3>UM DE NÓS</h3>
+            <h3>Um de Nós</h3>
             <p>Desafio dos 17</p>
         </div>
-        
-        <div class="menu-item" id="menuHome">
-            <span class="icon">🏠</span>
-            <span class="text">Início</span>
-        </div>
-        
-        <div class="menu-item" id="menuHowItWorks">
-            <span class="icon">📖</span>
-            <span class="text">Como Funciona</span>
-        </div>
-        
-        <div class="menu-item" id="menuExit">
-            <span class="icon">🚪</span>
-            <span class="text">Sair do App</span>
-        </div>
-        
-        <div class="menu-footer">
-            Um de Nós • v1.0
-        </div>
-    </div>
+        <button class="menu-item" id="menuHome"><span class="icon">🏠</span> Início</button>
+        <button class="menu-item" id="menuHowItWorks"><span class="icon">📖</span> Como funciona</button>
+        <a class="menu-item admin" href="admin.html"><span class="icon">🔐</span> Área do administrador</a>
+        <button class="menu-item" id="menuExit"><span class="icon">🚪</span> Sair do app</button>
+        <div class="menu-footer">Um de Nós · v3.0</div>
+    </nav>
 
-    <!-- MODAL COMO FUNCIONA -->
     <div class="modal" id="howModal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>📖 Como Funciona</h2>
-                <button class="modal-close" id="modalClose">&times;</button>
+                <h2>Como funciona</h2>
+                <button class="modal-close" id="modalClose" aria-label="Fechar">&times;</button>
             </div>
             <div class="modal-body">
-                <h3>🎯 O Desafio dos 17</h3>
-                <p>Cada participante escolhe <strong>17 números</strong> de 1 a 80.</p>
-                
-                <h3>📢 Sorteios</h3>
-                <p>Utilizamos os <strong>sorteios oficiais da Quina</strong>. A cada novo sorteio, os acertos são atualizados automaticamente.</p>
-                
-                <h3>🏆 Vitória</h3>
-                <p>O <strong>primeiro participante</strong> que acertar todos os 17 números vence a competição!</p>
-                
-                <h3>💰 Premiação</h3>
+                <h3>O Desafio dos 17</h3>
+                <p>Cada participante escolhe <strong>17 dezenas</strong> de 1 a 80.</p>
+                <h3>Sorteios</h3>
+                <p>Usamos os <strong>sorteios oficiais da Quina</strong>. A cada novo sorteio, os acertos são atualizados automaticamente.</p>
+                <h3>Vitória</h3>
+                <p>O <strong>primeiro</strong> que acertar todas as 17 dezenas vence a competição.</p>
+                <h3>Premiação</h3>
                 <ul>
-                    <li><strong>🥇 1º lugar:</strong> 63% do total arrecadado</li>
-                    <li><strong>🥈 2º lugar:</strong> 20% do total arrecadado</li>
-                    <li><strong>🎯 Menos acertos:</strong> 5% do total arrecadado</li>
+                    <li><strong>1º lugar:</strong> 63% do total arrecadado</li>
+                    <li><strong>2º lugar:</strong> 20% do total arrecadado</li>
+                    <li><strong>Menos acertos:</strong> 5% do total arrecadado</li>
                 </ul>
-                
-                <h3>📱 Como jogar</h3>
-                <p>Os participantes cadastrados acompanham o ranking em tempo real. Quando alguém atingir 17 acertos, a competição é encerrada automaticamente!</p>
             </div>
             <div class="modal-footer">
-                <button id="modalCloseBtn">Entendi!</button>
+                <button id="modalCloseBtn">Entendi</button>
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <header class="hero-section">
-            <div class="title-top">OFICIAL</div>
-            <h1 class="main-title">UM DE NÓS</h1>
-            <div class="challenge-badge">⚡ O Desafio dos 17 ⚡</div>
-            <p class="description">
-                Acompanhe os sorteios em tempo real.<br>
-                Quem acertar <strong>17 dezenas</strong> primeiro leva a vitória!
-            </p>
+    <div class="wrap">
+        <div class="topbar">
+            <div class="brand"><b>Um de Nós</b><span>Desafio dos 17</span></div>
+            <button class="icon-btn" id="menuBtn" aria-label="Abrir menu">☰</button>
+        </div>
+
+        <header class="hero">
+            <div class="kicker">Bolão oficial da Quina</div>
+            <h1>Um de Nós</h1>
+            <div class="tagline">⚡ O Desafio dos 17</div>
+            <p class="lead">Cada um escolhe 17 dezenas. A cada sorteio da Quina os acertos sobem. Quem fechar as 17 primeiro leva o prêmio.</p>
+
+            <div class="status-block">
+                <div id="statusJogo"><span class="status-badge">Carregando…</span></div>
+                <div class="status-info" id="statusInfo">
+                    <span>🕐 <span id="ultimaVerificacao">--</span></span><span>•</span><span id="statusSorteio">Verificando…</span>
+                </div>
+            </div>
         </header>
 
-        <div class="status-jogo" id="statusJogo">
-            <span class="status-badge">🟢 CARREGANDO...</span>
-        </div>
+        <main>
+            <section class="prizes" id="premiacao" style="display:none">
+                <div class="prize lead-prize"><h3>1º lugar</h3><div class="val" id="premio1">R$ 0</div><div class="pct">63% do bolão</div></div>
+                <div class="prize"><h3>2º lugar</h3><div class="val" id="premio2">R$ 0</div><div class="pct">20% do bolão</div></div>
+                <div class="prize"><h3>Menos acertos</h3><div class="val" id="premio3">R$ 0</div><div class="pct">5% do bolão</div></div>
+            </section>
 
-        <div class="status-info" id="statusInfo">
-            <span>🕐 <span id="ultimaVerificacao">--</span> • <span id="statusSorteio">Verificando...</span></span>
-        </div>
+            <section>
+                <div class="sec-head"><h2>Último sorteio da Quina</h2></div>
+                <div class="draw-balls" id="numerosSorteio">-</div>
+            </section>
 
-        <div class="premiacao" id="premiacao" style="display: none;">
-            <div class="premio-item">
-                <h4>🥇 1º LUGAR</h4>
-                <div class="valor" id="premio1">R$ 0</div>
-            </div>
-            <div class="premio-item">
-                <h4>🥈 2º LUGAR</h4>
-                <div class="valor" id="premio2">R$ 0</div>
-            </div>
-            <div class="premio-item">
-                <h4>🎯 MENOS ACERTOS</h4>
-                <div class="valor" id="premio3">R$ 0</div>
-            </div>
-        </div>
-
-        <div class="ultimo-sorteio" id="ultimoSorteio">
-            <h3>📢 ÚLTIMO SORTEIO DA QUINA</h3>
-            <div class="numeros-sorteio" id="numerosSorteio">-</div>
-        </div>
-
-        <div class="ranking-container">
-            <div class="ranking-header">
-                <h3>🏆 RANKING DE ACERTOS</h3>
-                <div class="ranking-stats" id="rankingStats">
-                    <span class="stat-item">🎯 Participantes: <strong id="totalParticipantes">0</strong></span>
-                    <span class="stat-item">⭐ Maior pontuação: <strong id="maiorPontuacao">0</strong></span>
+            <section class="ranking">
+                <div class="sec-head"><h2>Ranking de acertos</h2></div>
+                <div class="rank-stats" id="rankingStats">
+                    <span class="st">Participantes <b id="totalParticipantes">0</b></span>
+                    <span class="st">Melhor pontuação <b id="maiorPontuacao">0</b></span>
                 </div>
-            </div>
-            <div class="ranking-table">
-                <div class="ranking-columns">
-                    <div class="col-pos">POS</div>
-                    <div class="col-player">PARTICIPANTE</div>
-                    <div class="col-score">PTS</div>
-                    <div class="col-progress">%</div>
+                <div id="listaParticipantes"><div class="loading">Carregando participantes…</div></div>
+            </section>
+
+            <section>
+                <div class="sec-head"><h2>Números que já saíram</h2><div class="meta" id="totalSorteados"></div></div>
+                <div id="numerosSorteadosGrid"><div class="loading">Carregando números…</div></div>
+                <div class="board-legend">
+                    <span><i class="s1"></i>saiu uma vez</span>
+                    <span><i class="s2"></i>saiu 2+ vezes</span>
                 </div>
-                <div id="listaParticipantes" class="ranking-list">
-                    <div class="loading">Carregando participantes...</div>
-                </div>
-            </div>
-        </div>
+            </section>
 
-        <!-- CARD DE NÚMEROS SORTEADOS COM REPETIDOS -->
-        <div class="numeros-sorteados-card">
-            <h3>🎲 NÚMEROS SORTEADOS ATÉ AGORA</h3>
-            <div id="numerosSorteadosGrid" class="numeros-sorteados-grid">
-                <div class="loading">Carregando números...</div>
-            </div>
-            <div id="totalSorteados" class="total-sorteados"></div>
-        </div>
+            <section>
+                <div class="sec-head"><h2>Histórico de sorteios</h2></div>
+                <div class="history" id="listaSorteios"><div class="loading">Carregando sorteios…</div></div>
+            </section>
 
-        <div class="lista-sorteios">
-            <h3>📜 HISTÓRICO DE SORTEIOS</h3>
-            <div class="sorteios-container" id="listaSorteios">
-                <div class="loading">Carregando sorteios...</div>
-            </div>
-        </div>
-
-        <div class="vencedor-info" id="vencedorInfo" style="display: none;">
-            <div class="vencedor-card">
-                <h3>🏆 VENCEDOR 🏆</h3>
+            <section class="winner" id="vencedorInfo" style="display:none">
+                <h2>Vencedor</h2>
                 <p id="vencedorNome"></p>
                 <p id="vencedorData"></p>
-            </div>
-        </div>
+            </section>
+        </main>
 
-        <footer>
-            <p>Sorteios oficiais da Quina • Atualização em tempo real</p>
-        </footer>
+        <footer>Sorteios oficiais da Quina · atualização automática todo dia</footer>
     </div>
 
     <script>
-        // ============================================
-        // SERVICE WORKER E CONFIGURAÇÕES
-        // ============================================
-        
-        // MENU LATERAL
         const menuBtn = document.getElementById('menuBtn');
         const sideMenu = document.getElementById('sideMenu');
         const menuOverlay = document.getElementById('menuOverlay');
-        
+
         function closeMenu() {
             sideMenu.classList.remove('open');
             menuOverlay.classList.remove('active');
         }
-        
         function openMenu() {
             sideMenu.classList.add('open');
             menuOverlay.classList.add('active');
         }
-        
         menuBtn.addEventListener('click', openMenu);
         menuOverlay.addEventListener('click', closeMenu);
-        
+
         document.getElementById('menuHome').addEventListener('click', () => {
             closeMenu();
             window.location.reload();
         });
-        
+
         const howModal = document.getElementById('howModal');
         document.getElementById('menuHowItWorks').addEventListener('click', () => {
             closeMenu();
             howModal.classList.add('active');
         });
-        
         const closeModal = () => howModal.classList.remove('active');
         document.getElementById('modalClose').addEventListener('click', closeModal);
         document.getElementById('modalCloseBtn').addEventListener('click', closeModal);
-        howModal.addEventListener('click', (e) => {
-            if (e.target === howModal) closeModal();
-        });
-        
+        howModal.addEventListener('click', (e) => { if (e.target === howModal) closeModal(); });
+
         document.getElementById('menuExit').addEventListener('click', () => {
             closeMenu();
             if (window.matchMedia('(display-mode: standalone)').matches) {
                 window.close();
             } else {
-                alert('Para fechar, clique no X do navegador.');
+                alert('Para fechar, use o X do navegador.');
             }
         });
-        
-        // SERVICE WORKER
+
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js')
                 .then(registration => {
-                    console.log('✅ Service Worker Index registrado');
-                    setInterval(() => {
-                        registration.update();
-                        console.log('🔄 Verificando atualizações...');
-                    }, 60000);
+                    console.log('✅ Service Worker registrado');
+                    setInterval(() => registration.update(), 30 * 60 * 1000);
                 })
                 .catch(error => console.log('❌ Falha no Service Worker:', error));
         }
-        
-        console.log('🚀 Um de Nós Index - Versão Final - ' + new Date().toLocaleString());
+        console.log('🚀 Um de Nós — ' + new Date().toLocaleString('pt-BR'));
     </script>
     <script type="module" src="firebase-config.js"></script>
     <script type="module" src="public.js"></script>

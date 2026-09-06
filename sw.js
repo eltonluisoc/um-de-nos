@@ -1,9 +1,10 @@
-const CACHE_NAME = 'umdenos-index-v14';
+const CACHE_NAME = 'umdenos-index-v15';
 // Caminhos relativos: funcionam em qualquer endereço (não dependem de "/um-de-nos/").
 const urlsToCache = [
   './',
   'index.html',
-  'style.css',
+  'admin.html',
+  'admin.js',
   'firebase-config.js',
   'public.js',
   'manifest.json',
@@ -19,7 +20,7 @@ const urlsToCache = [
 
 // Instalação - cacheia os arquivos
 self.addEventListener('install', event => {
-  console.log('Service Worker Index instalado v14');
+  console.log('Service Worker App instalado v15');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -32,13 +33,14 @@ self.addEventListener('install', event => {
 
 // Ativação - limpa caches antigos e toma controle
 self.addEventListener('activate', event => {
-  console.log('Service Worker Index ativado v14');
+  console.log('Service Worker App ativado v15');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME && cacheName.startsWith('umdenos-index')) {
-            console.log('Removendo cache antigo do Index:', cacheName);
+          // Remove caches antigos (incluindo o do antigo app admin separado).
+          if (cacheName !== CACHE_NAME && cacheName.startsWith('umdenos-')) {
+            console.log('Removendo cache antigo:', cacheName);
             return caches.delete(cacheName);
           }
         })

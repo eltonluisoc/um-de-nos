@@ -466,7 +466,7 @@ function atualizarRanking(participantes) {
                     <div class="ranking-progress">
                         <div class="progress-wrapper">
                             <div class="progress-bar-container">
-                                <div class="progress-fill" style="width: ${progressoPercent}%; background: ${isChampion ? 'linear-gradient(90deg, #ffd700, #ff8c00)' : 'linear-gradient(90deg, #f1c40f, #ff8c00)'};"></div>
+                                <div class="progress-fill" style="width: ${progressoPercent}%;${isChampion ? ' background: linear-gradient(90deg, #ffe9a8, #f2c230);' : ''}"></div>
                             </div>
                             <div class="progress-percent">${Math.round(progressoPercent)}%</div>
                         </div>

@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Um de Nós - Admin</title>
-    <link rel="manifest" href="manifest-admin.json">
-    <meta name="theme-color" content="#0b1e19">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#081310">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap');
         
@@ -863,9 +863,9 @@
         });
         
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/um-de-nos/sw-admin.js')
-                .then(registration => console.log('✅ Service Worker Admin registrado'))
-                .catch(error => console.log('❌ Falha no Service Worker Admin:', error));
+            navigator.serviceWorker.register('sw.js')
+                .then(() => console.log('✅ Service Worker registrado (admin)'))
+                .catch(error => console.log('❌ Falha no Service Worker:', error));
         }
         
         // Funções de limpeza
