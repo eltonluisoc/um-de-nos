@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-index-v12';
+const CACHE_NAME = 'umdenos-index-v13';
 const urlsToCache = [
   '/um-de-nos/',
   '/um-de-nos/index.html',
@@ -18,7 +18,7 @@ const urlsToCache = [
 
 // Instalação - cacheia os arquivos
 self.addEventListener('install', event => {
-  console.log('Service Worker Index instalado v12');
+  console.log('Service Worker Index instalado v13');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -31,7 +31,7 @@ self.addEventListener('install', event => {
 
 // Ativação - limpa caches antigos e toma controle
 self.addEventListener('activate', event => {
-  console.log('Service Worker Index ativado v12');
+  console.log('Service Worker Index ativado v13');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(

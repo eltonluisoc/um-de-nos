@@ -303,22 +303,28 @@ function iniciarEscutaTempoReal() {
         console.error('❌ Erro na escuta dos participantes:', error);
     });
     
-    // Escutar mudanças nos sorteios
-    const sorteiosRef = collection(db, 'sorteios_quina');
-    const qSorteios = query(sorteiosRef, where('competicaoId', '==', jogoId));
-    
-    unsubscribeSorteios = onSnapshot(qSorteios, (snapshot) => {
-        console.log('🔄 Mudança detectada nos sorteios - atualizando números sorteados...');
-        // Recarregar dados de sorteios
-        carregarSorteios();
-        carregarNumerosSorteadosGrid();
-        // Atualizar ranking com novos acertos
-        if (participantes.length > 0) {
-            atualizarRanking(participantes);
-        }
-    }, (error) => {
-        console.error('❌ Erro na escuta dos sorteios:', error);
-    });
+    // Escutar sorteios: se a automação mantém o resumo no doc do jogo, escuta
+    // só esse 1 documento (em vez da coleção sorteios_quina inteira).
+    if (Array.isArray(jogoAtual?.sorteiosResumo) || Array.isArray(jogoAtual?.numerosAcumulados)) {
+        const jogoRef = doc(db, 'jogos', jogoId);
+        unsubscribeSorteios = onSnapshot(jogoRef, (snap) => {
+            if (!snap.exists()) return;
+            jogoAtual = { ...jogoAtual, ...snap.data() };
+            console.log('🔄 Resumo do jogo atualizado - re-renderizando...');
+            if (jogoAtual.ultimosNumerosSorteados?.length) mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
+            carregarSorteios();
+            carregarNumerosSorteadosGrid();
+            if (participantes.length > 0) atualizarRanking(participantes);
+        }, (error) => console.error('❌ Erro na escuta do jogo:', error));
+    } else {
+        const qSorteios = query(collection(db, 'sorteios_quina'), where('competicaoId', '==', jogoId));
+        unsubscribeSorteios = onSnapshot(qSorteios, () => {
+            console.log('🔄 Mudança nos sorteios (modo coleção)...');
+            carregarSorteios();
+            carregarNumerosSorteadosGrid();
+            if (participantes.length > 0) atualizarRanking(participantes);
+        }, (error) => console.error('❌ Erro na escuta dos sorteios:', error));
+    }
 }
 
 // ============================================
@@ -500,38 +506,37 @@ async function carregarPremiacao() {
 
 async function carregarSorteios() {
     if (!jogoId) return;
-    
-    const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
-    const querySnapshot = await getDocs(q);
-    sorteiosRealizados = [];
-    numerosSorteadosAcumulados = [];
-    
+
     const container = document.getElementById('listaSorteios');
     if (!container) return;
-    
-    if (querySnapshot.empty) {
+
+    let sorteios;
+    // Caminho rápido: usa o resumo que a automação grava no doc do jogo.
+    if (Array.isArray(jogoAtual?.sorteiosResumo)) {
+        sorteios = jogoAtual.sorteiosResumo.map(s => ({ concurso: s.concurso, numeros: s.numeros || [] }));
+    } else {
+        // Plano B: lê a coleção (competições antigas, sem resumo).
+        const q = query(collection(db, 'sorteios_quina'), where('competicaoId', '==', jogoId));
+        const snap = await getDocs(q);
+        sorteios = snap.docs.map(d => d.data());
+    }
+
+    sorteios.sort((a, b) => b.concurso - a.concurso);
+    sorteiosRealizados = sorteios;
+
+    numerosSorteadosAcumulados = Array.isArray(jogoAtual?.numerosAcumulados)
+        ? [...jogoAtual.numerosAcumulados]
+        : sorteios.flatMap(s => s.numeros || []);
+
+    if (sorteios.length === 0) {
         container.innerHTML = '<div style="color:rgba(255,255,255,0.4);">Nenhum sorteio importado ainda.</div>';
         return;
     }
-    
-    const sorteios = [];
-    querySnapshot.forEach(doc => {
-        const data = doc.data();
-        sorteios.push({ id: doc.id, ...data });
-        if (data.numeros) {
-            numerosSorteadosAcumulados.push(...data.numeros);
-        }
-    });
-    sorteios.sort((a, b) => b.concurso - a.concurso);
-    sorteiosRealizados = sorteios;
-    
-    let html = '';
-    for (const s of sorteios) {
-        html += `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`;
-    }
-    container.innerHTML = html;
-    console.log(`${sorteios.length} sorteios carregados, ${numerosSorteadosAcumulados.length} números acumulados`);
+
+    container.innerHTML = sorteios
+        .map(s => `<div class="sorteio-item"><span>#${s.concurso}</span> ${s.numeros.join(', ')}</div>`)
+        .join('');
+    console.log(`${sorteios.length} sorteios (resumo=${Array.isArray(jogoAtual?.sorteiosResumo)}), ${numerosSorteadosAcumulados.length} números acumulados`);
 }
 
 async function carregarNumerosSorteadosGrid() {
@@ -545,20 +550,22 @@ async function carregarNumerosSorteadosGrid() {
         return;
     }
     
-    const sorteiosRef = collection(db, 'sorteios_quina');
-    const q = query(sorteiosRef, where('competicaoId', '==', jogoId));
-    const querySnapshot = await getDocs(q);
-    
     const frequencia = new Map();
-    for (const doc of querySnapshot.docs) {
-        const s = doc.data();
-        if (s.numeros) {
-            for (const num of s.numeros) {
+    // Caminho rápido: frequência já calculada no doc do jogo pela automação.
+    if (jogoAtual?.frequenciaNumeros && typeof jogoAtual.frequenciaNumeros === 'object') {
+        for (const [num, qtd] of Object.entries(jogoAtual.frequenciaNumeros)) {
+            frequencia.set(Number(num), qtd);
+        }
+    } else {
+        const q = query(collection(db, 'sorteios_quina'), where('competicaoId', '==', jogoId));
+        const querySnapshot = await getDocs(q);
+        for (const d of querySnapshot.docs) {
+            for (const num of d.data().numeros || []) {
                 frequencia.set(num, (frequencia.get(num) || 0) + 1);
             }
         }
     }
-    
+
     if (frequencia.size === 0) {
         container.innerHTML = '<div style="text-align: center; color: rgba(255,255,255,0.4);">Nenhum número sorteado ainda</div>';
         if (totalSpan) totalSpan.innerHTML = '';

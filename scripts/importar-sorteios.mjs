@@ -246,11 +246,19 @@ async function main() {
   const ultimoImportadoAgora = novos.length ? novos[novos.length - 1].concurso
     : (jogo.ultimoConcursoImportado || (concursosExistentes.size ? Math.max(...concursosExistentes) : null));
 
+  // Lista compacta de todos os sorteios da competição (para o site público
+  // renderizar o histórico sem precisar ler a coleção sorteios_quina).
+  const sorteiosResumo = [
+    ...snapSorteios.docs.map((d) => ({ concurso: Number(d.data().concurso), numeros: (d.data().numeros || []).map(Number) })),
+    ...novos.map((s) => ({ concurso: s.concurso, numeros: s.numeros })),
+  ].sort((a, b) => b.concurso - a.concurso);
+
   const resumo = {
     ultimoConcursoImportado: ultimoImportadoAgora,
     ultimosNumerosSorteados: novos.length ? novos[novos.length - 1].numeros : (jogo.ultimosNumerosSorteados || []),
     numerosAcumulados: [...numerosAcumulados].sort((a, b) => a - b),
     frequenciaNumeros: frequencia,
+    sorteiosResumo,
     totalSorteios: concursosExistentes.size + novos.length,
     automacaoAtualizadaEm: Timestamp.now(),
   };
