@@ -249,23 +249,28 @@
             gap:5px !important;margin-top:0 !important;
         }
         .grid-numero{
-            aspect-ratio:1;display:grid;place-items:center;border-radius:7px;
-            font-family:var(--font-display);font-weight:500;font-size:.72rem;
-            background:var(--surface-2);color:var(--text-mute);
-            border:1px solid transparent;font-variant-numeric:tabular-nums;
+            aspect-ratio:1;display:grid;place-items:center;border-radius:8px;
+            font-family:var(--font-display);font-weight:500;font-size:.74rem;
+            /* ainda não saiu: espaço legível com contorno */
+            background:#132620;color:var(--text-dim);
+            border:1px solid var(--line-strong);font-variant-numeric:tabular-nums;
         }
-        .grid-numero.sorteados{background:var(--hit-bg);color:var(--hit);border-color:var(--hit-line)}
+        /* já saiu: preenchido, salta sobre os vazios */
+        .grid-numero.sorteados{
+            background:var(--hit);color:#04140d;font-weight:700;border-color:transparent;
+        }
+        /* saiu 2+ vezes: verde mais claro + brilho + ★ (a estrela vem do texto) */
         .grid-numero.repetido{
-            background:var(--hit);color:#04140d;font-weight:700;
-            box-shadow:0 0 10px -2px var(--hit-line);
+            background:#74e2b4;box-shadow:0 0 12px -1px rgba(116,226,180,.55);
         }
         .board-legend{
             display:flex;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:12px;
             border-top:1px solid var(--line);font-size:.68rem;color:var(--text-mute);
         }
-        .board-legend i{inline-size:11px;block-size:11px;border-radius:3px;display:inline-block;vertical-align:-1px;margin-right:5px}
-        .board-legend .s1{background:var(--hit-bg);border:1px solid var(--hit-line)}
-        .board-legend .s2{background:var(--hit)}
+        .board-legend i{inline-size:12px;block-size:12px;border-radius:3px;display:inline-block;vertical-align:-2px;margin-right:5px}
+        .board-legend .s0{background:#132620;border:1px solid var(--line-strong)}
+        .board-legend .s1{background:var(--hit)}
+        .board-legend .s2{background:#74e2b4}
 
         /* ---------- draw history chips ---------- */
         .history{display:flex;flex-wrap:wrap;gap:8px}
@@ -435,8 +440,9 @@
                 <div class="sec-head"><h2>Números que já saíram</h2><div class="meta" id="totalSorteados"></div></div>
                 <div id="numerosSorteadosGrid"><div class="loading">Carregando números…</div></div>
                 <div class="board-legend">
-                    <span><i class="s1"></i>saiu uma vez</span>
-                    <span><i class="s2"></i>saiu 2+ vezes</span>
+                    <span><i class="s0"></i>ainda não saiu</span>
+                    <span><i class="s1"></i>já saiu</span>
+                    <span><i class="s2"></i>saiu 2+ vezes ★</span>
                 </div>
             </section>
 
