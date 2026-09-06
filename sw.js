@@ -1,24 +1,25 @@
-const CACHE_NAME = 'umdenos-index-v13';
+const CACHE_NAME = 'umdenos-index-v14';
+// Caminhos relativos: funcionam em qualquer endereço (não dependem de "/um-de-nos/").
 const urlsToCache = [
-  '/um-de-nos/',
-  '/um-de-nos/index.html',
-  '/um-de-nos/style.css',
-  '/um-de-nos/firebase-config.js',
-  '/um-de-nos/public.js',
-  '/um-de-nos/manifest.json',
-  '/um-de-nos/assets/icon-72.png',
-  '/um-de-nos/assets/icon-96.png',
-  '/um-de-nos/assets/icon-128.png',
-  '/um-de-nos/assets/icon-144.png',
-  '/um-de-nos/assets/icon-152.png',
-  '/um-de-nos/assets/icon-192.png',
-  '/um-de-nos/assets/icon-384.png',
-  '/um-de-nos/assets/icon-512.png'
+  './',
+  'index.html',
+  'style.css',
+  'firebase-config.js',
+  'public.js',
+  'manifest.json',
+  'assets/icon-72.png',
+  'assets/icon-96.png',
+  'assets/icon-128.png',
+  'assets/icon-144.png',
+  'assets/icon-152.png',
+  'assets/icon-192.png',
+  'assets/icon-384.png',
+  'assets/icon-512.png'
 ];
 
 // Instalação - cacheia os arquivos
 self.addEventListener('install', event => {
-  console.log('Service Worker Index instalado v13');
+  console.log('Service Worker Index instalado v14');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -31,7 +32,7 @@ self.addEventListener('install', event => {
 
 // Ativação - limpa caches antigos e toma controle
 self.addEventListener('activate', event => {
-  console.log('Service Worker Index ativado v13');
+  console.log('Service Worker Index ativado v14');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(

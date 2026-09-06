@@ -1,0 +1,31 @@
+name: Manter agendador ativo
+
+# O GitHub desativa workflows agendados se o repositório ficar 60 dias sem
+# nenhum commit. Esta rotina faz um commit mínimo 1x por mês para isso
+# nunca acontecer — a automação de sorteios segue no ar sozinha.
+
+on:
+  schedule:
+    - cron: '17 12 1 * *'   # dia 1 de cada mês, 09:17 de Brasília
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: manter-ativo
+  cancel-in-progress: false
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Toque mensal
+        run: |
+          git config user.name "keepalive-bot"
+          git config user.email "actions@users.noreply.github.com"
+          date -u +"%Y-%m-%dT%H:%M:%SZ  (keepalive)" > .github/keepalive.txt
+          git add .github/keepalive.txt
+          git commit -m "chore: keepalive $(date -u +%Y-%m-%d)" || { echo "nada a commitar"; exit 0; }
+          git push

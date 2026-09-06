@@ -936,7 +936,7 @@
         
         // SERVICE WORKER
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/um-de-nos/sw.js')
+            navigator.serviceWorker.register('sw.js')
                 .then(registration => {
                     console.log('✅ Service Worker Index registrado');
                     setInterval(() => {
