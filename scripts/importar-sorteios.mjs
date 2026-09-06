@@ -118,12 +118,26 @@ function momentoDoSorteio(dataStr) {
 async function enviarEmail(assunto, mensagem) {
   if (SIMULAR) { log(`✉️  [simulação] e-mail: "${assunto}"`); return; }
   try {
-    const form = new FormData();
-    form.append('email', EMAIL_DESTINO);
-    form.append('subject', assunto);
-    form.append('message', mensagem);
-    const resp = await fetch(`https://formsubmit.co/ajax/${FORMSUBMIT_ID}`, { method: 'POST', body: form });
-    log(resp.ok ? `✉️  e-mail enviado: "${assunto}"` : `⚠️  e-mail falhou: HTTP ${resp.status}`);
+    const resp = await fetch(`https://formsubmit.co/ajax/${FORMSUBMIT_ID}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        // O formsubmit.co rejeita chamadas sem um Origin/Referer de site real.
+        'Origin': 'https://eltonluisoc.github.io',
+        'Referer': 'https://eltonluisoc.github.io/um-de-nos/',
+      },
+      body: JSON.stringify({
+        _subject: assunto,
+        message: mensagem,
+        email: EMAIL_DESTINO,
+        _captcha: 'false',
+        _template: 'box',
+      }),
+    });
+    const j = await resp.json().catch(() => ({}));
+    const ok = resp.ok && j.success !== 'false' && j.success !== false;
+    log(ok ? `✉️  e-mail enviado: "${assunto}"` : `⚠️  e-mail não enviado: HTTP ${resp.status} ${j.message || ''}`);
   } catch (e) { log(`⚠️  e-mail falhou: ${e.message}`); }
 }
 

@@ -1,12 +1,11 @@
 name: Importar sorteios da Quina
 
 on:
-  # Horários em UTC. Brasília = UTC-3.
-  # A Quina sorteia de segunda a sábado, ~20h de Brasília (~23h UTC).
+  # A cada 30 minutos, todo dia. O script sai na hora quando não há sorteio
+  # novo (barato), e assim o resultado entra no máximo ~30 min depois de a
+  # Caixa publicar — sem depender de dia/horário fixo.
   schedule:
-    - cron: '20,50 23 * * *'   # 20:20 e 20:50 de Brasília
-    - cron: '30 0 * * *'       # 21:30 de Brasília
-    - cron: '0 12 * * *'       # 09:00 de Brasília (rede de segurança)
+    - cron: '*/30 * * * *'
   # Botão "Run workflow" na aba Actions, para rodar na hora.
   workflow_dispatch:
 
