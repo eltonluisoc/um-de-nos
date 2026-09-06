@@ -786,16 +786,32 @@
 
             <div id="config" class="tab-content">
                 <div class="card">
-                    <h3>🎮 Gerenciar Competições</h3>
-                    <button class="btn btn-success" id="btnPrepararCompeticao">📋 Preparar Nova Competição</button>
+                    <h3>➕ Nova Competição</h3>
+                    <div class="form-group">
+                        <label>Nome</label>
+                        <input type="text" id="novaCompNome" placeholder="Ex: Um de Nós - Setembro">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor da inscrição (R$)</label>
+                        <input type="number" id="novaCompValor" step="1" min="1" value="20">
+                    </div>
+                    <button class="btn btn-success" id="btnPrepararCompeticao" style="width:100%">➕ Criar competição</button>
+                    <p style="font-size:0.72em; margin-top:10px; opacity:0.65;">
+                        Cria a competição em modo <strong>preparação</strong>. Depois, na aba
+                        <strong>Participantes</strong>, cadastre a galera — e volte aqui para ativar.
+                    </p>
+                </div>
+
+                <div class="card">
+                    <h3>🚀 Ativar Competição</h3>
                     <select id="selectCompeticao" style="width: 100%; padding: 12px; margin: 10px 0; border-radius: 8px; background: #0b1e19; color: #f1c40f; border: 1px solid rgba(241,196,15,0.3); font-size: 14px;">
-                        <option value="">-- Selecione uma competição para ATIVAR --</option>
+                        <option value="">-- Selecione uma competição em preparação --</option>
                     </select>
-                    <button class="btn btn-warning" id="btnSelecionarCompeticao" style="background:#17a2b8; width: 100%;">🔄 Ativar Competição Selecionada</button>
-                    <button class="btn" id="btnListarCompeticoes" style="background:#6c757d; width: 100%; margin-top: 10px;">📋 Listar Competições</button>
-                    <p style="font-size:0.7em; margin-top:10px; opacity:0.6;">
-                        * "Preparar" cria uma nova competição para cadastrar participantes sem iniciar.<br>
-                        * Selecione uma competição PREPARANDO e clique em "Ativar" para iniciar a competição.
+                    <button class="btn btn-warning" id="btnSelecionarCompeticao" style="background:#17a2b8; width: 100%;">🚀 Ativar competição selecionada</button>
+                    <button class="btn" id="btnListarCompeticoes" style="background:#6c757d; width: 100%; margin-top: 10px;">📋 Listar competições</button>
+                    <p style="font-size:0.72em; margin-top:10px; opacity:0.65;">
+                        Ao ativar, a competição passa a contar os sorteios da Quina e
+                        <strong>não aceita mais novos participantes</strong>.
                     </p>
                 </div>
                 

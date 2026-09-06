@@ -1,4 +1,4 @@
-const CACHE_NAME = 'umdenos-index-v18';
+const CACHE_NAME = 'umdenos-index-v19';
 // Caminhos relativos: funcionam em qualquer endereço (não dependem de "/um-de-nos/").
 const urlsToCache = [
   './',
@@ -20,7 +20,7 @@ const urlsToCache = [
 
 // Instalação - cacheia os arquivos
 self.addEventListener('install', event => {
-  console.log('Service Worker App instalado v18');
+  console.log('Service Worker App instalado v19');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then(cache => {
@@ -33,7 +33,7 @@ self.addEventListener('install', event => {
 
 // Ativação - limpa caches antigos e toma controle
 self.addEventListener('activate', event => {
-  console.log('Service Worker App ativado v18');
+  console.log('Service Worker App ativado v19');
   event.waitUntil(
     caches.keys().then(cacheNames => {
       return Promise.all(

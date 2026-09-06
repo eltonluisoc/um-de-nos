@@ -1053,13 +1053,19 @@ async function carregarTodosParticipantes() {
 }
 
 async function criarNovaCompeticaoPreparando() {
-    const nomeJogo = prompt('Nome da nova competição:', `Um de Nós - ${new Date().toLocaleDateString('pt-BR')}`);
-    if (!nomeJogo) return;
-    
-    const valor = prompt('Valor da inscrição (R$):', '20');
-    const valorNumerico = parseFloat(valor);
-    const valorFinal = isNaN(valorNumerico) || valorNumerico <= 0 ? 20 : valorNumerico;
-    
+    const nomeInput = document.getElementById('novaCompNome');
+    const valorInput = document.getElementById('novaCompValor');
+
+    const nomeJogo = (nomeInput?.value || '').trim()
+        || `Um de Nós - ${new Date().toLocaleDateString('pt-BR')}`;
+
+    const valorNumerico = parseFloat(valorInput?.value);
+    if (isNaN(valorNumerico) || valorNumerico <= 0) {
+        alert('Informe um valor de inscrição válido (maior que zero).');
+        valorInput?.focus();
+        return;
+    }
+
     await addDoc(collection(db, 'jogos'), {
         nome: nomeJogo,
         status: 'preparando',
@@ -1067,11 +1073,14 @@ async function criarNovaCompeticaoPreparando() {
         ultimoConcursoImportado: null,
         ultimosNumerosSorteados: null,
         totalParticipantes: 0,
-        valorInscricao: valorFinal,
+        valorInscricao: valorNumerico,
         primeiraConferenciaRealizada: false
     });
-    
-    alert(`✅ Competição "${nomeJogo}" criada em modo PREPARAÇÃO com valor R$ ${valorFinal},00!`);
+
+    if (nomeInput) nomeInput.value = '';
+    if (valorInput) valorInput.value = '20';
+
+    alert(`✅ Competição "${nomeJogo}" criada (R$ ${valorNumerico}).\n\nAgora vá na aba "Participantes", selecione esta competição e cadastre a galera. Depois volte aqui e clique em "Ativar competição selecionada".`);
     await carregarSelectCompeticoes();
     await carregarSelectCompeticoesCadastro();
     await carregarSelectCompeticaoLista();
@@ -1109,8 +1118,9 @@ async function ativarCompeticaoSelecionada() {
     
     const dataAtivacao = new Date();
     
-    if (confirm(`Iniciar competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\n⚠️ ATENÇÃO:\n- Os acertos serão ZERADOS\n- Os sorteios anteriores serão LIMPOS\n- A competição começará a contar APÓS a ativação (${dataAtivacao.toLocaleString()})\n- NÃO serão aceitos novos participantes após a ativação`)) {
-        
+    if (confirm(`Ativar a competição "${jogoDoc.data().nome}" com ${totalParticipantes} participantes?\n\nA partir de agora ela conta os sorteios da Quina e não aceita mais novos participantes.`)) {
+
+        // Garantia: limpa qualquer resíduo (competição nova não tem nada disso).
         console.log('🗑️ Limpando sorteios antigos...');
         const sorteiosRef = collection(db, 'sorteios_quina');
         const sorteiosQuery = query(sorteiosRef, where('competicaoId', '==', selectedId));
@@ -1141,7 +1151,7 @@ async function ativarCompeticaoSelecionada() {
             primeiraConferenciaRealizada: false
         });
         
-        alert(`✅ Competição "${jogoDoc.data().nome}" ativada com SUCESSO!\n\n📌 Os acertos foram ZERADOS.\n📌 Os sorteios antigos foram REMOVIDOS.\n📌 A competição começará a contar APÓS ${dataAtivacao.toLocaleString()}\n📌 NÃO serão aceitos novos participantes.\n📌 Clique em OK para continuar.`);
+        alert(`✅ "${jogoDoc.data().nome}" ativada!\n\nComeça a contar a partir de ${dataAtivacao.toLocaleString('pt-BR')}. A automação vai importar os próximos sorteios da Quina sozinha.`);
         
         await carregarJogoAtivo();
         await carregarSelectCompeticoes();
