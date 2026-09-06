@@ -31,6 +31,20 @@ document.addEventListener('DOMContentLoaded', () => {
     carregarDados();
 });
 
+// Ajusta o título/etiqueta do ranking conforme a competição esteja em andamento ou encerrada.
+function setRankingContexto(status, nome, encerradoEm) {
+    const titulo = document.getElementById('rankingTitulo');
+    const tag = document.getElementById('rankingTag');
+    if (status === 'encerrado') {
+        const dt = encerradoEm?.toDate?.()?.toLocaleDateString('pt-BR');
+        if (titulo) titulo.textContent = 'Resultado final';
+        if (tag) tag.textContent = `🏁 ${nome || 'Competição'}${dt ? ' · encerrada em ' + dt : ''}`;
+    } else {
+        if (titulo) titulo.textContent = 'Ranking de acertos';
+        if (tag) tag.textContent = '';
+    }
+}
+
 async function carregarDados() {
     await carregarJogoAtivo();
 }
@@ -56,7 +70,8 @@ async function carregarJogoAtivo() {
             document.getElementById('statusJogo').innerHTML = `
                 <span class="status-badge">🎯 JOGO EM ANDAMENTO</span>
             `;
-            
+            setRankingContexto('aberto');
+
             if (jogoAtual.ultimosNumerosSorteados && jogoAtual.ultimosNumerosSorteados.length > 0) {
                 mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
             }
@@ -112,7 +127,8 @@ async function carregarJogoAtivo() {
             document.getElementById('statusJogo').innerHTML = `
                 <span class="status-badge" style="background:#ff8c00;">🏆 COMPETIÇÃO ENCERRADA 🏆</span>
             `;
-            
+            setRankingContexto('encerrado', jogoDoc.nome, jogoDoc.encerradoEm);
+
             // Mostrar últimos números sorteados
             if (jogoAtual.ultimosNumerosSorteados && jogoAtual.ultimosNumerosSorteados.length > 0) {
                 mostrarNumerosSorteados(jogoAtual.ultimosNumerosSorteados);
